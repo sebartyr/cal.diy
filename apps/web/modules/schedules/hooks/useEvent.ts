@@ -69,7 +69,8 @@ export const useScheduleForEvent = ({
   orgSlug,
   teamMemberEmail,
   isTeamEvent,
-  useApiV2 = true,
+  // Cal.diy: default to tRPC unless API v2 service is explicitly enabled.
+  useApiV2 = process.env.NEXT_PUBLIC_USE_API_V2_FOR_BOOKER === "true",
   bookerLayout,
 }: {
   username?: string | null;
