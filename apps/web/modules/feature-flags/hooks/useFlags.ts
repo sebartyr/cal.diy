@@ -24,6 +24,8 @@ const initialData: AppFlags = {
   "hwm-seating": false,
   "signup-watchlist-review": false,
   "sink-shortener": false,
+  "team-booking-page-cache": false,
+  "use-api-v2-for-team-slots": false,
 };
 
 export function useFlags(): Partial<AppFlags> {
