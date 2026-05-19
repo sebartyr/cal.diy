@@ -236,7 +236,18 @@ const getTabs = (
     name: "teams",
     href: "/settings/teams",
     icon: "users",
-    children: [],
+    children: [
+      {
+        name: "all_teams",
+        href: "/settings/teams",
+        trackingMetadata: { section: "teams", page: "list" },
+      },
+      {
+        name: "new_team",
+        href: "/settings/teams/new",
+        trackingMetadata: { section: "teams", page: "new" },
+      },
+    ],
   });
 
   for (const tab of tabs) {
