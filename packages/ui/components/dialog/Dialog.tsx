@@ -89,6 +89,13 @@ export const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps
             `${props.className || ""}`
           )}
           ref={forwardedRef}>
+          {/* Radix >= 1.1 requires a DialogPrimitive.Title in the tree for a11y.
+              The visual h2 inside DialogHeader is a plain heading and doesn't count;
+              keep that for layout and add a sr-only Title that mirrors the prop (or
+              falls back to "Dialog" when no title is set). */}
+          <DialogPrimitive.Title className="sr-only">
+            {typeof title === "string" || typeof title === "number" ? title : "Dialog"}
+          </DialogPrimitive.Title>
           {type === "creation" && (
             <div>
               <DialogHeader title={title} subtitle={props.description} />
