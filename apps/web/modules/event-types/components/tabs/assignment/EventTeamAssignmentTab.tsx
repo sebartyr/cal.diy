@@ -221,6 +221,24 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
                       </label>
                     ) : null}
 
+                    {isRoundRobin && !field.isFixed && !isRRWeightsEnabled ? (
+                      <label className="flex items-center gap-1 text-xs">
+                        {t("priority", { defaultValue: "Priorité" })}
+                        <select
+                          value={field.priority ?? 2}
+                          onChange={(e) =>
+                            update(index, { ...field, priority: Number(e.target.value) })
+                          }
+                          className="border-subtle bg-default rounded-md border px-2 py-1 text-xs">
+                          <option value={0}>{t("lowest", { defaultValue: "La plus basse" })}</option>
+                          <option value={1}>{t("low", { defaultValue: "Basse" })}</option>
+                          <option value={2}>{t("medium", { defaultValue: "Moyenne" })}</option>
+                          <option value={3}>{t("high", { defaultValue: "Haute" })}</option>
+                          <option value={4}>{t("highest", { defaultValue: "La plus haute" })}</option>
+                        </select>
+                      </label>
+                    ) : null}
+
                     {showWeights && !field.isFixed ? (
                       <label className="flex items-center gap-1 text-xs">
                         {t("weight", { defaultValue: "Poids" })}
