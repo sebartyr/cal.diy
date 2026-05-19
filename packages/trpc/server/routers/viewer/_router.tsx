@@ -23,6 +23,7 @@ import { meRouter } from "./me/_router";
 import { oAuthRouter } from "./oAuth/_router";
 import { oooRouter } from "./ooo/_router";
 import { slotsRouter } from "./slots/_router";
+import { teamsRouter } from "./teams/_router";
 import { travelSchedulesRouter } from "./travelSchedules/_router";
 import { userAdminRouter } from "./users/_router";
 import { webhookRouter } from "./webhook/_router";
@@ -52,6 +53,7 @@ export const viewerRouter = router({
   googleWorkspace: googleWorkspaceRouter,
   admin: adminRouter,
   apiKeys: apiKeysRouter,
+  teams: teamsRouter,
   ooo: oooRouter,
   holidays: holidaysRouter,
   travelSchedules: travelSchedulesRouter,

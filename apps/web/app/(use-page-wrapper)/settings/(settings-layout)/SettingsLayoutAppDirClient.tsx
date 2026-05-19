@@ -231,6 +231,14 @@ const getTabs = (
     },
   ];
 
+  // Teams settings (MIT) — inserted before admin.
+  tabs.splice(tabs.length - 1, 0, {
+    name: "teams",
+    href: "/settings/teams",
+    icon: "users",
+    children: [],
+  });
+
   for (const tab of tabs) {
     if (tab.name === "admin" && IS_CALCOM) {
       tab.children?.push({

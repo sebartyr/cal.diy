@@ -89,10 +89,13 @@ export const getTeamServerSideProps: GetServerSideProps<TeamPagePublicProps> = a
 
   log.debug("team list SSR", { slug });
 
+  // Match by slug, exclude organizations. Don't filter on parentId — Cal.diy disabled
+  // orgs but pre-existing teams may still have a non-null parentId.
   const team = await prisma.team.findFirst({
-    where: { slug, parentId: null, isOrganization: false },
+    where: { slug, isOrganization: false },
     select: publicTeamSelect,
   });
+  log.debug("team lookup", { slug, found: !!team, teamId: team?.id });
 
   if (team) {
     const safeBio = (await markdownToSafeHTML(team.bio)) || "";
