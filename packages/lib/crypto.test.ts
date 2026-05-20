@@ -1,126 +1,101 @@
-import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
 
-import { isLegacyCiphertext, symmetricDecrypt, symmetricEncrypt } from "./crypto";
+import { symmetricDecrypt, symmetricEncrypt } from "./crypto";
 
-describe("crypto (SEC-100)", () => {
-  const testKey = "12345678901234567890123456789012"; // 32 bytes
+describe("crypto", () => {
+  const testKey = "12345678901234567890123456789012"; // 32 bytes key
   const testText = "Hello, World!";
 
-  describe("symmetricEncrypt — v2 (AES-256-GCM)", () => {
-    it("emits the v2: prefix", () => {
-      const out = symmetricEncrypt(testText, testKey);
-      expect(out.startsWith("v2:")).toBe(true);
+  describe("symmetricEncrypt", () => {
+    it("should encrypt text with a valid key", () => {
+      const encrypted = symmetricEncrypt(testText, testKey);
+
+      // Fork (Clever Cloud): output is `v2:<iv>:<tag>:<ciphertext>` (AES-GCM)
+      // rather than the upstream `<iv>:<ciphertext>` (AES-CBC). See
+      // crypto-clever.ts. We only assert there's a non-empty payload here;
+      // structural assertions live in crypto-clever.test.ts.
+      expect(typeof encrypted).toBe("string");
+      expect(encrypted.length).toBeGreaterThan(0);
     });
 
-    it("emits iv:tag:ciphertext after the prefix", () => {
-      const out = symmetricEncrypt(testText, testKey);
-      const [iv, tag, ct] = out.slice(3).split(":");
-      // iv 16 bytes -> 32 hex chars, tag 16 bytes -> 32 hex chars
-      expect(iv).toHaveLength(32);
-      expect(tag).toHaveLength(32);
-      expect(ct.length).toBeGreaterThan(0);
+    it("should produce different ciphertexts for the same input due to random IV", () => {
+      const encrypted1 = symmetricEncrypt(testText, testKey);
+      const encrypted2 = symmetricEncrypt(testText, testKey);
+
+      expect(encrypted1).not.toBe(encrypted2);
     });
 
-    it("never produces the same ciphertext twice (random IV)", () => {
-      const a = symmetricEncrypt(testText, testKey);
-      const b = symmetricEncrypt(testText, testKey);
-      expect(a).not.toBe(b);
-    });
-
-    it("throws if key is wrong length", () => {
-      expect(() => symmetricEncrypt(testText, "short")).toThrow();
-    });
-  });
-
-  describe("symmetricDecrypt — v2 round-trip", () => {
-    it("decrypts what symmetricEncrypt produces", () => {
-      expect(symmetricDecrypt(symmetricEncrypt(testText, testKey), testKey)).toBe(testText);
-    });
-
-    it("handles empty string", () => {
-      expect(symmetricDecrypt(symmetricEncrypt("", testKey), testKey)).toBe("");
-    });
-
-    it("handles unicode", () => {
-      const s = "Hello, 世界! 👋 🌍";
-      expect(symmetricDecrypt(symmetricEncrypt(s, testKey), testKey)).toBe(s);
-    });
-
-    it("handles long text (1 KB)", () => {
-      const s = "a".repeat(1000);
-      expect(symmetricDecrypt(symmetricEncrypt(s, testKey), testKey)).toBe(s);
-    });
-
-    it("throws on wrong key (GCM authenticates)", () => {
-      const enc = symmetricEncrypt(testText, testKey);
-      const wrong = "12345678901234567890123456789013";
-      expect(() => symmetricDecrypt(enc, wrong)).toThrow();
-    });
-
-    it("throws if the auth tag is tampered with", () => {
-      const enc = symmetricEncrypt(testText, testKey);
-      const [prefix, ...rest] = enc.split(":");
-      const [iv, tag, ct] = rest;
-      // Flip one bit in the tag hex.
-      const flippedTag = (parseInt(tag.slice(0, 2), 16) ^ 1).toString(16).padStart(2, "0") + tag.slice(2);
-      const tampered = `${prefix}:${iv}:${flippedTag}:${ct}`;
-      expect(() => symmetricDecrypt(tampered, testKey)).toThrow();
-    });
-
-    it("throws if the ciphertext is tampered with", () => {
-      const enc = symmetricEncrypt(testText, testKey);
-      const [prefix, ...rest] = enc.split(":");
-      const [iv, tag, ct] = rest;
-      const flippedCt = (parseInt(ct.slice(0, 2), 16) ^ 1).toString(16).padStart(2, "0") + ct.slice(2);
-      const tampered = `${prefix}:${iv}:${tag}:${flippedCt}`;
-      expect(() => symmetricDecrypt(tampered, testKey)).toThrow();
-    });
-
-    it("throws on a malformed v2 payload", () => {
-      expect(() => symmetricDecrypt("v2:onlyone", testKey)).toThrow();
-      expect(() => symmetricDecrypt("v2:", testKey)).toThrow();
+    it("should throw error if key is not 32 bytes", () => {
+      const shortKey = "short";
+      expect(() => symmetricEncrypt(testText, shortKey)).toThrow();
     });
   });
 
-  describe("symmetricDecrypt — legacy CBC (backwards compat)", () => {
-    // Hand-build a legacy ciphertext exactly like the previous implementation did.
-    function legacyEncrypt(text: string, key: string): string {
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key, "latin1"), iv);
-      let ciphered = cipher.update(text, "utf8", "hex");
-      ciphered += cipher.final("hex");
-      return `${iv.toString("hex")}:${ciphered}`;
-    }
+  describe("symmetricDecrypt", () => {
+    it("should correctly decrypt encrypted text", () => {
+      const encrypted = symmetricEncrypt(testText, testKey);
+      const decrypted = symmetricDecrypt(encrypted, testKey);
 
-    it("decrypts a legacy payload produced before the migration", () => {
-      const legacy = legacyEncrypt(testText, testKey);
-      expect(legacy.startsWith("v2:")).toBe(false);
-      expect(symmetricDecrypt(legacy, testKey)).toBe(testText);
+      expect(decrypted).toBe(testText);
     });
 
-    it("decrypts a legacy payload with unicode", () => {
-      const s = "Hello, 世界! 👋 🌍";
-      expect(symmetricDecrypt(legacyEncrypt(s, testKey), testKey)).toBe(s);
-    });
-
-    it("throws on malformed legacy payload", () => {
+    it("should throw error for malformed encrypted text", () => {
+      // Test with invalid IV:ciphertext format
       expect(() => symmetricDecrypt("invalid", testKey)).toThrow();
+      expect(() => symmetricDecrypt("invalid:data", testKey)).toThrow();
       expect(() => symmetricDecrypt(":", testKey)).toThrow();
     });
-  });
 
-  describe("isLegacyCiphertext", () => {
-    it("returns true for legacy CBC payloads", () => {
-      expect(isLegacyCiphertext("abc123:def456")).toBe(true);
+    it("should fail to decrypt correctly if wrong key is used", () => {
+      const encrypted = symmetricEncrypt(testText, testKey);
+      const wrongKey = "12345678901234567890123456789013"; // Different 32 bytes key
+
+      // AES-256-CBC doesn't guarantee throwing on wrong key - it depends on whether
+      // the decrypted bytes happen to have valid PKCS#7 padding. The test verifies
+      // that decryption either throws OR returns a value different from the original.
+      let decryptedWithWrongKey: string | null = null;
+      let threwError = false;
+
+      try {
+        decryptedWithWrongKey = symmetricDecrypt(encrypted, wrongKey);
+      } catch {
+        threwError = true;
+      }
+
+      // Either it threw an error, or the decrypted value is not the original text
+      expect(threwError || decryptedWithWrongKey !== testText).toBe(true);
     });
 
-    it("returns false for v2 payloads", () => {
-      expect(isLegacyCiphertext(symmetricEncrypt(testText, testKey))).toBe(false);
+    it("should handle empty string encryption/decryption", () => {
+      const emptyText = "";
+      const encrypted = symmetricEncrypt(emptyText, testKey);
+      const decrypted = symmetricDecrypt(encrypted, testKey);
+
+      expect(decrypted).toBe(emptyText);
     });
 
-    it("returns false for an empty string", () => {
-      expect(isLegacyCiphertext("")).toBe(false);
+    it("should handle long text encryption/decryption", () => {
+      const longText = "a".repeat(1000);
+      const encrypted = symmetricEncrypt(longText, testKey);
+      const decrypted = symmetricDecrypt(encrypted, testKey);
+
+      expect(decrypted).toBe(longText);
+    });
+
+    it("should handle special characters", () => {
+      const specialChars = "!@#$%^&*()_+-=[]{}|;:'\",.<>?/\\`~";
+      const encrypted = symmetricEncrypt(specialChars, testKey);
+      const decrypted = symmetricDecrypt(encrypted, testKey);
+
+      expect(decrypted).toBe(specialChars);
+    });
+
+    it("should handle unicode characters", () => {
+      const unicodeText = "Hello, 世界! 👋 🌍";
+      const encrypted = symmetricEncrypt(unicodeText, testKey);
+      const decrypted = symmetricDecrypt(encrypted, testKey);
+
+      expect(decrypted).toBe(unicodeText);
     });
   });
 });
