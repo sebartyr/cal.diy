@@ -1,12 +1,12 @@
 import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
 import { parseRequestData } from "app/api/parseRequestData";
-import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authenticator } from "otplib";
 import qrcode from "qrcode";
 
+import { generatePlaintextBackupCodes, hashBackupCodesForStorage } from "@calcom/features/auth/lib/backupCodes";
 import { ErrorCode } from "@calcom/features/auth/lib/ErrorCode";
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { verifyPassword } from "@calcom/features/auth/lib/verifyPassword";
@@ -68,15 +68,17 @@ async function postHandler(req: NextRequest) {
   // bytes without updating the sanity checks in the enable and login endpoints.
   const secret = authenticator.generateSecret(20);
 
-  // Generate backup codes with 10 character length
-  const backupCodes = Array.from(Array(10), () => crypto.randomBytes(5).toString("hex"));
+  // SEC-009: codes are shown to the user exactly once (return payload below);
+  // only bcrypt hashes are persisted. See backupCodes.ts.
+  const backupCodes = generatePlaintextBackupCodes();
+  const storedBackupCodes = await hashBackupCodesForStorage(backupCodes, process.env.CALENDSO_ENCRYPTION_KEY);
 
   await prisma.user.update({
     where: {
       id: session.user.id,
     },
     data: {
-      backupCodes: symmetricEncrypt(JSON.stringify(backupCodes), process.env.CALENDSO_ENCRYPTION_KEY),
+      backupCodes: storedBackupCodes,
       twoFactorEnabled: false,
       twoFactorSecret: symmetricEncrypt(secret, process.env.CALENDSO_ENCRYPTION_KEY),
     },

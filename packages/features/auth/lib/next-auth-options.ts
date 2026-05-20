@@ -25,7 +25,7 @@ import {
   MICROSOFT_CALENDAR_SCOPES,
   WEBAPP_URL,
 } from "@calcom/lib/constants";
-import { symmetricDecrypt, symmetricEncrypt } from "@calcom/lib/crypto";
+import { symmetricDecrypt } from "@calcom/lib/crypto";
 import { defaultCookies } from "@calcom/lib/default-cookies";
 import { isENVDev } from "@calcom/lib/env";
 import logger from "@calcom/lib/logger";
@@ -195,20 +195,21 @@ export async function authorizeCredentials(
 
     if (!user.backupCodes) throw new Error(ErrorCode.MissingBackupCodes);
 
-    const backupCodes = JSON.parse(symmetricDecrypt(user.backupCodes, process.env.CALENDSO_ENCRYPTION_KEY));
+    // SEC-009: parse + verify via the helper. Handles both legacy plaintext
+    // arrays and the modern bcrypt-hashed format, and lazy-upgrades on success.
+    const { parseStoredBackupCodes, verifyAndConsumeBackupCode, reencryptBackupCodes } = await import(
+      "@calcom/features/auth/lib/backupCodes"
+    );
+    const storedEntries = parseStoredBackupCodes(user.backupCodes, process.env.CALENDSO_ENCRYPTION_KEY);
+    const result = await verifyAndConsumeBackupCode(credentials.backupCode, storedEntries);
+    if (!result.ok) throw new Error(ErrorCode.IncorrectBackupCode);
 
-    // check if user-supplied code matches one
-    const index = backupCodes.indexOf(credentials.backupCode.replaceAll("-", ""));
-    if (index === -1) throw new Error(ErrorCode.IncorrectBackupCode);
-
-    // delete verified backup code and re-encrypt remaining
-    backupCodes[index] = null;
     await prisma.user.update({
       where: {
         id: user.id,
       },
       data: {
-        backupCodes: symmetricEncrypt(JSON.stringify(backupCodes), process.env.CALENDSO_ENCRYPTION_KEY),
+        backupCodes: reencryptBackupCodes(result.updatedHashes, process.env.CALENDSO_ENCRYPTION_KEY),
       },
     });
   } else if (user.twoFactorEnabled) {
