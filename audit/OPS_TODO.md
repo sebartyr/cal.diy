@@ -33,6 +33,8 @@ Liste des items que Claude Code **ne peut pas** traiter depuis le repo et qui re
 
 ## Sprint 4 — Continu
 
+- [ ] **Migration Prisma `User.allowSEOIndexing` default → false** (SEC-308-FORK suite) : SPRINT2-030 a fixé le défaut côté `teams.create` au niveau applicatif (`isPrivate: true`). Pour aller plus loin, changer la valeur par défaut de `User.allowSEOIndexing` dans le schéma Prisma — nécessite migration et validation produit (rétroactif sur les comptes existants ? non-rétroactif via migration limitée aux nouveaux). À discuter avec produit avant d'écrire la migration.
+
 - [ ] DPIA finalisée, page `/privacy` publiée.
 - [ ] Procédure breach notification < 72h formalisée (SPRINT4-103).
 - [ ] Backups chiffrés rotations vérifiées (cycle mensuel).

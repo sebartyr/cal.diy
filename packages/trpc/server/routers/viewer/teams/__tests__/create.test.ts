@@ -1,5 +1,62 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getAllowedEmailDomains } from "../create.handler";
+
+import { MembershipRole } from "@calcom/prisma/enums";
+
+import { createHandler, getAllowedEmailDomains } from "../create.handler";
+
+const teamCreate = vi.fn();
+const teamFindFirst = vi.fn().mockResolvedValue(null);
+
+vi.mock("@calcom/prisma", () => ({
+  prisma: {
+    team: {
+      get findFirst() {
+        return teamFindFirst;
+      },
+      get create() {
+        return teamCreate;
+      },
+    },
+  },
+}));
+
+vi.mock("@calcom/prisma/client", () => ({
+  Prisma: { PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {} },
+}));
+
+describe("createHandler — privacy-by-default (SEC-307+308-FORK)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
+  it("creates the team with isPrivate=true regardless of caller input", async () => {
+    teamCreate.mockResolvedValueOnce({ id: 1, slug: "engineers", name: "Engineers" });
+    await createHandler({
+      ctx: { user: { id: 42, email: "u@example.com" } as never },
+      input: { slug: "engineers", name: "Engineers" },
+    });
+    expect(teamCreate).toHaveBeenCalledTimes(1);
+    const arg = teamCreate.mock.calls[0][0];
+    expect(arg.data.isPrivate).toBe(true);
+    expect(arg.data.isOrganization).toBe(false);
+    expect(arg.data.members.create).toEqual({
+      userId: 42,
+      role: MembershipRole.OWNER,
+      accepted: true,
+    });
+  });
+
+  it("rejects an invalid slug before any DB call", async () => {
+    await expect(
+      createHandler({
+        ctx: { user: { id: 42, email: "u@example.com" } as never },
+        input: { slug: "Engineers!", name: "x" },
+      })
+    ).rejects.toThrow(/lowercase/);
+    expect(teamCreate).not.toHaveBeenCalled();
+  });
+});
 
 describe("getAllowedEmailDomains", () => {
   afterEach(() => {

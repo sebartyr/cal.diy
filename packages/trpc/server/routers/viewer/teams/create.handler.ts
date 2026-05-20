@@ -58,12 +58,23 @@ export async function createHandler({ ctx, input }: Options) {
   }
 
   try {
+    // SEC-307-FORK / SEC-308-FORK: privacy-by-default.
+    //
+    // Upstream cal.com defaults `isPrivate: false`, which means a freshly-
+    // created team's `/team/<slug>` page lists members publicly and the
+    // booking pages are SEO-indexable. For a Clever-managed instance this
+    // is the wrong default — internal team rosters and meeting names
+    // shouldn't reach search engines until someone explicitly opts in.
+    //
+    // We set `isPrivate: true` here at the application layer rather than
+    // changing the Prisma column default (which would require a migration
+    // applied to historical rows). Owners can flip it from team settings.
     return await prisma.team.create({
       data: {
         slug,
         name: input.name,
         isOrganization: false,
-        isPrivate: false,
+        isPrivate: true,
         hideBranding: false,
         members: {
           create: {
