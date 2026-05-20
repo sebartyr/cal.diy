@@ -109,7 +109,11 @@ export function UserDropdown({ small }: UserDropdownProps) {
   return (
     <Menu open={menuOpen} onOpenChange={setMenuOpen}>
       <MenuTrigger
-        disabled={isPending}
+        // Coerce to a real boolean. `isPending` from useMeQuery can briefly
+        // be `null`/`undefined` on the client side while React-Query is
+        // resolving, which produced a hydration mismatch when the server
+        // saw `true` and the client saw `null`.
+        disabled={Boolean(isPending)}
         render={
           <button
             data-testid="user-dropdown-trigger-button"
