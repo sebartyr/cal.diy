@@ -3,6 +3,7 @@ import { updateProfilePhotoGoogle } from "@calcom/app-store/_utils/oauth/updateP
 import { updateProfilePhotoMicrosoft } from "@calcom/app-store/_utils/oauth/updateProfilePhotoMicrosoft";
 import { createGoogleCalendarServiceWithGoogleType } from "@calcom/app-store/googlecalendar/lib/CalendarService";
 import { getIdentityProvider } from "@calcom/features/auth/lib/identityProviders";
+import { MAGIC_LINK_MAX_AGE_SECONDS } from "@calcom/features/auth/lib/magicLinkMaxAge";
 import {
   OUTLOOK_CLIENT_ID,
   OUTLOOK_CLIENT_SECRET,
@@ -359,7 +360,7 @@ if (OUTLOOK_LOGIN_ENABLED && OUTLOOK_CLIENT_ID && OUTLOOK_CLIENT_SECRET) {
 providers.push(
   EmailProvider({
     type: "email",
-    maxAge: 10 * 60 * 60, // Magic links are valid for 10 min only
+    maxAge: MAGIC_LINK_MAX_AGE_SECONDS,
     // Here we setup the sendVerificationRequest that calls the email template with the identifier (email) and token to verify.
     sendVerificationRequest: async (props) => (await import("./sendVerificationRequest")).default(props),
   })
