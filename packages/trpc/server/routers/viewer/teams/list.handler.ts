@@ -7,7 +7,7 @@ type Options = {
 
 export async function listHandler({ ctx }: Options) {
   const memberships = await prisma.membership.findMany({
-    where: { userId: ctx.user.id },
+    where: { userId: ctx.user.id, team: { isOrganization: false } },
     select: {
       id: true,
       role: true,
@@ -21,19 +21,11 @@ export async function listHandler({ ctx }: Options) {
           logoUrl: true,
           isPrivate: true,
           hideBranding: true,
-          isOrganization: true,
         },
       },
     },
     orderBy: { team: { name: "asc" } },
   });
 
-  return memberships
-    .filter((m) => !m.team.isOrganization)
-    .map((m) => ({
-      id: m.id,
-      role: m.role,
-      accepted: m.accepted,
-      team: m.team,
-    }));
+  return memberships;
 }

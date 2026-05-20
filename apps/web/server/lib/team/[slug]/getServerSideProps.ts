@@ -52,20 +52,6 @@ const publicTeamSelect = {
       metadata: true,
     },
   },
-  members: {
-    where: { accepted: true },
-    select: {
-      role: true,
-      user: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          avatarUrl: true,
-        },
-      },
-    },
-  },
 } satisfies Prisma.TeamSelect;
 
 type RawPublicTeam = Prisma.TeamGetPayload<{ select: typeof publicTeamSelect }>;
@@ -100,7 +86,17 @@ export const getTeamServerSideProps: GetServerSideProps<TeamPagePublicProps> = a
   if (team) {
     const safeBio = (await markdownToSafeHTML(team.bio)) || "";
     const markdownStrippedBio = stripMarkdown(team.bio ?? "");
-    const memberUsers = team.isPrivate ? [] : team.members.map((m) => m.user);
+
+    // Only fetch members when the team is not private — avoids leaking the
+    // list via __NEXT_DATA__ for private teams.
+    const memberUsers = team.isPrivate
+      ? []
+      : (
+          await prisma.membership.findMany({
+            where: { teamId: team.id, accepted: true },
+            select: { user: { select: { id: true, name: true, username: true, avatarUrl: true } } },
+          })
+        ).map((m) => m.user);
 
     const props: TeamPagePublicProps = {
       team: { ...team, safeBio, markdownStrippedBio },

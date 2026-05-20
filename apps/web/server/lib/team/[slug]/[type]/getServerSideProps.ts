@@ -72,8 +72,11 @@ export const getTeamTypeServerSideProps: GetServerSideProps<TeamEventPageProps> 
     bookingUid = bookingUidParam;
   }
 
+  // Aligned with /team/[slug]/getServerSideProps.ts — Cal.diy disabled orgs
+  // but legacy teams may still carry a non-null parentId, so we match on
+  // isOrganization rather than parentId.
   const teamRow = await prisma.team.findFirst({
-    where: { slug: teamSlug, parentId: null },
+    where: { slug: teamSlug, isOrganization: false },
     select: { id: true, hideBranding: true },
   });
   const isBrandingHidden = teamRow?.hideBranding ?? false;

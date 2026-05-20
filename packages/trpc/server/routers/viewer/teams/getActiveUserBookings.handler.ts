@@ -14,7 +14,7 @@ type Options = {
  * Used as a top-level analytics number on the team dashboard.
  */
 export async function getActiveUserBookingsHandler({ ctx, input }: Options) {
-  await requireMember(ctx.user.id, input.teamId);
+  await requireMember(ctx.user.id, input.teamId, undefined, ctx.user);
 
   const count = await prisma.booking.count({
     where: {

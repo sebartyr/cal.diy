@@ -18,49 +18,52 @@ type Options = {
 };
 
 export async function inviteMemberHandler({ ctx, input }: Options) {
-  await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN);
+  await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN, ctx.user);
 
   const invitee = await prisma.user.findUnique({
     where: { email: input.email.toLowerCase() },
     select: { id: true, name: true, email: true },
   });
 
-  // MVP: require the invitee to already have an account. Sending an email-based
-  // invite to a new user is a follow-up.
+  // MVP: require the invitee to already have an account. We deliberately
+  // return the same opaque response whether the email exists, is already a
+  // member, or was just added — so a team admin can't enumerate accounts /
+  // memberships from the response.
   if (!invitee) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "No user with this email — invitee must sign up first",
-    });
+    return { ok: true as const };
   }
 
   const existing = await prisma.membership.findUnique({
     where: { userId_teamId: { userId: invitee.id, teamId: input.teamId } },
+    select: { id: true },
   });
   if (existing) {
-    throw new TRPCError({ code: "CONFLICT", message: "User is already in this team" });
+    return { ok: true as const };
   }
 
-  // Generate a verification token so the invitee can confirm.
+  // Token + membership creation must be atomic — otherwise a partial failure
+  // leaves an orphan verification token tied to the invitee's email.
   const token = randomBytes(24).toString("hex");
-  await prisma.verificationToken.create({
-    data: {
-      identifier: invitee.email,
-      token,
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      teamId: input.teamId,
-    },
-  });
+  await prisma.$transaction([
+    prisma.verificationToken.create({
+      data: {
+        identifier: invitee.email,
+        token,
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        teamId: input.teamId,
+      },
+    }),
+    prisma.membership.create({
+      data: {
+        userId: invitee.id,
+        teamId: input.teamId,
+        role: input.role,
+        accepted: false,
+      },
+    }),
+  ]);
 
-  const membership = await prisma.membership.create({
-    data: {
-      userId: invitee.id,
-      teamId: input.teamId,
-      role: input.role,
-      accepted: false,
-    },
-    select: { id: true, role: true, accepted: true },
-  });
-
-  return { membership, token };
+  // TODO: send the invitation email containing `token`. The token is kept
+  // server-side; never return it to the client.
+  return { ok: true as const };
 }

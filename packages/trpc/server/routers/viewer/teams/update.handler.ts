@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
 import { prisma } from "@calcom/prisma";
+import { Prisma } from "@calcom/prisma/client";
 import { MembershipRole } from "@calcom/prisma/enums";
 
 import { requireMember } from "./permissions";
@@ -26,24 +27,27 @@ type Options = {
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 export async function updateHandler({ ctx, input }: Options) {
-  await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN);
+  await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN, ctx.user);
 
   if (input.slug !== undefined) {
     const slug = input.slug.toLowerCase();
     if (!SLUG_RE.test(slug)) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid slug" });
     }
-    const clash = await prisma.team.findFirst({
-      where: { slug, NOT: { id: input.teamId } },
-      select: { id: true },
-    });
-    if (clash) throw new TRPCError({ code: "CONFLICT", message: "Slug already in use" });
+    input.slug = slug;
   }
 
   const { teamId, ...data } = input;
-  return prisma.team.update({
-    where: { id: teamId },
-    data,
-    select: { id: true, slug: true, name: true },
-  });
+  try {
+    return await prisma.team.update({
+      where: { id: teamId },
+      data,
+      select: { id: true, slug: true, name: true },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      throw new TRPCError({ code: "CONFLICT", message: "Slug already in use" });
+    }
+    throw e;
+  }
 }

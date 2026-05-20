@@ -9,7 +9,7 @@ type Options = {
 };
 
 export async function listMembersHandler({ ctx, input }: Options) {
-  await requireMember(ctx.user.id, input.teamId);
+  await requireMember(ctx.user.id, input.teamId, undefined, ctx.user);
 
   const members = await prisma.membership.findMany({
     where: { teamId: input.teamId },

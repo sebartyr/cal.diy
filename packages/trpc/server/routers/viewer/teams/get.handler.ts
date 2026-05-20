@@ -9,7 +9,7 @@ type Options = {
 };
 
 export async function getHandler({ ctx, input }: Options) {
-  const membership = await requireMember(ctx.user.id, input.teamId);
+  const membership = await requireMember(ctx.user.id, input.teamId, undefined, ctx.user);
 
   const team = await prisma.team.findUnique({
     where: { id: input.teamId },

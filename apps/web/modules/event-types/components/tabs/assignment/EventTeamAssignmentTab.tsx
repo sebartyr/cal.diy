@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useFormContext, useFieldArray } from "react-hook-form";
 
 import type { FormValues, Host } from "@calcom/features/eventtypes/lib/types";
@@ -62,6 +62,16 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
     () => teamMembers.filter((m) => !selectedUserIds.has(m.id)),
     [teamMembers, selectedUserIds]
   );
+
+  // Stable callbacks so HostRow only re-renders when its own props change.
+  const updateHost = useCallback(
+    (index: number, patch: Partial<Host>) => {
+      const current = form.getValues(`hosts.${index}`);
+      update(index, { ...current, ...patch });
+    },
+    [form, update]
+  );
+  const removeHost = useCallback((index: number) => remove(index), [remove]);
 
   if (!team) {
     return (
@@ -192,78 +202,20 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
                   {t("no_hosts_yet", { defaultValue: "Aucun hôte. Ajoutez-en un ci-dessous." })}
                 </li>
               ) : null}
-              {fields.map((field, index) => {
-                const member = memberByUserId.get(field.userId);
-                return (
-                  <li key={field.id} className="flex items-center gap-3 px-4 py-3">
-                    <Avatar
-                      size="sm"
-                      alt={member?.name ?? `User ${field.userId}`}
-                      imageSrc={member?.avatar ?? null}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-emphasis truncate text-sm font-medium">
-                        {member?.name ?? member?.username ?? `User ${field.userId}`}
-                      </p>
-                      <p className="text-subtle truncate text-xs">{member?.email ?? ""}</p>
-                    </div>
-
-                    {isRoundRobin ? (
-                      <label className="flex items-center gap-2 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={field.isFixed}
-                          onChange={(e) =>
-                            update(index, { ...field, isFixed: e.target.checked })
-                          }
-                        />
-                        {t("fixed", { defaultValue: "Fixe" })}
-                      </label>
-                    ) : null}
-
-                    {isRoundRobin && !field.isFixed && !isRRWeightsEnabled ? (
-                      <label className="flex items-center gap-1 text-xs">
-                        {t("priority", { defaultValue: "Priorité" })}
-                        <select
-                          value={field.priority ?? 2}
-                          onChange={(e) =>
-                            update(index, { ...field, priority: Number(e.target.value) })
-                          }
-                          className="border-subtle bg-default rounded-md border px-2 py-1 text-xs">
-                          <option value={0}>{t("lowest", { defaultValue: "La plus basse" })}</option>
-                          <option value={1}>{t("low", { defaultValue: "Basse" })}</option>
-                          <option value={2}>{t("medium", { defaultValue: "Moyenne" })}</option>
-                          <option value={3}>{t("high", { defaultValue: "Haute" })}</option>
-                          <option value={4}>{t("highest", { defaultValue: "La plus haute" })}</option>
-                        </select>
-                      </label>
-                    ) : null}
-
-                    {showWeights && !field.isFixed ? (
-                      <label className="flex items-center gap-1 text-xs">
-                        {t("weight", { defaultValue: "Poids" })}
-                        <input
-                          type="number"
-                          min={1}
-                          max={100}
-                          value={field.weight}
-                          onChange={(e) =>
-                            update(index, { ...field, weight: Math.max(1, Number(e.target.value) || 1) })
-                          }
-                          className="border-subtle bg-default w-16 rounded-md border px-2 py-1 text-xs"
-                        />
-                      </label>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() => remove(index)}
-                      className="text-error text-xs underline-offset-2 hover:underline">
-                      {t("remove", { defaultValue: "Retirer" })}
-                    </button>
-                  </li>
-                );
-              })}
+              {fields.map((field, index) => (
+                <HostRow
+                  key={field.id}
+                  index={index}
+                  host={field}
+                  member={memberByUserId.get(field.userId)}
+                  isRoundRobin={isRoundRobin}
+                  isRRWeightsEnabled={isRRWeightsEnabled}
+                  showWeights={showWeights}
+                  onChange={updateHost}
+                  onRemove={removeHost}
+                  t={t}
+                />
+              ))}
             </ul>
 
             {availableMembers.length > 0 ? (
@@ -305,3 +257,93 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
     </div>
   );
 }
+
+type HostRowProps = {
+  index: number;
+  host: Host & { id: string };
+  member: TeamMember | undefined;
+  isRoundRobin: boolean;
+  isRRWeightsEnabled: boolean;
+  showWeights: boolean;
+  onChange: (index: number, patch: Partial<Host>) => void;
+  onRemove: (index: number) => void;
+  t: (key: string, opts?: { defaultValue?: string }) => string;
+};
+
+const HostRow = memo(function HostRow({
+  index,
+  host,
+  member,
+  isRoundRobin,
+  isRRWeightsEnabled,
+  showWeights,
+  onChange,
+  onRemove,
+  t,
+}: HostRowProps) {
+  return (
+    <li className="flex items-center gap-3 px-4 py-3">
+      <Avatar
+        size="sm"
+        alt={member?.name ?? `User ${host.userId}`}
+        imageSrc={member?.avatar ?? null}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-emphasis truncate text-sm font-medium">
+          {member?.name ?? member?.username ?? `User ${host.userId}`}
+        </p>
+        <p className="text-subtle truncate text-xs">{member?.email ?? ""}</p>
+      </div>
+
+      {isRoundRobin ? (
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={host.isFixed}
+            onChange={(e) => onChange(index, { isFixed: e.target.checked })}
+          />
+          {t("fixed", { defaultValue: "Fixe" })}
+        </label>
+      ) : null}
+
+      {isRoundRobin && !host.isFixed && !isRRWeightsEnabled ? (
+        <label className="flex items-center gap-1 text-xs">
+          {t("priority", { defaultValue: "Priorité" })}
+          <select
+            value={host.priority ?? 2}
+            onChange={(e) => onChange(index, { priority: Number(e.target.value) })}
+            className="border-subtle bg-default rounded-md border px-2 py-1 text-xs">
+            <option value={0}>{t("lowest", { defaultValue: "La plus basse" })}</option>
+            <option value={1}>{t("low", { defaultValue: "Basse" })}</option>
+            <option value={2}>{t("medium", { defaultValue: "Moyenne" })}</option>
+            <option value={3}>{t("high", { defaultValue: "Haute" })}</option>
+            <option value={4}>{t("highest", { defaultValue: "La plus haute" })}</option>
+          </select>
+        </label>
+      ) : null}
+
+      {showWeights && !host.isFixed ? (
+        <label className="flex items-center gap-1 text-xs">
+          {t("weight", { defaultValue: "Poids" })}
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={host.weight}
+            onChange={(e) =>
+              onChange(index, { weight: Math.max(1, Number(e.target.value) || 1) })
+            }
+            className="border-subtle bg-default w-16 rounded-md border px-2 py-1 text-xs"
+          />
+        </label>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        className="text-error text-xs underline-offset-2 hover:underline">
+        {t("remove", { defaultValue: "Retirer" })}
+      </button>
+    </li>
+  );
+});

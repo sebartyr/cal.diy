@@ -64,7 +64,11 @@ export const createWebhookProcedure = () => {
         const allowed =
           !!m?.accepted && (m.role === MembershipRole.OWNER || m.role === MembershipRole.ADMIN);
         if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
-      } else if (webhook.userId && webhook.userId !== ctx.user.id) {
+      } else if (webhook.userId) {
+        if (webhook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      } else {
+        // Webhook with no owner (no userId / teamId / eventTypeId). Should be
+        // unreachable given our FKs, but deny by default rather than fall through.
         throw new TRPCError({ code: "FORBIDDEN" });
       }
     } else if (eventTypeId) {

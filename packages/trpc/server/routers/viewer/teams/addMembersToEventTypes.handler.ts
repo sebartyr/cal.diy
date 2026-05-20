@@ -16,9 +16,8 @@ type Options = {
  * Idempotent — already-host pairings are skipped.
  */
 export async function addMembersToEventTypesHandler({ ctx, input }: Options) {
-  await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN);
+  await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN, ctx.user);
 
-  // Validate that all event types belong to this team.
   const eventTypes = await prisma.eventType.findMany({
     where: { id: { in: input.eventTypeIds }, teamId: input.teamId },
     select: { id: true },
@@ -27,7 +26,6 @@ export async function addMembersToEventTypesHandler({ ctx, input }: Options) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Some event types do not belong to this team" });
   }
 
-  // Validate that all users are accepted members of the team.
   const memberships = await prisma.membership.findMany({
     where: { teamId: input.teamId, userId: { in: input.userIds }, accepted: true },
     select: { userId: true },
@@ -36,18 +34,15 @@ export async function addMembersToEventTypesHandler({ ctx, input }: Options) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Some users are not members of this team" });
   }
 
-  let added = 0;
-  for (const eventTypeId of input.eventTypeIds) {
-    for (const userId of input.userIds) {
-      const result = await prisma.host.upsert({
-        where: { userId_eventTypeId: { userId, eventTypeId } },
-        create: { userId, eventTypeId, isFixed: false },
-        update: {},
-        select: { userId: true },
-      });
-      if (result) added++;
-    }
-  }
+  const pairings = input.eventTypeIds.flatMap((eventTypeId) =>
+    input.userIds.map((userId) => ({ eventTypeId, userId, isFixed: false }))
+  );
 
-  return { eventTypeCount: input.eventTypeIds.length, userCount: input.userIds.length, hostPairs: added };
+  const result = await prisma.host.createMany({ data: pairings, skipDuplicates: true });
+
+  return {
+    eventTypeCount: input.eventTypeIds.length,
+    userCount: input.userIds.length,
+    hostPairs: result.count,
+  };
 }

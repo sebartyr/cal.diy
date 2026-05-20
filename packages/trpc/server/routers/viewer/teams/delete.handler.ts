@@ -10,7 +10,7 @@ type Options = {
 };
 
 export async function deleteHandler({ ctx, input }: Options) {
-  await requireMember(ctx.user.id, input.teamId, MembershipRole.OWNER);
+  await requireMember(ctx.user.id, input.teamId, MembershipRole.OWNER, ctx.user);
 
   await prisma.team.delete({ where: { id: input.teamId } });
   return { ok: true as const };
