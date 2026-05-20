@@ -1,0 +1,72 @@
+id,sprint,severity,category,title,findings,clever_specific,risk_chain_id,assignee_role,effort,requires_pm_decision,requires_explain
+SPRINT0-001,0,P1,security,Lockdown scripts dev — allowlist DATABASE_URL + refus DB hosted Clever,"SEC-300-FORK,SEC-301-FORK",true,backdoor-admin,presales-eng,S,false,false
+SPRINT0-002,0,P1,security,Désactiver signup public + allowlist email domain,SEC-310-FORK,true,backdoor-admin,backend,S,false,false
+SPRINT0-003,0,P0,security,Rate-limit fail-closed en production,SEC-200,false,backdoor-admin,backend-security,M,false,false
+SPRINT0-004,0,P2,security,Dockerfile retrait ARG=secret + USER non-root,SEC-204,false,backdoor-admin,infra,S,false,false
+SPRINT0-005,0,P0,ops,Vérification ops UNKEY_ROOT_KEY set sur env Clever,SEC-200,true,backdoor-admin,ops,XS,false,false
+SPRINT1-001,1,P0,security,PBAC stub → vrai check Membership,SEC-001,false,backdoor-admin,backend-security,M,false,false
+SPRINT1-002,1,P0,bug,Double-booking — pg_advisory_xact_lock,BUG-001,false,,backend,M,false,false
+SPRINT1-003,1,P2,bug,idempotencyKey extension ACCEPTED + PENDING,BUG-013,false,,backend,XS,false,false
+SPRINT2-001,2,P1,security,Migration AES-256-CBC → AES-256-GCM avec prefix v2:,SEC-100,false,oauth-creds-leak,backend-security,M,false,false
+SPRINT2-002,2,P2,security,Backup codes 2FA hashés bcrypt,SEC-009,false,,backend-security,M,false,false
+SPRINT2-003,2,P1,security,jwt.verify early throw si CALENDSO_ENCRYPTION_KEY absent,SEC-003,false,,backend,XS,false,false
+SPRINT2-010,2,P1,security,OAuth confused-deputy retirer Stripe NONCE_EXEMPT_APPS,SEC-101,false,oauth-creds-leak,backend-security,S,false,false
+SPRINT2-011,2,P2,security,OAuth callbacks reject state === undefined,SEC-102,false,,backend,S,false,false
+SPRINT2-020,2,P1,security,SSRF webhook async validate + DNS pinning,SEC-103,false,oauth-creds-leak,backend-security,M,false,false
+SPRINT2-021,2,P1,security,SSRF CalDAV/ICS-feed validateUrlForSSRF dans add,SEC-104,false,oauth-creds-leak,backend,S,false,false
+SPRINT2-030,2,P1,rgpd,RGPD defaults team isPrivate=true + isSEOIndexable flagué,"SEC-307-FORK,SEC-308-FORK,RGPD-300-FORK",true,internal-directory-leak,backend,XS,false,false
+SPRINT2-031,2,P2,rgpd,Vérification région Sentry EU obligatoire,RGPD-302-FORK,true,,ops,XS,false,false
+SPRINT2-032,2,P1,rgpd,DPIA déclenché par DPO sur instance interne,RGPD-300-FORK,true,internal-directory-leak,dpo,M,false,false
+SPRINT2-040,2,P1,security,inviteMember envoi email + consommation token,"SEC-302-FORK,BUG-100-FORK",true,,backend,M,false,false
+SPRINT2-050,2,P1,security,[PM DECISION] requiresBookerEmailVerification default ON,SEC-106,true,,backend,M,true,false
+SPRINT2-051,2,P2,security,[PM DECISION] Embed iframe origin check OU désactivation,SEC-202,false,,frontend,S,true,false
+SPRINT2-052,2,P2,security,[PM DECISION] Booking event-type hidden → 404,SEC-105,false,,backend,XS,true,false
+SPRINT2-060,2,P2,security,Magic-link maxAge bug commentaire 10h → 10 min,SEC-008,false,,backend,XS,false,false
+SPRINT2-061,2,P1,bug,Recurring count borné max(52),BUG-005,false,,backend,XS,false,false
+SPRINT2-062,2,P3,security,bookings.find publicProc drop description select,SEC-012,false,,backend,XS,false,false
+SPRINT3-001,3,P1,security,CSP étendue à toutes les pages Report-Only 48h,SEC-201,false,,frontend,S,false,false
+SPRINT3-002,3,P2,security,CSP retirer 'unsafe-inline' https: en prod,SEC-205,false,,frontend,S,false,false
+SPRINT3-010,3,P1,perf,Mesure EXPLAIN Webhook trigger queries,BUG-009,false,,backend-security,S,false,true
+SPRINT3-011,3,P1,bug,Migration Webhook indexes CONCURRENTLY,BUG-009,false,,backend,S,false,false
+SPRINT3-012,3,P2,perf,Migration Booking index [eventTypeId startTime status],PERF-010,false,,backend,S,false,true
+SPRINT3-020,3,P1,bug,DST utcOffset calculé à la date du slot,BUG-003,false,,backend,XS,false,false
+SPRINT3-030,3,P2,fork-strategy,Externaliser canManageEventType réduire couplage upstream,FORK-300-FORK,true,,presales-eng,S,false,false
+SPRINT3-031,3,P2,fork-strategy,FORK-NOTES.md racine + procédure rebase,FORK-301-FORK,true,,presales-eng,XS,false,false
+SPRINT3-032,3,P3,fork-strategy,Pinner strict Radix + Renovate config,SEC-309-FORK,true,,infra,S,false,false
+SPRINT3-033,3,P3,fork-strategy,Semgrep + CodeQL en CI,FORK-302-FORK,true,,infra,S,false,false
+SPRINT3-040,3,P2,security,Audit trail actions admin logs structurés,SEC-305-FORK,true,,backend-security,M,false,false
+SPRINT3-041,3,P1,security,2FA imposé pour UserPermissionRole.ADMIN,RGPD-checklist,true,,backend-security,S,false,false
+SPRINT4-001,4,P2,security,Politique password ≥ 12 chars + HIBP,"SEC-005,SEC-006",false,,backend,S,false,false
+SPRINT4-002,4,P2,security,Reset-password token sha256 hash + migration,SEC-007,false,,backend-security,M,false,false
+SPRINT4-003,4,P2,security,TOTP anti-replay twoFactorLastUsedStep,SEC-009-sub,false,,backend-security,S,false,false
+SPRINT4-004,4,P2,security,Email verification tokens random + hash + consume,SEC-009-sub,false,,backend,M,false,false
+SPRINT4-005,4,P2,security,disable 2FA exiger password pour users OAuth,SEC-011,false,,backend,S,false,false
+SPRINT4-006,4,P2,security,Avatar upload limite taille + magic bytes,SEC-015,false,,backend,S,false,false
+SPRINT4-007,4,P2,security,OAuth refresh-token race single-flight lock,SEC-107,false,,backend,M,false,false
+SPRINT4-008,4,P2,security,Markdown _blank + noopener noreferrer,SEC-203,false,,backend,XS,false,false
+SPRINT4-009,4,P2,security,teams.create quota + allowlist domain,SEC-303-FORK,true,,backend,S,false,false
+SPRINT4-010,4,P3,security,Team image fields réduire taille ou object storage,SEC-304-FORK,true,,backend,M,false,false
+SPRINT4-011,4,P2,security,adminDelete refuser si bookings actifs sans force,SEC-306-FORK,true,,backend,S,false,false
+SPRINT4-012,4,P2,bug,Reset-password race consume atomique updateMany,BUG-002,false,,backend,S,false,false
+SPRINT4-013,4,P2,bug,DST working hours offset par date slot,BUG-004,false,,backend,S,false,false
+SPRINT4-014,4,P2,bug,Recurring booking Promise.all batched 5 parallel,BUG-006,false,,backend,S,false,false
+SPRINT4-015,4,P2,bug,Catches silencieux callbacks OAuth logger.warn,BUG-007,false,,backend,XS,false,false
+SPRINT4-016,4,P2,bug,Migrations Prisma pattern CONCURRENTLY documenté,BUG-011,false,,backend,S,false,false
+SPRINT4-017,4,P3,bug,adminList pagination cursor,BUG-101-FORK,true,,backend,S,false,false
+SPRINT4-018,4,P1,bug,requireMember synthetic id null au lieu de -1,BUG-102-FORK,true,,backend,S,false,false
+SPRINT4-019,4,P2,perf,logger.silly JSON.stringify guard,PERF-002,false,,backend,S,false,false
+SPRINT4-020,4,P2,perf,ISR pages publiques team/[slug],PERF-003,false,,backend,M,false,false
+SPRINT4-021,4,P2,perf,getPublicEvent repo bundle includes profonds,PERF-009,false,,backend,L,false,false
+SPRINT4-022,4,P2,perf,/api/logo cap Content-Length + cache derivé,PERF-011,false,,backend,M,false,false
+SPRINT4-100,4,P1,rgpd,DPIA finalisé + page /privacy + sous-traitants,RGPD-checklist,true,internal-directory-leak,dpo,L,false,false
+SPRINT4-101,4,P2,rgpd,Cron purge VerificationToken expirés,RGPD-301-FORK,true,,backend,S,false,false
+SPRINT4-102,4,P2,rgpd,Politique rétention Booking + cron purge,RGPD-301-FORK,true,,backend,M,false,false
+SPRINT4-103,4,P1,rgpd,Procédure breach notification < 72h,RGPD-checklist,true,,ops,M,false,false
+INVEST-001,4,P3,perf,[INVESTIGATE] PERF-004 React Profiler équipe 50 hosts,PERF-004,false,,frontend,S,false,true
+INVEST-002,4,P2,bug,[INVESTIGATE] BUG-002 reproduction DST ciblée,BUG-002,false,,backend,S,false,false
+INVEST-003,4,P1,perf,[INVESTIGATE] PERF-001 mesure pool Prisma 50+ hosts,PERF-001,false,,backend,M,false,true
+EPIC-P3-Q3,4,P3,cleanup,Epic cleanup-p3-batch-Q3 quick wins XS groupés,"SEC-004,SEC-010,SEC-013,SEC-014,SEC-016,SEC-017,SEC-108,SEC-207,BUG-008,BUG-010,BUG-012,BUG-014,PERF-006,PERF-007,PERF-008,PERF-100-FORK",mixed,,backend,L,false,false
+DROP-001,,dropped,security,[DROP] SEC-109 Stripe webhook stub,SEC-109,false,,,,,
+DROP-002,,dropped,security,[DROP] SEC-206 Info.tsx mute HTML,SEC-206,false,,,,,
+DROP-003,,dropped,perf,[DROP] PERF-005 FormBuilder rerender,PERF-005,false,,,,,
+DROP-004,4,P3,bug,[FUSION] BUG-014 rrule → BUG-005,BUG-014,false,,,,,
