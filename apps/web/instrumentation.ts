@@ -1,6 +1,6 @@
-import process from "node:process";
 import * as Sentry from "@sentry/nextjs";
 import type { Instrumentation } from "next";
+
 import { checkProductionEnv, formatAssertProductionEnvError } from "./lib/env/assertProductionEnv";
 
 /**

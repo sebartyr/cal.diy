@@ -9,8 +9,6 @@
  * hosted DB hostnames such as `*.clever-cloud.com` or `*.rds.amazonaws.com`.
  */
 
-import process from "node:process";
-
 const DEV_HOSTNAME_ALLOWLIST = new Set<string>([
   "localhost",
   "127.0.0.1",
