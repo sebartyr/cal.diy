@@ -230,12 +230,16 @@ export type BookingResponses = z.infer<typeof bookingResponses>;
 // Re-exported from @calcom/lib/zod/eventType for backwards compatibility
 export { type EventTypeLocation, eventTypeLocations } from "@calcom/lib/zod/eventType";
 
+// BUG-005: cap recurring count at 52 (≈ one weekly meeting/year). Kept in
+// sync with `RECURRING_BOOKING_MAX_COUNT` in bookingCreateBodySchema.
+export const RECURRING_EVENT_MAX_COUNT = 52;
+
 // Matching RRule.Options: rrule/dist/esm/src/types.d.ts
 export const recurringEventType = z
   .object({
     dtstart: z.date().optional(),
     interval: z.number(),
-    count: z.number(),
+    count: z.number().int().min(1).max(RECURRING_EVENT_MAX_COUNT),
     freq: z.nativeEnum(Frequency),
     until: z.date().optional(),
     tzid: z.string().optional(),
