@@ -5,12 +5,15 @@ import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import prisma from "@calcom/prisma";
 
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import createOAuthAppCredential from "../../_utils/oauth/createOAuthAppCredential";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import { getZoomAppKeys } from "../lib";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const state = decodeOAuthState(req);
+  // SEC-102: refuse the callback if the HMAC-nonce state is missing or invalid.
+  const state = assertOAuthState(decodeOAuthState(req), res);
+  if (state === null) return;
   const { code } = req.query;
   const { client_id, client_secret } = await getZoomAppKeys();
 

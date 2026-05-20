@@ -19,13 +19,16 @@ import { defaultResponder } from "@calcom/lib/server/defaultResponder";
 import { Prisma } from "@calcom/prisma/client";
 
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import { updateProfilePhotoGoogle } from "../../_utils/oauth/updateProfilePhotoGoogle";
 import { getGoogleAppKeys } from "../lib/getGoogleAppKeys";
 
 async function getHandler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query;
-  const state = decodeOAuthState(req);
+  // SEC-102: refuse the callback if the HMAC-nonce state is missing or invalid.
+  const state = assertOAuthState(decodeOAuthState(req), res);
+  if (state === null) return;
 
   if (typeof code !== "string") {
     if (state?.onErrorReturnTo || state?.returnTo) {
