@@ -8,8 +8,12 @@ ARG NEXT_PUBLIC_WEBSITE_TERMS_URL
 ARG NEXT_PUBLIC_WEBSITE_PRIVACY_POLICY_URL
 ARG CALCOM_TELEMETRY_DISABLED
 ARG DATABASE_URL
-ARG NEXTAUTH_SECRET=secret
-ARG CALENDSO_ENCRYPTION_KEY=secret
+# Required secrets — no default. Build will fail explicitly via the runtime
+# check in apps/web/instrumentation.ts if these reach a production stage
+# unset or set to "secret". Pass them with `docker build --build-arg ...`
+# or, preferably, with BuildKit `--secret` at runtime only.
+ARG NEXTAUTH_SECRET
+ARG CALENDSO_ENCRYPTION_KEY
 ARG MAX_OLD_SPACE_SIZE=6144
 ARG NEXT_PUBLIC_API_V2_URL
 ARG CSP_POLICY
@@ -80,13 +84,21 @@ WORKDIR /calcom
 
 RUN apt-get update && apt-get install -y --no-install-recommends netcat-openbsd wget && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder-two /calcom ./
+# Run the app as a dedicated non-root user (uid 1001). Limits post-RCE blast
+# radius — a compromised Node process cannot escalate to root or touch
+# unrelated files in the image.
+RUN groupadd -g 1001 calcom \
+  && useradd -u 1001 -g 1001 -m -s /bin/bash calcom
+
+COPY --from=builder-two --chown=calcom:calcom /calcom ./
 ARG NEXT_PUBLIC_WEBAPP_URL=http://localhost:3000
 ENV NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL \
   BUILT_NEXT_PUBLIC_WEBAPP_URL=$NEXT_PUBLIC_WEBAPP_URL
 
 ENV NODE_ENV=production
 EXPOSE 3000
+
+USER calcom
 
 HEALTHCHECK --interval=30s --timeout=30s --retries=5 \
   CMD wget --spider http://localhost:3000 || exit 1
