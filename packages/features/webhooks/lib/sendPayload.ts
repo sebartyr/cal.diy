@@ -5,6 +5,7 @@ import type { TGetTranscriptAccessLink } from "@calcom/app-store/dailyvideo/zod"
 import { getHumanReadableLocationValue } from "@calcom/app-store/locations";
 import type { WebhookSubscriber, PaymentData } from "@calcom/features/webhooks/lib/dto/types";
 import { getUTCOffsetByTimezone } from "@calcom/lib/dayjs";
+import { logBlockedSSRFAttempt, validateUrlForSSRF } from "@calcom/lib/ssrfProtection";
 import type { CalendarEvent, Person } from "@calcom/types/Calendar";
 
 // Minimal webhook shape for sending payloads (subset of WebhookSubscriber)
@@ -307,6 +308,31 @@ const _sendPayload = async (
   const { subscriberUrl, version } = webhook;
   if (!subscriberUrl || !body) {
     throw new Error("Missing required elements to send webhook payload.");
+  }
+
+  // SEC-103: re-validate the subscriber URL just before dispatch.
+  //
+  // The URL is already validated when the user *creates* the webhook
+  // (via the zod schema in ssrfSafeUrl.ts). But two things can change
+  // between create-time and send-time:
+  //
+  //   - The owner of the registered hostname can flip the A record to
+  //     point at an internal IP after the webhook is registered
+  //     (TOCTOU / DNS rebinding).
+  //   - The sync validator used at registration cannot do DNS lookups.
+  //
+  // Calling the async validator here re-resolves every IP for the
+  // hostname and rejects if any of them is private/loopback/cloud-meta.
+  // Note: there is still a small race window between this resolution
+  // and the fetch below; a follow-up should pin the resolved IP via an
+  // undici Agent connector (tracked in OPS_TODO).
+  const ssrfCheck = await validateUrlForSSRF(subscriberUrl);
+  if (!ssrfCheck.isValid) {
+    logBlockedSSRFAttempt(subscriberUrl, ssrfCheck.error ?? "unknown", {
+      where: "webhook.sendPayload",
+      appId: webhook.appId ?? null,
+    });
+    return { ok: false, status: 0 };
   }
 
   const response = await fetch(subscriberUrl, {

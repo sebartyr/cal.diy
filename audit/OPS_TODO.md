@@ -14,6 +14,7 @@ Liste des items que Claude Code **ne peut pas** traiter depuis le repo et qui re
 
 ## Sprint 2 — Avant mise en service publique
 
+- [ ] **Sentry SDK drift** (préexistant Sprint 0/1) : `sentry.server.config.ts` importe `httpIntegration` / `prismaIntegration` qui n'existent pas dans le build edge `@sentry/nextjs` actuel (Next 16). À traiter en même temps que RGPD-302 (scrubbing) — soit bump SDK, soit guard `NEXT_RUNTIME === "nodejs"`, soit désactiver l'integration edge.
 - [ ] **Région Sentry** : EU obligatoire (RGPD-302-FORK). Soit Sentry SaaS EU, soit self-hosted Sentry EU, soit désactivation totale.
 - [ ] **DPIA déclenchée** côté DPO Clever (RGPD-300-FORK + SPRINT2-032).
 - [ ] **Allowlist IP / VPN** maintenue jusqu'à clôture Sprint 2.
@@ -22,6 +23,8 @@ Liste des items que Claude Code **ne peut pas** traiter depuis le repo et qui re
 - [ ] Décision produit sur sémantique `hidden` event-type (SPRINT2-052).
 
 ## Sprint 3 — Durcissement opérationnel
+
+- [ ] **Webhook DNS pinning** (SEC-103 follow-up) : `sendPayload` re-valide l'URL juste avant fetch (SPRINT2-020) mais il reste une fenêtre TOCTOU ~ms entre la résolution DNS et le connect. Pour fermer : utiliser `undici.Agent` avec `connect.lookup` custom qui réutilise l'IP résolue par `validateUrlForSSRF`. Reporté Sprint 3 car nécessite une refonte du dispatcher fetch.
 
 - [ ] Création du channel Slack `#cal-clever-security`.
 - [ ] Désignation d'un responsable rotatif (1 personne / sprint) pour traiter les advisories upstream.
