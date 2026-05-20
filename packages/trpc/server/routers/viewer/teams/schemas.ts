@@ -53,6 +53,8 @@ export const ZInviteMemberInput = z.object({
 export const ZAcceptOrLeaveInput = z.object({
   teamId: z.number().int().positive(),
   accept: z.boolean(),
+  // SEC-302-FORK: optional invite token issued by inviteMember.
+  inviteToken: z.string().min(32).max(64).optional(),
 });
 
 export const ZAdminListInput = z.object({

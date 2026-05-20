@@ -1,11 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import { randomBytes } from "node:crypto";
 
+import { sendTeamInviteEmail } from "@calcom/emails/organization-email-service";
+import { getTranslation } from "@calcom/i18n/server";
+import { WEBAPP_URL } from "@calcom/lib/constants";
+import logger from "@calcom/lib/logger";
 import { prisma } from "@calcom/prisma";
 import { MembershipRole } from "@calcom/prisma/enums";
 
 import { requireMember } from "./permissions";
 import type { TrpcSessionUser } from "../../../types";
+
+const log = logger.getSubLogger({ prefix: ["teams.inviteMember"] });
 
 type Options = {
   ctx: { user: NonNullable<TrpcSessionUser> };
@@ -63,7 +69,41 @@ export async function inviteMemberHandler({ ctx, input }: Options) {
     }),
   ]);
 
-  // TODO: send the invitation email containing `token`. The token is kept
-  // server-side; never return it to the client.
+  // SEC-302-FORK / BUG-100-FORK: send the actual invite email. The DB write
+  // above is already committed at this point — if email delivery fails the
+  // invitee can still accept via the in-app team list, so we log and swallow
+  // the error rather than rolling back the membership.
+  try {
+    const team = await prisma.team.findUnique({
+      where: { id: input.teamId },
+      select: { name: true, parent: { select: { name: true } }, isOrganization: true },
+    });
+    if (team) {
+      const language = await getTranslation(invitee.email ? "en" : "en", "common");
+      await sendTeamInviteEmail({
+        language,
+        from: ctx.user.name ?? ctx.user.email ?? "Cal.diy",
+        to: invitee.email,
+        teamName: team.name,
+        // Token-bearing link so the invitee can verify ownership of the
+        // email even if they're not currently logged into the matching
+        // account. The token is consumed by the accept flow.
+        joinLink: `${WEBAPP_URL}/auth/login?callbackUrl=/teams?inviteToken=${token}`,
+        isCalcomMember: true,
+        isAutoJoin: false,
+        isOrg: !!team.isOrganization,
+        parentTeamName: team.parent?.name ?? undefined,
+        isExistingUserMovedToOrg: false,
+        prevLink: null,
+        newLink: null,
+      });
+    }
+  } catch (err) {
+    log.error("Failed to send invite email — membership row still created", {
+      teamId: input.teamId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   return { ok: true as const };
 }
