@@ -18,9 +18,9 @@
 
 | Ticket | Finding | Statut | Date | Commit | Notes |
 |--------|---------|--------|------|--------|-------|
-| SPRINT1-001 | SEC-001 | TODO | — | — | PBAC stub → vrai check Membership |
-| SPRINT1-002 | BUG-001 | TODO | — | — | Double-booking pg_advisory_xact_lock |
-| SPRINT1-003 | BUG-013 | TODO | — | — | idempotencyKey ACCEPTED + PENDING |
+| SPRINT1-001 | SEC-001 | DONE | 2026-05-20 | `8c57f5f8d2` | Stub remplacé par check Membership réel sur 5 fichiers. Tests 35/35 (8 PermissionCheckService + 27 util). |
+| SPRINT1-002 | BUG-001 | DONE | 2026-05-20 | `51f97a480d` | `pg_advisory_xact_lock(int4, int4)` sur `(userId, slotStart_sec)` + re-check overlap dans transaction. Couvre ACCEPTED uniquement (PENDING = queue intentionnelle, cf. BUG-013). Tests 5/5. |
+| SPRINT1-003 | BUG-013 | DONE | 2026-05-20 | `69352e3127` | Étendu à PENDING avec bookerEmail folded-in (case-insensitive). Permet queue legitime, bloque retries same-email. Tests 8/8. |
 
 ## Sprints 2/3/4 — à venir
 
