@@ -1,8 +1,9 @@
-import authedProcedure from "../../../procedures/authedProcedure";
+import authedProcedure, { authedAdminProcedure } from "../../../procedures/authedProcedure";
 import { router } from "../../../trpc";
 import {
   ZAcceptOrLeaveInput,
   ZAddMembersToEventTypesInput,
+  ZAdminListInput,
   ZChangeMemberRoleInput,
   ZCreateInput,
   ZInviteMemberInput,
@@ -82,5 +83,16 @@ export const teamsRouter = router({
   getActiveUserBreakdown: authedProcedure.input(ZTeamIdInput).query(async ({ ctx, input }) => {
     const { getActiveUserBreakdownHandler } = await import("./getActiveUserBreakdown.handler");
     return getActiveUserBreakdownHandler({ ctx, input });
+  }),
+
+  // System-admin endpoints — gated on UserPermissionRole.ADMIN, not Membership.
+  adminList: authedAdminProcedure.input(ZAdminListInput).query(async ({ ctx, input }) => {
+    const { adminListHandler } = await import("./adminList.handler");
+    return adminListHandler({ ctx, input });
+  }),
+
+  adminDelete: authedAdminProcedure.input(ZTeamIdInput).mutation(async ({ ctx, input }) => {
+    const { adminDeleteHandler } = await import("./adminDelete.handler");
+    return adminDeleteHandler({ ctx, input });
   }),
 });
