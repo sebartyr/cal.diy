@@ -9,14 +9,8 @@ import type { TEventTypeInputSchema } from "./getByViewer.schema";
 import { TeamAccessUseCase } from "./teamAccessUseCase";
 import { EventGroupBuilder } from "./usecases/EventGroupBuilder";
 import { ProfilePermissionProcessor } from "./usecases/ProfilePermissionProcessor";
+import { PermissionCheckService } from "./util";
 import { EventTypeGroupFilter } from "./utils/EventTypeGroupFilter";
-
-class PermissionCheckService {
-  constructor(_prisma?: unknown) {}
-  async checkPermission(..._args: unknown[]) { return true; }
-  async hasPermission(..._args: unknown[]) { return true; }
-  async getTeamIdsWithPermission(..._args: unknown[]): Promise<number[]> { return []; }
-}
 
 type GetByViewerOptions = {
   ctx: {
@@ -64,7 +58,7 @@ export const getUserEventGroups = async ({ ctx, input }: GetByViewerOptions) => 
   const profileProcessor = new ProfilePermissionProcessor();
   const profiles = profileProcessor.processProfiles(eventTypeGroups, teamPermissionsMap);
 
-  const permissionCheckService = new PermissionCheckService();
+  const permissionCheckService = new PermissionCheckService(ctx.prisma);
 
   const teamIdsToCheck = filteredEventTypeGroups
     .map((group) => group.teamId)
