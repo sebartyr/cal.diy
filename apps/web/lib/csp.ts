@@ -20,8 +20,13 @@ function getCspPolicy(nonce: string) {
 	  default-src 'self' ${IS_PRODUCTION ? "" : "data:"};
 	  script-src ${
       IS_PRODUCTION
-        ? // 'self' 'unsafe-inline' https: added for Browsers not supporting strict-dynamic
-          `'nonce-${nonce}' 'strict-dynamic' 'self' 'unsafe-inline' https:`
+        ? // SEC-205 (Sprint 3): production policy is nonce + strict-dynamic.
+          // Browsers supporting CSP3 ignore 'self'/host allowlists when
+          // strict-dynamic is present; legacy browsers (no strict-dynamic)
+          // fall back to ignoring the policy entirely. We accept that
+          // trade-off rather than ship 'unsafe-inline' https: in prod,
+          // which neutered the nonce.
+          `'nonce-${nonce}' 'strict-dynamic'`
         : // Note: We could use 'strict-dynamic' with 'nonce-..' instead of unsafe-inline but there are some streaming related scripts that get blocked(because they don't have nonce on them). It causes a really frustrating full page error model by Next.js to show up sometimes
           "'unsafe-inline' 'unsafe-eval' https: http:"
     };
