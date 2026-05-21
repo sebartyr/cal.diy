@@ -113,7 +113,11 @@ const webexAuth = (credential: CredentialPayload) => {
       let credentialKey: WebexToken | null = null;
       try {
         credentialKey = webexTokenSchema.parse(credential.key);
-      } catch {
+      } catch (err) {
+        // BUG-007: stored credential drifted from the expected schema. Surface
+        // the parse error so we know which field is wrong without having to
+        // read the row out of the DB.
+        logger.warn("[webex] credential.key failed schema validation", err);
         return Promise.reject("Webex credential keys parsing error");
       }
 
@@ -171,8 +175,10 @@ const WebexVideoApiAdapter = (credential: CredentialPayload): VideoApiAdapter =>
           start: meeting.start,
           end: meeting.end,
         }));
-      } catch {
-        logger.error("Error fetching Webex availability");
+      } catch (err) {
+        // BUG-007: include the underlying error so ops can distinguish
+        // "Webex API down" from "credentials revoked".
+        logger.error("Error fetching Webex availability", err);
         return [];
       }
     },
@@ -219,7 +225,9 @@ const WebexVideoApiAdapter = (credential: CredentialPayload): VideoApiAdapter =>
         }
         logger.debug("Webex meeting deleted", { meetingId: uid });
         return Promise.resolve();
-      } catch {
+      } catch (err) {
+        // BUG-007
+        logger.error("Failed to delete Webex meeting", { uid, err });
         return Promise.reject(new Error("Failed to delete meeting"));
       }
     },

@@ -117,7 +117,11 @@ class LarkCalendarService implements Calendar {
     let accessToken = "";
     try {
       accessToken = await this.auth.getToken();
-    } catch {
+    } catch (err) {
+      // BUG-007 (Sprint 4): surface the underlying OAuth failure instead of
+      // swallowing it. Keeps the user-visible error stable but lets ops see
+      // what actually broke (expired refresh token, revoked grant, etc.).
+      logger.warn("[larkcalendar] failed to obtain access token", err);
       throw new Error("get access token error");
     }
 
