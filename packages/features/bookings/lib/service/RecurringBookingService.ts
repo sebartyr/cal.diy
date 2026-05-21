@@ -71,60 +71,70 @@ export const handleNewRecurringBooking = async function (
     luckyUsers = firstBookingResult.luckyUsers;
   }
 
-  for (let key = isRoundRobin ? 1 : 0; key < data.length; key++) {
-    const booking = data[key];
-    // Disable AppStatus in Recurring Booking Email as it requires us to iterate backwards to be able to compute the AppsStatus for all the bookings except the very first slot and then send that slot's email with statuses
-    // It is also doubtful that how useful is to have the AppsStatus of all the bookings in the email.
-    // It is more important to iterate forward and check for conflicts for only first few bookings defined by 'numSlotsToCheckForAvailability'
-    // if (key === 0) {
-    //   const calcAppsStatus: { [key: string]: AppsStatus } = createdBookings
-    //     .flatMap((book) => (book.appsStatus !== undefined ? book.appsStatus : []))
-    //     .reduce((prev, curr) => {
-    //       if (prev[curr.type]) {
-    //         prev[curr.type].failures += curr.failures;
-    //         prev[curr.type].success += curr.success;
-    //       } else {
-    //         prev[curr.type] = curr;
-    //       }
-    //       return prev;
-    //     }, {} as { [key: string]: AppsStatus });
-    //   appsStatus = Object.values(calcAppsStatus);
-    // }
+  // BUG-006 (Sprint 4): the loop used to await each booking sequentially.
+  // For a recurring series capped at 52 slots that's ~50× the per-booking
+  // latency. We can't parallelize the first slot (it resolves
+  // thirdPartyRecurringEventId / luckyUsers — see RR branch above), but
+  // every subsequent slot can run in batches once that state is fixed.
+  const firstKey = isRoundRobin ? 1 : 0;
+  const buildRecurringEventData = (key: number) => ({
+    ...data[key],
+    appsStatus,
+    allRecurringDates,
+    isFirstRecurringSlot: key === 0,
+    thirdPartyRecurringEventId,
+    numSlotsToCheckForAvailability,
+    currentRecurringIndex: key,
+    noEmail: input.noEmail !== undefined ? input.noEmail : key !== 0,
+    luckyUsers,
+  });
 
-    const recurringEventData = {
-      ...booking,
-      appsStatus,
-      allRecurringDates,
-      isFirstRecurringSlot: key == 0,
-      thirdPartyRecurringEventId,
-      numSlotsToCheckForAvailability,
-      currentRecurringIndex: key,
-      noEmail: input.noEmail !== undefined ? input.noEmail : key !== 0,
-      luckyUsers,
-    };
+  const captureThirdParty = (booking: BookingResponse) => {
+    if (thirdPartyRecurringEventId) return;
+    if (!booking.references || booking.references.length === 0) return;
+    for (const reference of booking.references) {
+      if (reference.thirdPartyRecurringEventId) {
+        thirdPartyRecurringEventId = reference.thirdPartyRecurringEventId;
+        return;
+      }
+    }
+  };
 
-    const promiseEachRecurringBooking = regularBookingService.createBooking({
-      bookingData: recurringEventData,
+  // First slot of the for-loop range runs sequentially so its
+  // thirdPartyRecurringEventId is available to the rest.
+  if (firstKey < data.length) {
+    const first = await regularBookingService.createBooking({
+      bookingData: buildRecurringEventData(firstKey),
       bookingMeta: {
         hostname: input.hostname || "",
         forcedSlug: input.forcedSlug as string | undefined,
         ...handleBookingMeta,
       },
     });
+    createdBookings.push(first);
+    captureThirdParty(first);
+  }
 
-    const eachRecurringBooking = await promiseEachRecurringBooking;
-
-    createdBookings.push(eachRecurringBooking);
-
-    if (!thirdPartyRecurringEventId) {
-      if (eachRecurringBooking.references && eachRecurringBooking.references.length > 0) {
-        for (const reference of eachRecurringBooking.references) {
-          if (reference.thirdPartyRecurringEventId) {
-            thirdPartyRecurringEventId = reference.thirdPartyRecurringEventId;
-            break;
-          }
-        }
-      }
+  // Remaining slots in batches of 5 — small enough to avoid hammering the
+  // DB / calendar APIs, large enough to amortize round-trip latency.
+  const BATCH = 5;
+  for (let start = firstKey + 1; start < data.length; start += BATCH) {
+    const end = Math.min(start + BATCH, data.length);
+    const slice = await Promise.all(
+      Array.from({ length: end - start }, (_, i) =>
+        regularBookingService.createBooking({
+          bookingData: buildRecurringEventData(start + i),
+          bookingMeta: {
+            hostname: input.hostname || "",
+            forcedSlug: input.forcedSlug as string | undefined,
+            ...handleBookingMeta,
+          },
+        })
+      )
+    );
+    for (const booking of slice) {
+      createdBookings.push(booking);
+      captureThirdParty(booking);
     }
   }
 
