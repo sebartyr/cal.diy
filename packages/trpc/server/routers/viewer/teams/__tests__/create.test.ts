@@ -6,6 +6,7 @@ import { createHandler, getAllowedEmailDomains } from "../create.handler";
 
 const teamCreate = vi.fn();
 const teamFindFirst = vi.fn().mockResolvedValue(null);
+const membershipCount = vi.fn().mockResolvedValue(0);
 
 vi.mock("@calcom/prisma", () => ({
   prisma: {
@@ -15,6 +16,11 @@ vi.mock("@calcom/prisma", () => ({
       },
       get create() {
         return teamCreate;
+      },
+    },
+    membership: {
+      get count() {
+        return membershipCount;
       },
     },
   },
@@ -55,6 +61,48 @@ describe("createHandler — privacy-by-default (SEC-307+308-FORK)", () => {
       })
     ).rejects.toThrow(/lowercase/);
     expect(teamCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("createHandler — SEC-303-FORK quota", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+    membershipCount.mockResolvedValue(0);
+  });
+
+  it("rejects when the caller already owns the default max (50)", async () => {
+    membershipCount.mockResolvedValueOnce(50);
+    await expect(
+      createHandler({
+        ctx: { user: { id: 1, email: "u@example.com" } as never },
+        input: { slug: "ok-slug", name: "x" },
+      })
+    ).rejects.toThrow(/maximum number of teams/);
+    expect(teamCreate).not.toHaveBeenCalled();
+  });
+
+  it("honors MAX_TEAMS_PER_USER override", async () => {
+    vi.stubEnv("MAX_TEAMS_PER_USER", "3");
+    membershipCount.mockResolvedValueOnce(3);
+    await expect(
+      createHandler({
+        ctx: { user: { id: 1, email: "u@example.com" } as never },
+        input: { slug: "ok-slug", name: "x" },
+      })
+    ).rejects.toThrow(/maximum number of teams \(3\)/);
+  });
+
+  it("creates when under the quota", async () => {
+    membershipCount.mockResolvedValueOnce(49);
+    teamCreate.mockResolvedValueOnce({ id: 1, slug: "ok-slug", name: "x" });
+    await expect(
+      createHandler({
+        ctx: { user: { id: 1, email: "u@example.com" } as never },
+        input: { slug: "ok-slug", name: "x" },
+      })
+    ).resolves.toBeDefined();
+    expect(teamCreate).toHaveBeenCalledOnce();
   });
 });
 

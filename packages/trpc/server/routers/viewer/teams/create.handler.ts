@@ -42,6 +42,28 @@ export async function createHandler({ ctx, input }: Options) {
     }
   }
 
+  // SEC-303-FORK (Sprint 4): per-user team-creation quota. Defaults to 50
+  // for self-host parity; ops sets MAX_TEAMS_PER_USER if a tighter cap is
+  // wanted. We count teams the caller owns; counting accepted memberships
+  // would be wrong because joining many teams is fine — minting new tenants
+  // is what we want to bound.
+  const maxTeamsRaw = process.env.MAX_TEAMS_PER_USER;
+  const maxTeams = maxTeamsRaw ? Math.max(1, parseInt(maxTeamsRaw, 10) || 50) : 50;
+  const ownedCount = await prisma.membership.count({
+    where: {
+      userId: ctx.user.id,
+      role: MembershipRole.OWNER,
+      accepted: true,
+      team: { isOrganization: false },
+    },
+  });
+  if (ownedCount >= maxTeams) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You already own the maximum number of teams (${maxTeams}).`,
+    });
+  }
+
   const slug = input.slug.toLowerCase();
   if (!SLUG_RE.test(slug)) {
     throw new TRPCError({
