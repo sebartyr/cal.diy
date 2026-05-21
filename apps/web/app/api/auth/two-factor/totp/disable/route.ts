@@ -49,7 +49,12 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ message: "Two factor disabled" });
   }
 
-  if (user.password?.hash && user.identityProvider === IdentityProvider.CAL) {
+  // SEC-011 (Sprint 4): require the password whenever the account has one set,
+  // regardless of identityProvider. An OAuth account that also has a local
+  // password (account-linking, password-set later) must still prove
+  // possession of it before tearing down 2FA. Pure-OAuth accounts (no
+  // password row) still rely on the TOTP/backup-code check below.
+  if (user.password?.hash) {
     const isCorrectPassword = await verifyPassword(body.password, user.password.hash);
     if (!isCorrectPassword) {
       return NextResponse.json({ error: ErrorCode.IncorrectPassword }, { status: 400 });

@@ -209,7 +209,21 @@ async function getHandler(request: NextRequest) {
       }
     }
 
+    // PERF-011 (Sprint 4): bound the response body. Without this, a team logo
+    // pointing at a 1 GB blob would happily consume all the memory it could
+    // before we even attempt to resize. 5 MB is generous for any reasonable
+    // raster logo and still bounded.
+    const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+    const declaredLength = parseInt(response.headers.get("content-length") || "0", 10);
+    if (declaredLength > MAX_LOGO_BYTES) {
+      log.warn(`[api/logo] refused upstream of declared size ${declaredLength}`);
+      return NextResponse.json({ error: "Logo too large" }, { status: 413 });
+    }
     const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength > MAX_LOGO_BYTES) {
+      log.warn(`[api/logo] refused upstream of actual size ${arrayBuffer.byteLength}`);
+      return NextResponse.json({ error: "Logo too large" }, { status: 413 });
+    }
     let buffer: Buffer = Buffer.from(arrayBuffer);
     let contentType = response.headers.get("content-type") || "image/png";
 
