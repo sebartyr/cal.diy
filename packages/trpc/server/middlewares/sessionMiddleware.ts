@@ -24,6 +24,11 @@ export const isAuthed = middleware(async ({ ctx, next }) => {
   });
 });
 
+// SPRINT3-041: opt-in flag enforcing 2FA on admin routes. We don't flip this
+// on by default to give existing admins time to enroll; ops sets it via env
+// once every admin has TOTP configured. RGPD §9 / common audit requirement.
+const REQUIRE_2FA_FOR_ADMIN = process.env.REQUIRE_2FA_FOR_ADMIN === "true";
+
 export const isAdminMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) => {
   const { user } = ctx;
   if (user?.role !== "ADMIN") {
@@ -37,6 +42,17 @@ export const isAdminMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) =>
       });
     }
     throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  if (REQUIRE_2FA_FOR_ADMIN && !user.twoFactorEnabled) {
+    recordAdminDenial({
+      actorUserId: user.id,
+      path,
+      reason: "admin without 2FA enrolled blocked by REQUIRE_2FA_FOR_ADMIN",
+    });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Two-factor authentication is required for administrator accounts.",
+    });
   }
   // SEC-305-FORK (Sprint 3): record every admin-gated tRPC call. We only have
   // the procedure path here, not the input — by design, to keep the audit log
