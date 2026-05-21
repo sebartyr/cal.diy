@@ -45,19 +45,30 @@ async function handler(req: NextRequest) {
     identifier: `api:reset-password:${piiHasher.hash(remoteIp)}`,
   });
 
-  // Note: There is a low, very low chance that a password request stays valid long enough
-  // to brute force 3.8126967e+40 options, but rate limiting provides additional protection.
-  const maybeRequest = await prisma.resetPasswordRequest.findFirstOrThrow({
+  // BUG-002 (Sprint 4): consume the token atomically before doing any work,
+  // so two concurrent submits of the same reset-link can't both succeed.
+  // updateMany returns the number of rows it expired — exactly one row should
+  // match (id + still-valid expires). If it's zero, the token is invalid,
+  // already used, or expired; we don't distinguish to avoid an oracle.
+  const now = new Date();
+  const consumed = await prisma.resetPasswordRequest.updateMany({
     where: {
       id: rawRequestId,
-      expires: {
-        gt: new Date(),
-      },
+      expires: { gt: now },
     },
-    select: {
-      email: true,
-    },
+    data: { expires: now },
   });
+  if (consumed.count === 0) {
+    return NextResponse.json({}, { status: 404 });
+  }
+
+  const maybeRequest = await prisma.resetPasswordRequest.findUnique({
+    where: { id: rawRequestId },
+    select: { email: true },
+  });
+  if (!maybeRequest) {
+    return NextResponse.json({}, { status: 404 });
+  }
 
   const hashedPassword = await hashPassword(rawPassword);
   // this can fail if a password request has been made for an email that has since changed or-
@@ -84,21 +95,7 @@ async function handler(req: NextRequest) {
     return NextResponse.json({}, { status: 404 });
   }
 
-  await expireResetPasswordRequest(rawRequestId);
-
   return NextResponse.json({ message: "Password reset." }, { status: 201 });
-}
-
-async function expireResetPasswordRequest(rawRequestId: string) {
-  await prisma.resetPasswordRequest.update({
-    where: {
-      id: rawRequestId,
-    },
-    data: {
-      // We set the expiry to now to invalidate the request
-      expires: new Date(),
-    },
-  });
 }
 
 export const POST = defaultResponderForAppDir(handler);
