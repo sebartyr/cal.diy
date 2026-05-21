@@ -62,7 +62,22 @@
 | SPRINT3-012 | PERF-010 | OPS | — | — | Migration index Booking `@@index([eventTypeId,startTime,status])` CONCURRENTLY après EXPLAIN. |
 | SPRINT3-021 | BUG-013 | DONE | — | — | Déjà couvert Sprint 1 (`51f97a480d` + `69352e3127`). |
 
-## Sprint 4 — à venir
+## Sprint 4 — P2/P3 continu (en cours)
+
+| Ticket | Finding | Statut | Date | Commit | Notes |
+|--------|---------|--------|------|--------|-------|
+| SPRINT4-001 | SEC-005 | DONE | 2026-05-21 | `0119f3d7f5` | Min password length 7 → 12. Strict (admin) inchangé. Tests 6/6. |
+| SPRINT4-018 | BUG-102-FORK | DONE | 2026-05-21 | `17ae14b89d` | `requireMember` retourne `RequireMemberResult` union avec `id: null` + `isSyntheticAdmin: true` au lieu de `id: -1`. Tests 6/6. |
+| SPRINT4-008 | SEC-203 | DONE | 2026-05-21 | `0c767e3e6c` | `rel='noopener noreferrer'` ajouté sur les `<a>` rendus par markdown (server + client). Tests 3/3. |
+| SPRINT4-019 | PERF-002 | DONE | 2026-05-21 | `86f3c63b9f` | `isSillyEnabled(log)` helper + guards sur 8 call-sites (EventManager + getBusyTimes). Tests 4/4. |
+| SPRINT4-015 | BUG-007 | DONE | 2026-05-21 | `1def8611c4` | Catches OAuth/credential : `logger.warn`/`error` ajouté (larkcalendar, feishucalendar, webex). |
+| SPRINT4-014 | BUG-006 | DONE | 2026-05-21 | `791ab6655c` | Recurring booking 1er slot séquentiel puis Promise.all batches de 5. Tests 1/1 + scenario test inchangé. |
+| SPRINT4-012 | BUG-002 | DONE | 2026-05-21 | `d02f67765e` | Reset-password consume atomique via `updateMany` (id + expires>now → expires=now). |
+| SPRINT4-011 | SEC-306-FORK | DONE | 2026-05-21 | `59d19f8bcf` | `adminDelete` refuse si bookings actifs futurs sauf `force=true`. Tests 6/6. |
+| SPRINT4-017 | BUG-101-FORK | DONE | 2026-05-21 | `59d19f8bcf` | `adminList` paginé (cursor + limit). Tests 6/6. |
+| SPRINT4-009 | SEC-303-FORK | DONE | 2026-05-21 | `fa24c476ad` | Quota teams.create via `MAX_TEAMS_PER_USER` (default 50). Tests 3/3. |
+
+## Sprint 4 — reste à traiter
 
 Voir `audit/sprint-plan.md` et `audit/tickets.yaml` pour la liste complète.
 
