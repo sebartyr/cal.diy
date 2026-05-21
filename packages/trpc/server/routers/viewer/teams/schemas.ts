@@ -17,13 +17,27 @@ export const ZCreateInput = z.object({
   slug: z.string().min(1).max(64),
 });
 
-// Caps a `logoUrl` / `bannerUrl` payload. Web URLs are far under 2 KB, base64
-// data URLs from the ImageUploader (512×512 PNG) land around 250–500 KB.
-// 1 MB leaves headroom for a slightly larger crop without letting a team
-// admin DoS the row by stuffing megabytes of base64 into the column.
-const MAX_IMAGE_FIELD_LENGTH = 1_048_576;
+// SEC-304-FORK (Sprint 4): cap a `logoUrl` / `bannerUrl` payload tighter.
+// Web URLs are far under 2 KB, and the ImageUploader produces resized PNG
+// data: URLs around 30–80 KB after the Sprint-4 client resize. 256 KB
+// leaves headroom for an oversized crop without letting a team admin DoS
+// the row by stuffing megabytes of base64 into the column (which then
+// fans out into every booking page payload that includes the team logo).
+const MAX_IMAGE_FIELD_LENGTH = 256 * 1024;
 
-const imageField = z.string().max(MAX_IMAGE_FIELD_LENGTH).nullable().optional();
+// Accept either a short http(s) URL (rare path: external host) or a
+// reasonable-sized data: URL (common path: inline base64). The string max
+// is the ultimate guard, but we also reject obvious data:* mime types we
+// don't want (data:text/html etc.).
+const imageField = z
+  .string()
+  .max(MAX_IMAGE_FIELD_LENGTH)
+  .refine(
+    (s) => !s.startsWith("data:") || /^data:image\/(png|jpe?g|svg\+xml|webp);/i.test(s),
+    "Only PNG/JPEG/SVG/WebP data URIs are allowed for image fields"
+  )
+  .nullable()
+  .optional();
 
 export const ZUpdateInput = z.object({
   teamId: z.number().int().positive(),
