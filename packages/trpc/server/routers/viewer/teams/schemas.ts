@@ -4,6 +4,14 @@ import { MembershipRole } from "@calcom/prisma/enums";
 
 export const ZTeamIdInput = z.object({ teamId: z.number().int().positive() });
 
+// SEC-306-FORK (Sprint 4): adminDelete needs an explicit `force` flag to
+// destroy a team that still has future/active bookings, so an admin can't
+// nuke a tenant by mistake.
+export const ZAdminDeleteInput = z.object({
+  teamId: z.number().int().positive(),
+  force: z.boolean().optional(),
+});
+
 export const ZCreateInput = z.object({
   name: z.string().min(1).max(80),
   slug: z.string().min(1).max(64),
@@ -57,8 +65,12 @@ export const ZAcceptOrLeaveInput = z.object({
   inviteToken: z.string().min(32).max(64).optional(),
 });
 
+// BUG-101-FORK (Sprint 4): cursor-based pagination so the admin team listing
+// can scale past the previous hardcoded take: 200 cap.
 export const ZAdminListInput = z.object({
   search: z.string().max(128).optional(),
+  limit: z.number().int().positive().max(200).default(50).optional(),
+  cursor: z.number().int().positive().optional(),
 });
 
 export const ZAddMembersToEventTypesInput = z.object({
