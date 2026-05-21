@@ -76,10 +76,19 @@
 | SPRINT4-011 | SEC-306-FORK | DONE | 2026-05-21 | `59d19f8bcf` | `adminDelete` refuse si bookings actifs futurs sauf `force=true`. Tests 6/6. |
 | SPRINT4-017 | BUG-101-FORK | DONE | 2026-05-21 | `59d19f8bcf` | `adminList` paginé (cursor + limit). Tests 6/6. |
 | SPRINT4-009 | SEC-303-FORK | DONE | 2026-05-21 | `fa24c476ad` | Quota teams.create via `MAX_TEAMS_PER_USER` (default 50). Tests 3/3. |
-
-## Sprint 4 — reste à traiter
-
-Voir `audit/sprint-plan.md` et `audit/tickets.yaml` pour la liste complète.
+| SPRINT4-005 | SEC-011 | DONE | 2026-05-21 | `4961b65222` | disable 2FA exige password quand `user.password.hash` existe (même pour OAuth account-linking). |
+| SPRINT4-006 | SEC-015 | DONE | 2026-05-21 | `4961b65222` | `resizeBase64Image` : cap 8 MB pré-decode + magic-bytes PNG/JPEG. Tests 6/6. |
+| SPRINT4-007 | SEC-107 | DONE | 2026-05-21 | `4961b65222` | `refreshOAuthTokens` mutex in-process par `(userId, appSlug)`. Tests 5/5. |
+| SPRINT4-013 | BUG-004 | DONE | 2026-05-21 | `4961b65222` | `getWorkingHours` accepte `forDate` pour résoudre l'offset à la bonne date (DST). |
+| SPRINT4-022 | PERF-011 | DONE | 2026-05-21 | `4961b65222` | `/api/logo` cap 5 MB content-length + actual byte count (413 si dépassé). |
+| SPRINT4-016 | BUG-011 | DONE | 2026-05-21 | `25e5017cf1` | `packages/prisma/migrations/MIGRATIONS.md` : pattern CONCURRENTLY documenté + checklist review. |
+| SPRINT4-010 | SEC-304-FORK | DONE | 2026-05-21 | `0424f76ef3` | `imageField` cap 256 KB + refine mime (`data:image/{png,jpe?g,svg+xml,webp}` only). |
+| SPRINT4-004 | SEC-007 | OPS | — | — | Reset token sha256 + migration → `audit/OPS_TODO.md`. |
+| SPRINT4-020 | PERF-003 | OPS | — | — | ISR `team/[slug]` — tests E2E cache invalidation requis → OPS_TODO. |
+| SPRINT4-021 | PERF-009 | OPS | — | — | `getPublicEvent` bundle repo — réplique upstream → OPS_TODO. |
+| SPRINT4-100..103 | RGPD/DPO | OPS | — | — | DPIA, `/privacy`, retention Booking, breach notif → `audit/OPS_TODO.md`. |
+| INVEST-001..003 | mesures | OPS | — | — | React Profiler, DST repro, pool Prisma → `audit/OPS_TODO.md`. |
+| P3 batched | divers | OPS | — | — | Epic `cleanup-p3-batch-Q3` (~20 items) → `audit/OPS_TODO.md`.
 
 ## Conventions
 

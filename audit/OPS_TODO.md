@@ -45,8 +45,23 @@ Liste des items que Claude Code **ne peut pas** traiter depuis le repo et qui re
 
 - [ ] **Migration Prisma `User.allowSEOIndexing` default → false** (SEC-308-FORK suite) : SPRINT2-030 a fixé le défaut côté `teams.create` au niveau applicatif (`isPrivate: true`). Pour aller plus loin, changer la valeur par défaut de `User.allowSEOIndexing` dans le schéma Prisma — nécessite migration et validation produit (rétroactif sur les comptes existants ? non-rétroactif via migration limitée aux nouveaux). À discuter avec produit avant d'écrire la migration.
 
-- [ ] DPIA finalisée, page `/privacy` publiée.
-- [ ] Procédure breach notification < 72h formalisée (SPRINT4-103).
+- [ ] **SPRINT4-004 SEC-007 — Reset token hashed in DB**. Aujourd'hui `ResetPasswordRequest.id` est aussi le secret dans l'URL (token en clair en DB). Pour SEC-007 plein : hash sha256 du token en DB, comparer côté handler. Nécessite migration de schéma (ajouter `tokenHash` ou ré-utiliser `id`) + invalidation des requêtes ouvertes. Reporté pour validation produit + migration window.
+
+- [ ] **SPRINT4-020 PERF-003 — ISR public pages team/[slug]**. Cache ISR à activer avec `revalidate` ~ 60s. Reporté car nécessite tests E2E sur cache invalidation lors d'update team/event-type pour éviter de servir des slots obsolètes.
+
+- [ ] **SPRINT4-021 PERF-009 — getPublicEvent bundle dans repository**. Réduire le nombre de includes profonds en factorisant un repository spécialisé. Reporté car réplique l'optimisation upstream cal.com (PR à suivre).
+
+- [ ] **SPRINT4-100 — DPIA finalisée + page `/privacy` + liste sous-traitants**. DPO + frontend.
+- [ ] **SPRINT4-101 — Cron purge `VerificationToken` expirés**. À écrire avec le pattern Trigger.dev (cf. `agents/rules/patterns-trigger-dev.md`).
+- [ ] **SPRINT4-102 — Politique rétention `Booking` + cron de purge**. Décision produit attendue sur la durée (12 mois ? 24 ? après bookingEnd ?).
+- [ ] **SPRINT4-103 — Procédure breach notification < 72h** formalisée (gouvernance ops + DPO).
+
+- [ ] **INVEST-001 PERF-004** : mesure React Profiler sur équipe ≥ 50 hosts.
+- [ ] **INVEST-002 BUG-002** : reproduction DST ciblée (test E2E dédié).
+- [ ] **INVEST-003 PERF-001** : mesure pool Prisma sur équipe ≥ 50 hosts.
+
+- [ ] **P3 batched cleanup** (à planifier en epic `cleanup-p3-batch-Q3`) : SEC-004/010/013/014/016/017/108/207, BUG-008/010/012/014, PERF-006/007/008/100-FORK. Backlog non-bloquant, à grouper en chantier dédié.
+
 - [ ] Backups chiffrés rotations vérifiées (cycle mensuel).
 - [ ] Rotation périodique des secrets (`CALENDSO_ENCRYPTION_KEY`, `NEXTAUTH_SECRET`) — cycle annuel a minima.
 
