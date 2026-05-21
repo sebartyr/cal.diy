@@ -1,37 +1,13 @@
 import { prisma } from "@calcom/prisma";
-import { MembershipRole } from "@calcom/prisma/enums";
 
 import { TRPCError } from "@trpc/server";
 
 import authedProcedure from "../../../procedures/authedProcedure";
+// Clever fork (FORK-300-FORK): authorization logic lives in
+// `authorization-clever.ts` to keep this file close to upstream. See
+// FORK-NOTES.md.
+import { assertCanAccessWebhook, canManageEventType } from "./authorization-clever";
 import { webhookIdAndEventTypeIdSchema } from "./types";
-
-/**
- * Returns whether `userId` may manage the webhook tied to this event type.
- *
- * - User-owned event type: only the owner.
- * - Team event type (userId is null, teamId set): any accepted ADMIN or
- *   OWNER of the team.
- */
-async function canManageEventType(eventTypeId: number, userId: number): Promise<boolean> {
-  const eventType = await prisma.eventType.findUnique({
-    where: { id: eventTypeId },
-    select: { id: true, userId: true, teamId: true },
-  });
-  if (!eventType) return false;
-
-  if (eventType.userId && eventType.userId === userId) return true;
-
-  if (eventType.teamId) {
-    const m = await prisma.membership.findUnique({
-      where: { userId_teamId: { userId, teamId: eventType.teamId } },
-      select: { role: true, accepted: true },
-    });
-    return !!m?.accepted && (m.role === MembershipRole.OWNER || m.role === MembershipRole.ADMIN);
-  }
-
-  return false;
-}
 
 export const createWebhookProcedure = () => {
   return authedProcedure.input(webhookIdAndEventTypeIdSchema.optional()).use(async ({ ctx, input, next }) => {
@@ -53,24 +29,7 @@ export const createWebhookProcedure = () => {
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
 
-      if (webhook.eventTypeId) {
-        const ok = await canManageEventType(webhook.eventTypeId, ctx.user.id);
-        if (!ok) throw new TRPCError({ code: "FORBIDDEN" });
-      } else if (webhook.teamId) {
-        const m = await prisma.membership.findUnique({
-          where: { userId_teamId: { userId: ctx.user.id, teamId: webhook.teamId } },
-          select: { role: true, accepted: true },
-        });
-        const allowed =
-          !!m?.accepted && (m.role === MembershipRole.OWNER || m.role === MembershipRole.ADMIN);
-        if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
-      } else if (webhook.userId) {
-        if (webhook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      } else {
-        // Webhook with no owner (no userId / teamId / eventTypeId). Should be
-        // unreachable given our FKs, but deny by default rather than fall through.
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      await assertCanAccessWebhook({ webhook, userId: ctx.user.id });
     } else if (eventTypeId) {
       // Operating in the scope of an event type (e.g. listing its webhooks).
       const ok = await canManageEventType(eventTypeId, ctx.user.id);
