@@ -26,6 +26,16 @@ Liste des items que Claude Code **ne peut pas** traiter depuis le repo et qui re
 
 - [ ] **Webhook DNS pinning** (SEC-103 follow-up) : `sendPayload` re-valide l'URL juste avant fetch (SPRINT2-020) mais il reste une fenêtre TOCTOU ~ms entre la résolution DNS et le connect. Pour fermer : utiliser `undici.Agent` avec `connect.lookup` custom qui réutilise l'IP résolue par `validateUrlForSSRF`. Reporté Sprint 3 car nécessite une refonte du dispatcher fetch.
 
+- [ ] **SPRINT3-010 / 011 / 012 — Indexes Prisma** : `requires_explain`. Lancer `EXPLAIN ANALYZE` en staging pour :
+  - Webhook trigger queries (BUG-009) → ajouter `@@index([userId, teamId, eventTypeId, platformOAuthClientId])` si plan séquentiel confirmé.
+  - getBusyTimesForLimitChecks (PERF-010) → `@@index([eventTypeId, startTime, status])` sur `Booking`.
+  Migrations à appliquer `CONCURRENTLY` une fois EXPLAIN validé. Nécessite validation utilisateur (changement de schéma Prisma).
+- [ ] **Activer `REQUIRE_2FA_FOR_ADMIN=true`** (SPRINT3-041) après enrôlement TOTP de tous les admins existants.
+- [ ] **Activer CSP enforcement** (SPRINT3-001 → SPRINT3-002) : surveiller `Content-Security-Policy-Report-Only` pendant 48h, identifier les pages cassées, puis flip `cspModeFor` non-login → `"enforce"`. Idéalement coupler à une `reportUri` qui agrège les violations.
+- [ ] **Brancher le pipe `admin-audit` log** (SPRINT3-040) sur la stack SIEM/log aggregator (Datadog / ELK / Loki) avec rétention ≥ 1 an + alerting sur outcome=denied.
+- [ ] **Renovate app/bot** installé sur le repo GitHub (SPRINT3-032). Le `renovate.json` est en place mais sans l'app la conf est dormante.
+- [ ] **Activer GHAS / Code scanning** côté repo pour que les SARIF Semgrep + CodeQL (SPRINT3-033) remontent dans l'onglet Security.
+
 - [ ] Création du channel Slack `#cal-clever-security`.
 - [ ] Désignation d'un responsable rotatif (1 personne / sprint) pour traiter les advisories upstream.
 - [ ] Activation de l'alerting Sentry sur les logs audit trail (SPRINT3-040).

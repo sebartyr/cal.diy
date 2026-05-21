@@ -44,7 +44,25 @@
 | SPRINT2-051 | SEC-202 | DEFERRED | — | — | Embed iframe origin check → PM decision. |
 | SPRINT2-052 | SEC-105 | DEFERRED | — | — | Booking event-type `hidden` 404 → PM decision. |
 
-## Sprints 3/4 — à venir
+## Sprint 3 — Defense in depth + perf + fork strategy (en cours)
+
+| Ticket | Finding | Statut | Date | Commit | Notes |
+|--------|---------|--------|------|--------|-------|
+| SPRINT3-031 | FORK-301-FORK | DONE | 2026-05-21 | `35decb9fda` | `FORK-NOTES.md` racine + tableau des divergences + procédure rebase. |
+| SPRINT3-020 | BUG-003 | DONE | 2026-05-21 | `f2697bdf61` | `getUTCOffsetByTimezone(tz, slot)` au lieu de `(tz)` autour des transitions DST. Tests 3/3. |
+| SPRINT3-001 | SEC-201 | DONE | 2026-05-21 | `64620fc914` | CSP `Report-Only` sur toutes les page-paths via tri-state `cspModeFor`. Matcher élargi (sauf `_next/static/...`). Tests proxy 21/21. |
+| SPRINT3-002 | SEC-205 | DONE | 2026-05-21 | `7337bc91d1` | `script-src` prod = `'nonce-X' 'strict-dynamic'` (drop `'unsafe-inline' https:`). Trade-off legacy browsers documenté. Tests CSP 5/5. |
+| SPRINT3-030 | FORK-300-FORK | DONE | 2026-05-21 | `5251e0f358` | Helpers extraits dans `authorization-clever.ts` (`canManageEventType`, `isTeamAdminOrOwner`, `assertCanAccessWebhook`). Diff `util.ts` vs upstream ~5 lignes structurelles. Tests 15/15. |
+| SPRINT3-040 | SEC-305-FORK | DONE | 2026-05-21 | `01a8c16c02` | `recordAdminAction` / `recordAdminDenial` + intégration `isAdminMiddleware` + 3 handlers destructifs (lockUserAccount, removeTwoFactor, sendPasswordReset). Tests 3/3. |
+| SPRINT3-041 | nouveau (RGPD §9) | DONE | 2026-05-21 | `aff95153c5` | `REQUIRE_2FA_FOR_ADMIN` opt-in via env. Refuse `FORBIDDEN` + denial trail si admin sans 2FA. Tests 5/5. |
+| SPRINT3-032 | SEC-309-FORK | DONE | 2026-05-21 | `0f3be798f8` | Caret retirés sur @radix-ui (apps/web + packages/ui), `renovate.json` racine (grouping radix, vulnerability alerts, semantic commits). |
+| SPRINT3-033 | FORK-302-FORK | DONE | 2026-05-21 | `2327502dcd` | Workflows `semgrep.yml` (OWASP/TS/React/secrets, SARIF upload) + `codeql.yml` (security-extended) sur PRs ready + push master/remediation + cron hebdo. |
+| SPRINT3-010 | BUG-009 | OPS | — | — | `requires_explain` — EXPLAIN webhook trigger queries reporté `audit/OPS_TODO.md`. |
+| SPRINT3-011 | BUG-009 | OPS | — | — | Migration index Webhook `@@index([userId,teamId,eventTypeId,platformOAuthClientId])` CONCURRENTLY après EXPLAIN. |
+| SPRINT3-012 | PERF-010 | OPS | — | — | Migration index Booking `@@index([eventTypeId,startTime,status])` CONCURRENTLY après EXPLAIN. |
+| SPRINT3-021 | BUG-013 | DONE | — | — | Déjà couvert Sprint 1 (`51f97a480d` + `69352e3127`). |
+
+## Sprint 4 — à venir
 
 Voir `audit/sprint-plan.md` et `audit/tickets.yaml` pour la liste complète.
 
