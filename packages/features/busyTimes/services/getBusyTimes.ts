@@ -6,7 +6,7 @@ import { subtract } from "@calcom/features/schedules/lib/date-ranges";
 import { stringToDayjs } from "@calcom/lib/dayjs";
 import { intervalLimitKeyToUnit } from "@calcom/lib/intervalLimits/intervalLimit";
 import type { IntervalLimit } from "@calcom/lib/intervalLimits/intervalLimitSchema";
-import logger from "@calcom/lib/logger";
+import logger, { isSillyEnabled } from "@calcom/lib/logger";
 import { getPiiFreeBooking } from "@calcom/lib/piiFreeData";
 import { withReporting } from "@calcom/lib/sentryWrapper";
 import { performance } from "@calcom/lib/server/perfObserver";
@@ -74,13 +74,14 @@ export class BusyTimesService {
       mode,
     } = params;
 
-    logger.silly(
-      `Checking Busy time from Cal Bookings in range ${startTime} to ${endTime} for input ${JSON.stringify({
-        userId,
-        eventTypeId,
-        status: BookingStatus.ACCEPTED,
-      })}`
-    );
+    if (isSillyEnabled(logger))
+      logger.silly(
+        `Checking Busy time from Cal Bookings in range ${startTime} to ${endTime} for input ${JSON.stringify({
+          userId,
+          eventTypeId,
+          status: BookingStatus.ACCEPTED,
+        })}`
+      );
 
     /**
      * A user is considered busy within a given time period if there
@@ -342,12 +343,13 @@ export class BusyTimesService {
       durationLimits
     );
 
-    logger.silly(
-      `Fetch limit checks bookings in range ${limitDateFrom} to ${limitDateTo} for input ${JSON.stringify({
-        eventTypeId,
-        status: BookingStatus.ACCEPTED,
-      })}`
-    );
+    if (isSillyEnabled(logger))
+      logger.silly(
+        `Fetch limit checks bookings in range ${limitDateFrom} to ${limitDateTo} for input ${JSON.stringify({
+          eventTypeId,
+          status: BookingStatus.ACCEPTED,
+        })}`
+      );
 
     const startTimeDate = limitDateFrom.toDate();
     const endTimeDate = limitDateTo.toDate();
@@ -370,7 +372,8 @@ export class BusyTimesService {
       });
     }
 
-    logger.silly(`Fetch limit checks bookings for eventId: ${eventTypeId} ${JSON.stringify(busyTimes)}`);
+    if (isSillyEnabled(logger))
+      logger.silly(`Fetch limit checks bookings for eventId: ${eventTypeId} ${JSON.stringify(busyTimes)}`);
     performance.mark("getBusyTimesForLimitChecksEnd");
     performance.measure(
       `prisma booking get for limits took $1'`,
