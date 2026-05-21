@@ -3,6 +3,8 @@ import { WEBAPP_URL } from "@calcom/lib/constants";
 
 import { buildNonce } from "./buildNonce";
 
+export type CspMode = "enforce" | "report-only" | "off";
+
 function getCspPolicy(nonce: string) {
   //TODO: Do we need to explicitly define it in turbo.json
   const CSP_POLICY = process.env.CSP_POLICY;
@@ -41,14 +43,26 @@ export function getCspNonce() {
   return nonce;
 }
 
-export function getCspHeader({ shouldEnforceCsp, nonce }: { shouldEnforceCsp: boolean; nonce: string }) {
-  const cspHeaderName = shouldEnforceCsp
-    ? "Content-Security-Policy"
-    : /*"Content-Security-Policy-Report-Only"*/ null;
+// Sprint 3 (SEC-201): support Report-Only rollout. Callers used to pass a
+// boolean `shouldEnforceCsp`; we now accept a tri-state mode so we can ship
+// CSP-Report-Only on routes that were previously CSP-less without enforcing
+// yet. The boolean overload is kept for backwards-compatibility with existing
+// callers in proxy.ts.
+type GetCspHeaderArgs =
+  | { shouldEnforceCsp: boolean; nonce: string }
+  | { mode: CspMode; nonce: string };
 
-  if (!cspHeaderName) {
+export function getCspHeader(args: GetCspHeaderArgs) {
+  const nonce = args.nonce;
+  const mode: CspMode =
+    "mode" in args ? args.mode : args.shouldEnforceCsp ? "enforce" : "off";
+
+  if (mode === "off") {
     return null;
   }
+
+  const cspHeaderName =
+    mode === "enforce" ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only";
 
   const cspHeaderValue = getCspPolicy(nonce)
     .replace(/\s{2,}/g, " ")
