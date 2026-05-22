@@ -41,6 +41,9 @@ Sentry.init({
   sendDefaultPii: false,
   beforeSend(event) {
     event.tags = { ...event.tags, errorSource: "server" };
-    return scrubEvent(event);
+    // scrubEvent uses a structural ScrubbableEvent shape that intentionally
+    // omits Sentry-internal fields. The mutation is in-place, so the runtime
+    // return is the same ErrorEvent — we just have to reassert the type.
+    return scrubEvent(event as unknown as Parameters<typeof scrubEvent>[0]) as typeof event;
   },
 });

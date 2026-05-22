@@ -16,6 +16,7 @@ export default function AdminTeamsView() {
   const { t } = useLocale();
   const [search, setSearch] = useState("");
   const teams = trpc.viewer.teams.adminList.useQuery({ search: search.trim() || undefined });
+  const teamList = teams.data?.teams ?? [];
 
   const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
   const adminDelete = trpc.viewer.teams.adminDelete.useMutation({
@@ -38,19 +39,19 @@ export default function AdminTeamsView() {
           className="border-subtle bg-default text-emphasis w-full max-w-sm rounded-md border px-3 py-2 text-sm"
         />
         <span className="text-subtle text-sm">
-          {teams.data?.length ?? 0} {t("teams_count", { defaultValue: "équipe(s)" })}
+          {teamList.length} {t("teams_count", { defaultValue: "équipe(s)" })}
         </span>
       </div>
 
       {teams.isPending ? (
         <p className="text-subtle text-sm">{t("loading", { defaultValue: "Chargement…" })}</p>
-      ) : (teams.data ?? []).length === 0 ? (
+      ) : teamList.length === 0 ? (
         <p className="text-subtle text-sm">
           {t("no_teams_found", { defaultValue: "Aucune équipe ne correspond." })}
         </p>
       ) : (
         <ul className="bg-default border-subtle divide-subtle overflow-hidden rounded-md border divide-y">
-          {(teams.data ?? []).map((team) => (
+          {teamList.map((team) => (
             <li key={team.id} className="flex items-center justify-between gap-4 px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { assertOAuthState } from "../assertOAuthState";
 
+type OAuthState = NonNullable<Parameters<typeof assertOAuthState>[0]>;
+
 function makeRes() {
   const json = vi.fn();
   const status = vi.fn().mockImplementation(() => ({ json }));
@@ -21,7 +23,7 @@ describe("assertOAuthState (SEC-102)", () => {
 
   it("returns the state untouched when defined", () => {
     const res = makeRes();
-    const state = { returnTo: "/installed/calendar" };
+    const state = { returnTo: "/installed/calendar" } as unknown as OAuthState;
     const result = assertOAuthState(state, res);
     expect(result).toBe(state);
     expect(res.status).not.toHaveBeenCalled();
@@ -29,7 +31,7 @@ describe("assertOAuthState (SEC-102)", () => {
 
   it("treats an empty-object state as valid (it survived decode)", () => {
     const res = makeRes();
-    const state = {};
+    const state = {} as unknown as OAuthState;
     expect(assertOAuthState(state, res)).toBe(state);
     expect(res.status).not.toHaveBeenCalled();
   });

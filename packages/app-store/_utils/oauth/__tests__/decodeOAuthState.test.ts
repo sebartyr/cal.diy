@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { decodeOAuthState } from "../decodeOAuthState";
 
@@ -25,12 +25,11 @@ function makeSignedState(payload: Record<string, unknown>, userId: number) {
 }
 
 describe("decodeOAuthState (SEC-101)", () => {
-  const originalSecret = process.env.NEXTAUTH_SECRET;
   beforeAll(() => {
-    process.env.NEXTAUTH_SECRET = SECRET;
+    vi.stubEnv("NEXTAUTH_SECRET", SECRET);
   });
   afterAll(() => {
-    process.env.NEXTAUTH_SECRET = originalSecret;
+    vi.unstubAllEnvs();
   });
 
   it("rejects an unsigned state for Stripe (no longer on NONCE_EXEMPT)", () => {

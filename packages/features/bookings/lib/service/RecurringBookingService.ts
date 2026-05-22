@@ -30,13 +30,13 @@ export const handleNewRecurringBooking = async function (
 
   const numSlotsToCheckForAvailability = 1;
 
-  let thirdPartyRecurringEventId = null;
+  let thirdPartyRecurringEventId: string | null = null;
 
   // for round robin, the first slot needs to be handled first to define the lucky user
   const firstBooking = data[0];
   const isRoundRobin = firstBooking.schedulingType === SchedulingType.ROUND_ROBIN;
 
-  let luckyUsers;
+  let luckyUsers: number[] | undefined;
 
   const handleBookingMeta = {
     userId: input.userId,

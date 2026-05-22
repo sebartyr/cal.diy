@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkProductionEnv, formatAssertProductionEnvError } from "../assertProductionEnv";
 
-const fullProdEnv = {
+const fullProdEnv: Record<string, string | undefined> = {
   NODE_ENV: "production",
   NEXT_RUNTIME: "nodejs",
   DATABASE_URL: "postgresql://localhost/cal",

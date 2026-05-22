@@ -23,7 +23,9 @@ export type AssertProductionEnvResult =
  * Pure check — returns a structured result. Caller decides whether to
  * `throw` (production) or just `log` (tests).
  */
-export function checkProductionEnv(env: NodeJS.ProcessEnv): AssertProductionEnvResult {
+export function checkProductionEnv(
+  env: Record<string, string | undefined>
+): AssertProductionEnvResult {
   // Skip the check whenever we're not in a production runtime; the dev
   // server, vitest, and Next's edge runtime each have their own guarantees.
   if (env.NODE_ENV !== "production") return { ok: true };
