@@ -34,6 +34,7 @@ interface LoginValues {
   totpCode: string;
   backupCode: string;
   csrfToken: string;
+  totpToken?: string;
 }
 
 const MicrosoftIcon = () => (
@@ -120,7 +121,10 @@ export default function Login({
     })
     // Passthrough other fields like totpCode
     .passthrough();
-  const methods = useForm<LoginValues>({ resolver: zodResolver(formSchema) });
+  const methods = useForm<LoginValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: totpEmail ? { email: totpEmail } : undefined,
+  });
   const { register, formState } = methods;
   const [twoFactorRequired, setTwoFactorRequired] = useState(!!totpEmail || false);
   const [twoFactorLostAccess, setTwoFactorLostAccess] = useState(false);
@@ -150,11 +154,14 @@ export default function Login({
 
   callbackUrl = safeCallbackUrl || "";
 
+  const totpToken = searchParams?.get("totp") ?? undefined;
+
   const onSubmit = async (values: LoginValues) => {
     setErrorMessage(null);
     // telemetry.event(telemetryEventTypes.login, collectPageParameters());
     const res = await signIn<"credentials">("credentials", {
       ...values,
+      ...(totpToken ? { totpToken } : {}),
       callbackUrl,
       redirect: false,
     });

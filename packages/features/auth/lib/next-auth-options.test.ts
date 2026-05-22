@@ -183,6 +183,11 @@ vi.mock("./signJwt", () => ({
   default: vi.fn().mockResolvedValue("mock-jwt"),
 }));
 
+const mockVerifyTotpLoginJwt = vi.fn();
+vi.mock("./verifyTotpLoginJwt", () => ({
+  verifyTotpLoginJwt: (...args: unknown[]) => mockVerifyTotpLoginJwt(...args),
+}));
+
 vi.mock("./dub", () => ({
   dub: { track: { lead: vi.fn() } },
 }));
@@ -311,6 +316,95 @@ describe("CredentialsProvider authorize", () => {
           email: "test@example.com",
           password: "password123",
           totpCode: "123456",
+        } as any)
+      ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
+    });
+
+    it("allows OAuth user without password to authenticate via valid totpToken + totpCode", async () => {
+      const originalKey = process.env.CALENDSO_ENCRYPTION_KEY;
+      process.env.CALENDSO_ENCRYPTION_KEY = "test";
+      try {
+        const { symmetricDecrypt } = await import("@calcom/lib/crypto");
+        vi.mocked(symmetricDecrypt).mockReturnValue("a".repeat(32));
+        const { totpAuthenticatorCheck } = await import("@calcom/lib/totp");
+        vi.mocked(totpAuthenticatorCheck).mockReturnValue(true);
+        mockVerifyTotpLoginJwt.mockResolvedValue({ email: "test@example.com" });
+
+        const mockUser = createMockUser({
+          password: null,
+          identityProvider: IdentityProvider.GOOGLE,
+          twoFactorEnabled: true,
+          twoFactorSecret: "encrypted_secret",
+        });
+        mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUser);
+
+        const result = await authorizeCredentials({
+          email: "test@example.com",
+          password: "",
+          totpCode: "123456",
+          totpToken: "valid-jwt",
+        } as any);
+
+        expect(result?.id).toBe(1);
+        expect(mockVerifyTotpLoginJwt).toHaveBeenCalledWith("valid-jwt");
+      } finally {
+        process.env.CALENDSO_ENCRYPTION_KEY = originalKey;
+      }
+    });
+
+    it("rejects OAuth user when totpToken email does not match user email", async () => {
+      mockVerifyTotpLoginJwt.mockResolvedValue({ email: "other@example.com" });
+      const mockUser = createMockUser({
+        password: null,
+        identityProvider: IdentityProvider.GOOGLE,
+        twoFactorEnabled: true,
+      });
+      mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUser);
+
+      await expect(
+        authorizeCredentials({
+          email: "test@example.com",
+          password: "",
+          totpCode: "123456",
+          totpToken: "valid-jwt-for-other-email",
+        } as any)
+      ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
+    });
+
+    it("rejects OAuth user when totpToken JWT verification throws", async () => {
+      mockVerifyTotpLoginJwt.mockRejectedValue(new Error("expired"));
+      const mockUser = createMockUser({
+        password: null,
+        identityProvider: IdentityProvider.GOOGLE,
+        twoFactorEnabled: true,
+      });
+      mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUser);
+
+      await expect(
+        authorizeCredentials({
+          email: "test@example.com",
+          password: "",
+          totpCode: "123456",
+          totpToken: "expired-jwt",
+        } as any)
+      ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
+    });
+
+    it("rejects CAL user with totpToken (only OAuth flow may bypass password)", async () => {
+      mockVerifyTotpLoginJwt.mockResolvedValue({ email: "test@example.com" });
+      const mockUser = createMockUser({
+        password: null,
+        identityProvider: IdentityProvider.CAL,
+        twoFactorEnabled: true,
+      });
+      mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUser);
+
+      await expect(
+        authorizeCredentials({
+          email: "test@example.com",
+          password: "",
+          totpCode: "123456",
+          totpToken: "valid-jwt",
         } as any)
       ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
     });

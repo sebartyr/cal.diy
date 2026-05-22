@@ -150,7 +150,9 @@ const checkIfUserShouldBelongToOrg = async (idP: IdentityProvider, email: string
  * Extracted for testability
  */
 export async function authorizeCredentials(
-  credentials: Record<"email" | "password" | "totpCode" | "backupCode", string> | undefined
+  credentials:
+    | Record<"email" | "password" | "totpCode" | "backupCode" | "totpToken", string>
+    | undefined
 ): Promise<User | null> {
   log.debug("CredentialsProvider:credentials:authorize", safeStringify({ credentials }));
   if (!credentials) {
@@ -176,15 +178,35 @@ export async function authorizeCredentials(
     identifier: hashEmail(user.email),
   });
 
-  // Users without a password must use their identity provider (Google/SAML) to login
+  // Users without a password must use their identity provider (Google/SAML) to login.
+  // The OAuth+2FA flow lands here after the user finishes the IdP step: the signIn
+  // callback redirects them to /auth/login?totp=<signed JWT>, and the TOTP form
+  // submits back through this credentials provider. We allow the password check to
+  // be skipped only when the request carries a valid, unexpired JWT that we issued
+  // for this exact email and the user did NOT sign up with the CAL provider.
   if (!user.password?.hash) {
-    throw new Error(ErrorCode.IncorrectEmailPassword);
-  }
-
-  // Always verify password for users who have one
-  const isCorrectPassword = await verifyPassword(credentials.password, user.password.hash);
-  if (!isCorrectPassword) {
-    throw new Error(ErrorCode.IncorrectEmailPassword);
+    if (
+      !credentials.totpToken ||
+      !credentials.totpCode ||
+      user.identityProvider === IdentityProvider.CAL
+    ) {
+      throw new Error(ErrorCode.IncorrectEmailPassword);
+    }
+    try {
+      const { verifyTotpLoginJwt } = await import("./verifyTotpLoginJwt");
+      const { email: jwtEmail } = await verifyTotpLoginJwt(credentials.totpToken);
+      if (jwtEmail.toLowerCase() !== user.email.toLowerCase()) {
+        throw new Error(ErrorCode.IncorrectEmailPassword);
+      }
+    } catch {
+      throw new Error(ErrorCode.IncorrectEmailPassword);
+    }
+  } else {
+    // Always verify password for users who have one
+    const isCorrectPassword = await verifyPassword(credentials.password, user.password.hash);
+    if (!isCorrectPassword) {
+      throw new Error(ErrorCode.IncorrectEmailPassword);
+    }
   }
 
   if (user.twoFactorEnabled && credentials.backupCode) {
@@ -298,6 +320,7 @@ export const CalComCredentialsProvider = CredentialsProvider({
     password: { label: "Password", type: "password", placeholder: "Your super secure password" },
     totpCode: { label: "Two-factor Code", type: "input", placeholder: "Code from authenticator app" },
     backupCode: { label: "Backup Code", type: "input", placeholder: "Two-factor backup code" },
+    totpToken: { label: "TOTP login token", type: "hidden" },
   },
   authorize: authorizeCredentials,
 });

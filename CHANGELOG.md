@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.0.3] — 2026-05-22
+
+Hotfix: Google/Azure OAuth users with 2FA enabled could no longer complete login.
+Upstream #25563 simplified the credentials provider authorize flow and removed
+the branch that allowed OAuth users (no password hash) to authenticate via TOTP
+alone. After the IdP step the signIn callback still redirects to
+`/auth/login?totp=<signed JWT>`, but the TOTP form submission was then rejected
+with `IncorrectEmailPassword` because the user has no password.
+
+We re-allow this path under a stricter contract: the JWT issued by the signIn
+callback is now forwarded as a hidden credential (`totpToken`) and re-verified
+inside `authorizeCredentials`. The password check is skipped only when (a) the
+user has no password hash, (b) `identityProvider !== CAL`, (c) a valid
+unexpired JWT (HS256, matching issuer/audience) is supplied, and (d) its email
+matches the user. The existing TOTP code check still runs unchanged.
+
+- `packages/features/auth/lib/verifyTotpLoginJwt.ts` (new)
+- `packages/features/auth/lib/next-auth-options.ts`: accept `totpToken`; gated
+  bypass of password check for OAuth users; preserves all previous reject paths.
+- `apps/web/modules/auth/login-view.tsx`: forward `?totp=` query param as
+  `totpToken` in `signIn("credentials", …)`. Also seed `email` via
+  `useForm({ defaultValues })` when arriving on the TOTP step from the JWT
+  redirect — the email input is not rendered in 2FA mode, so without a
+  seeded default the Zod schema rejected `email: undefined` and
+  `handleSubmit` silently swallowed the click.
+- Tests: 4 new cases in `next-auth-options.test.ts` (happy path; email mismatch;
+  invalid/expired JWT; CAL user with JWT still rejected). 41/41 passing.
+
 ## [7.0.0] — 2026-05-22
 
 Closes the 5-sprint security audit remediation (Sprints 0 → 4). 62 commits, 193 files,
