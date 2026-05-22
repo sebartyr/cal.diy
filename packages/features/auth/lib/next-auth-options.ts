@@ -3,6 +3,7 @@ import { updateProfilePhotoGoogle } from "@calcom/app-store/_utils/oauth/updateP
 import { updateProfilePhotoMicrosoft } from "@calcom/app-store/_utils/oauth/updateProfilePhotoMicrosoft";
 import { createGoogleCalendarServiceWithGoogleType } from "@calcom/app-store/googlecalendar/lib/CalendarService";
 import { getIdentityProvider } from "@calcom/features/auth/lib/identityProviders";
+import { MAGIC_LINK_MAX_AGE_SECONDS } from "@calcom/features/auth/lib/magicLinkMaxAge";
 import {
   OUTLOOK_CLIENT_ID,
   OUTLOOK_CLIENT_SECRET,
@@ -24,7 +25,7 @@ import {
   MICROSOFT_CALENDAR_SCOPES,
   WEBAPP_URL,
 } from "@calcom/lib/constants";
-import { symmetricDecrypt, symmetricEncrypt } from "@calcom/lib/crypto";
+import { symmetricDecrypt } from "@calcom/lib/crypto";
 import { defaultCookies } from "@calcom/lib/default-cookies";
 import { isENVDev } from "@calcom/lib/env";
 import logger from "@calcom/lib/logger";
@@ -194,20 +195,21 @@ export async function authorizeCredentials(
 
     if (!user.backupCodes) throw new Error(ErrorCode.MissingBackupCodes);
 
-    const backupCodes = JSON.parse(symmetricDecrypt(user.backupCodes, process.env.CALENDSO_ENCRYPTION_KEY));
+    // SEC-009: parse + verify via the helper. Handles both legacy plaintext
+    // arrays and the modern bcrypt-hashed format, and lazy-upgrades on success.
+    const { parseStoredBackupCodes, verifyAndConsumeBackupCode, reencryptBackupCodes } = await import(
+      "@calcom/features/auth/lib/backupCodes"
+    );
+    const storedEntries = parseStoredBackupCodes(user.backupCodes, process.env.CALENDSO_ENCRYPTION_KEY);
+    const result = await verifyAndConsumeBackupCode(credentials.backupCode, storedEntries);
+    if (!result.ok) throw new Error(ErrorCode.IncorrectBackupCode);
 
-    // check if user-supplied code matches one
-    const index = backupCodes.indexOf(credentials.backupCode.replaceAll("-", ""));
-    if (index === -1) throw new Error(ErrorCode.IncorrectBackupCode);
-
-    // delete verified backup code and re-encrypt remaining
-    backupCodes[index] = null;
     await prisma.user.update({
       where: {
         id: user.id,
       },
       data: {
-        backupCodes: symmetricEncrypt(JSON.stringify(backupCodes), process.env.CALENDSO_ENCRYPTION_KEY),
+        backupCodes: reencryptBackupCodes(result.updatedHashes, process.env.CALENDSO_ENCRYPTION_KEY),
       },
     });
   } else if (user.twoFactorEnabled) {
@@ -359,7 +361,7 @@ if (OUTLOOK_LOGIN_ENABLED && OUTLOOK_CLIENT_ID && OUTLOOK_CLIENT_SECRET) {
 providers.push(
   EmailProvider({
     type: "email",
-    maxAge: 10 * 60 * 60, // Magic links are valid for 10 min only
+    maxAge: MAGIC_LINK_MAX_AGE_SECONDS,
     // Here we setup the sendVerificationRequest that calls the email template with the identifier (email) and token to verify.
     sendVerificationRequest: async (props) => (await import("./sendVerificationRequest")).default(props),
   })

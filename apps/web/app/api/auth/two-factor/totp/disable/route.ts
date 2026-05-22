@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { parseStoredBackupCodes, verifyAndConsumeBackupCode } from "@calcom/features/auth/lib/backupCodes";
 import { ErrorCode } from "@calcom/features/auth/lib/ErrorCode";
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { verifyPassword } from "@calcom/features/auth/lib/verifyPassword";
@@ -48,7 +49,12 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ message: "Two factor disabled" });
   }
 
-  if (user.password?.hash && user.identityProvider === IdentityProvider.CAL) {
+  // SEC-011 (Sprint 4): require the password whenever the account has one set,
+  // regardless of identityProvider. An OAuth account that also has a local
+  // password (account-linking, password-set later) must still prove
+  // possession of it before tearing down 2FA. Pure-OAuth accounts (no
+  // password row) still rely on the TOTP/backup-code check below.
+  if (user.password?.hash) {
     const isCorrectPassword = await verifyPassword(body.password, user.password.hash);
     if (!isCorrectPassword) {
       return NextResponse.json({ error: ErrorCode.IncorrectPassword }, { status: 400 });
@@ -66,15 +72,16 @@ async function handler(req: NextRequest) {
       return NextResponse.json({ error: ErrorCode.MissingBackupCodes }, { status: 400 });
     }
 
-    const backupCodes = JSON.parse(symmetricDecrypt(user.backupCodes, process.env.CALENDSO_ENCRYPTION_KEY));
-
-    // check if user-supplied code matches one
-    const index = backupCodes.indexOf(body.backupCode.replaceAll("-", ""));
-    if (index === -1) {
+    // SEC-009: backup codes are now bcrypt-hashed. The helper handles both
+    // the legacy plaintext format (lazy-upgrade) and the modern hash format.
+    const storedEntries = parseStoredBackupCodes(user.backupCodes, process.env.CALENDSO_ENCRYPTION_KEY);
+    const result = await verifyAndConsumeBackupCode(body.backupCode, storedEntries);
+    if (!result.ok) {
       return NextResponse.json({ error: ErrorCode.IncorrectBackupCode }, { status: 400 });
     }
 
-    // we delete all stored backup codes at the end, no need to do this here
+    // we delete all stored backup codes at the end, no need to persist the
+    // consumed/upgraded array — disable wipes the whole field below.
 
     // if user has 2fa and NOT using backup code, try totp
   } else if (user.twoFactorEnabled) {

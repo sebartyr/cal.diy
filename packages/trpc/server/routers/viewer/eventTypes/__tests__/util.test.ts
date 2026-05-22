@@ -10,6 +10,10 @@ describe("createEventPbacProcedure", () => {
     eventType: {
       findUnique: vi.fn(),
     },
+    membership: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
   } as unknown as PrismaClient;
 
   const mockCtx = {
@@ -28,6 +32,12 @@ describe("createEventPbacProcedure", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default Membership lookup → user is an OWNER and accepted. Tests that
+    // need a different membership state override this via mockResolvedValueOnce.
+    (mockPrisma.membership.findUnique as Mock).mockResolvedValue({
+      role: MembershipRole.OWNER,
+      accepted: true,
+    });
   });
 
   describe("personal events", () => {
@@ -196,24 +206,72 @@ describe("createEventPbacProcedure", () => {
       ).resolves.not.toThrow();
     });
 
-    it("should allow org admin without team membership to access team event", async () => {
+    it("should deny non-member from accessing team event (SEC-001 PBAC IDOR)", async () => {
       mockPrisma.eventType.findUnique = vi.fn().mockResolvedValue(teamEvent);
+      // Override default Membership mock — user is NOT a member of team 10.
+      (mockPrisma.membership.findUnique as Mock).mockResolvedValueOnce(null);
 
       const procedure = createEventPbacProcedure("eventType.update");
       const middleware = getMiddleware(procedure);
 
-      // PermissionCheckService stub always returns true, so org admin access is always granted
-      await expect(
-        middleware({
-          ctx: mockCtx,
-          input: { id: 2 },
-          next: mockNext,
-          path: "test",
-          type: "mutation",
-          getRawInput: async () => ({}),
-          meta: undefined,
-        })
-      ).resolves.not.toThrow();
+      const result = middleware({
+        ctx: mockCtx,
+        input: { id: 2 },
+        next: mockNext,
+        path: "test",
+        type: "mutation",
+        getRawInput: async () => ({}),
+        meta: undefined,
+      });
+      await expect(result).rejects.toThrow(TRPCError);
+      await expect(result).rejects.toThrow(/Permission required/);
+    });
+
+    it("should deny MEMBER role when fallbackRoles requires ADMIN+", async () => {
+      mockPrisma.eventType.findUnique = vi.fn().mockResolvedValue(teamEvent);
+      (mockPrisma.membership.findUnique as Mock).mockResolvedValueOnce({
+        role: MembershipRole.MEMBER,
+        accepted: true,
+      });
+
+      const procedure = createEventPbacProcedure("eventType.update", [
+        MembershipRole.ADMIN,
+        MembershipRole.OWNER,
+      ]);
+      const middleware = getMiddleware(procedure);
+
+      const result = middleware({
+        ctx: mockCtx,
+        input: { id: 2 },
+        next: mockNext,
+        path: "test",
+        type: "mutation",
+        getRawInput: async () => ({}),
+        meta: undefined,
+      });
+      await expect(result).rejects.toThrow(TRPCError);
+    });
+
+    it("should deny pending (accepted=false) membership even with matching role", async () => {
+      mockPrisma.eventType.findUnique = vi.fn().mockResolvedValue(teamEvent);
+      (mockPrisma.membership.findUnique as Mock).mockResolvedValueOnce({
+        role: MembershipRole.ADMIN,
+        accepted: false,
+      });
+
+      const procedure = createEventPbacProcedure("eventType.update");
+      const middleware = getMiddleware(procedure);
+
+      const result = middleware({
+        ctx: mockCtx,
+        input: { id: 2 },
+        next: mockNext,
+        path: "test",
+        type: "mutation",
+        getRawInput: async () => ({}),
+        meta: undefined,
+      });
+      await expect(result).rejects.toThrow(TRPCError);
     });
   });
 

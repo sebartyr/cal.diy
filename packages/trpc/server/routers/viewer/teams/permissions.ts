@@ -34,28 +34,44 @@ function isSystemAdmin(user: Pick<NonNullable<TrpcSessionUser>, "role"> | undefi
   return user?.role === UserPermissionRole.ADMIN;
 }
 
+/**
+ * BUG-102-FORK (Sprint 4): the synthetic "system-admin pretends to be a team
+ * member" row used to set `id: -1`, which collided with the real `Membership.id`
+ * primary-key space. If a caller had ever fed it into a `prisma.membership.*`
+ * call by `where: { id }`, it would silently target row 0 instead of erroring.
+ * We now widen the return type so `id` may be `null`, forcing every consumer
+ * that touches the id to deal with the synthetic case explicitly.
+ */
+type RealMembership = NonNullable<Awaited<ReturnType<typeof getMembership>>>;
+export type RequireMemberResult =
+  | RealMembership
+  | (Omit<RealMembership, "id"> & { id: null; isSyntheticAdmin: true });
+
 export async function requireMember(
   userId: number,
   teamId: number,
   minRole: MembershipRole = MembershipRole.MEMBER,
   user?: Pick<NonNullable<TrpcSessionUser>, "role">
-) {
+): Promise<RequireMemberResult> {
   if (user && isSystemAdmin(user)) {
-    // System admin — bypass membership/role checks. Return a synthetic OWNER
-    // membership so callers that read the returned row still behave sensibly.
-    const fallback = (await getMembership(userId, teamId)) ?? {
-      id: -1,
+    // System admin — bypass membership/role checks. If the admin has a real
+    // membership row, return it (mirrored to OWNER role). Otherwise return a
+    // synthetic shape with `id: null` and `isSyntheticAdmin: true`.
+    const real = await getMembership(userId, teamId);
+    if (real) {
+      return { ...real, role: MembershipRole.OWNER };
+    }
+    return {
+      id: null,
+      isSyntheticAdmin: true,
       userId,
       teamId,
       role: MembershipRole.OWNER,
       accepted: true,
       disableImpersonation: false,
       createdAt: new Date(),
-      customRoleId: null as string | null,
+      customRoleId: null,
     };
-    return { ...fallback, role: MembershipRole.OWNER } as NonNullable<
-      Awaited<ReturnType<typeof getMembership>>
-    >;
   }
 
   const m = await getMembership(userId, teamId);

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    ":automergeDisabled"
+  ],
+  "rangeStrategy": "pin",
+  "branchPrefix": "renovate/",
+  "labels": ["dependencies"],
+  "schedule": ["before 4am on Monday"],
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10,
+  "vulnerabilityAlerts": {
+    "labels": ["security", "dependencies"],
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group all @radix-ui packages so coordinated bumps land together",
+      "matchPackagePrefixes": ["@radix-ui/"],
+      "groupName": "radix-ui",
+      "labels": ["radix-ui", "dependencies"],
+      "automerge": false,
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Stay close to upstream — security patches first",
+      "matchUpdateTypes": ["patch"],
+      "labels": ["dependencies", "patch"]
+    },
+    {
+      "description": "Manual review for majors",
+      "matchUpdateTypes": ["major"],
+      "labels": ["dependencies", "major-review-required"]
+    },
+    {
+      "description": "Ignore upstream cal.com-only dev tooling we don't ship",
+      "matchPackageNames": ["@calcom/embed-react"],
+      "enabled": false
+    }
+  ]
+}

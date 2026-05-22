@@ -1,5 +1,6 @@
 import dayjs from "@calcom/dayjs";
 import { sendPasswordResetEmail } from "@calcom/emails/auth-email-service";
+import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
 import { PASSWORD_RESET_EXPIRY_HOURS } from "@calcom/features/auth/lib/passwordResetRequest";
 import { getTranslation } from "@calcom/i18n/server";
 import { prisma } from "@calcom/prisma";
@@ -14,8 +15,16 @@ type GetOptions = {
   input: TAdminPasswordResetSchema;
 };
 
-const sendPasswordResetHandler = async ({ input }: GetOptions) => {
+const sendPasswordResetHandler = async ({ ctx, input }: GetOptions) => {
   const { userId } = input;
+  // SEC-305-FORK: admin-triggered password resets must be traceable.
+  recordAdminAction({
+    actorUserId: ctx.user.id,
+    actorEmail: ctx.user.email,
+    path: "viewer.admin.sendPasswordReset",
+    outcome: "granted",
+    context: { targetUserId: userId },
+  });
 
   const user = await prisma.user.findUnique({
     where: {

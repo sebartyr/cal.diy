@@ -53,8 +53,17 @@ export type BookingCreateBody = z.input<typeof bookingCreateBodySchema>;
 
 // TODO: Plan to create different schemas for Recurring Bookings, Instant Bookings and Regular Bookings.
 // We later want to make these properties required. They were optional because they are part of general schema which is used for all types of bookings.
+/**
+ * BUG-005: cap recurring bookings at 52 occurrences (≈ 1 weekly meeting/year)
+ * to avoid unbounded fan-out: each recurrence triggers calendar invites,
+ * webhooks, and integration calls. Unbounded `count` made the booking
+ * endpoint a useful amplification vector and could exhaust Trigger.dev
+ * concurrency.
+ */
+export const RECURRING_BOOKING_MAX_COUNT = 52;
+
 const recurringBookingCreateBodyPartialSchema = z.object({
-  recurringCount: z.number().optional(),
+  recurringCount: z.number().int().min(1).max(RECURRING_BOOKING_MAX_COUNT).optional(),
   isFirstRecurringSlot: z.boolean().optional(),
   thirdPartyRecurringEventId: z.string().nullish(),
   numSlotsToCheckForAvailability: z.number().optional(),

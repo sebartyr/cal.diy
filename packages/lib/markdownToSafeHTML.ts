@@ -24,7 +24,15 @@ export function markdownToSafeHTML(markdown: string | null) {
       /<ol>/g,
       "<ol style='list-style-type: decimal; list-style-position: inside; margin-left: 12px; margin-bottom: 4px'>"
     )
-    .replace(/<a\s+href=/g, "<a target='_blank' class='text-blue-500 hover:text-blue-600' href=");
+    // SEC-203 (Sprint 4): every rendered <a> opens in a new tab, so it must
+    // also carry rel="noopener noreferrer". Without it, the linked origin can
+    // (a) access window.opener and rewrite our tab, and (b) see our URL via
+    // Referer. The Markdown renderer is fed user-controlled content
+    // (event-type descriptions, etc.) so this affects any reader of those.
+    .replace(
+      /<a\s+href=/g,
+      "<a target='_blank' rel='noopener noreferrer' class='text-blue-500 hover:text-blue-600' href="
+    );
 
   // Match: <li>Some text </li><li><ul>...</ul></li>
   // Convert to: <li>Some text <ul>...</ul></li>

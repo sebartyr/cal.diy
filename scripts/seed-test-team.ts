@@ -8,9 +8,12 @@
  *
  * Idempotent: re-runs upsert everything by stable key (email / team slug / event slug).
  */
+
+import process from "node:process";
 import { hashPassword } from "@calcom/lib/auth/hashPassword";
 import { prisma } from "@calcom/prisma";
-import { MembershipRole, SchedulingType, IdentityProvider } from "@calcom/prisma/enums";
+import { IdentityProvider, MembershipRole, SchedulingType } from "@calcom/prisma/enums";
+import { assertDevDatabase } from "./lib/assert-dev-database";
 
 const TZ = "Europe/Paris";
 const DEFAULT_WEEKDAY_AVAILABILITY = {
@@ -144,6 +147,11 @@ async function setHosts(eventTypeId: number, userIds: number[], isFixed = false)
 }
 
 async function main() {
+  // Refuse the run unless the target DB is on the dev allowlist. This seed
+  // creates an admin account with a trivial password — running it against a
+  // hosted DB would create a publicly-known backdoor.
+  assertDevDatabase();
+
   // ────────────────── Users ──────────────────
   const admin = await upsertUser({
     email: "admin@local.dev",

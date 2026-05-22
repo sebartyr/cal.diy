@@ -330,15 +330,19 @@ describe("Middleware Integration Tests", () => {
       expect(cspHeader).toContain("script-src");
     });
 
-    it("should not add CSP headers to non-login pages", async () => {
+    it("should add CSP-Report-Only headers to non-login page paths (SEC-201)", async () => {
       const req = createTestRequest({
         url: `${WEBAPP_URL}/team/test`,
       });
 
       const res = await callProxy(req);
-      const cspHeader = getHeader(res, "content-security-policy");
-
-      expect(cspHeader).toBeNull();
+      // Enforced header must NOT be set on non-login pages during the
+      // Report-Only rollout.
+      expect(getHeader(res, "content-security-policy")).toBeNull();
+      const reportOnly = getHeader(res, "content-security-policy-report-only");
+      expect(reportOnly).toBeTruthy();
+      expect(reportOnly).toContain("default-src");
+      expect(reportOnly).toContain("script-src");
     });
 
     it("should add x-csp-status when CSP_POLICY not set", async () => {
@@ -441,38 +445,17 @@ describe("Middleware Integration Tests", () => {
   });
 });
 
-describe("Middleware Matcher Configuration", () => {
+describe("Middleware Matcher Configuration (SEC-201)", () => {
   const matcher: string[] = config.matcher;
 
-  it("should include all core middleware routes", () => {
-    expect(matcher).toContain("/auth/login");
-    expect(matcher).toContain("/auth/logout");
-    expect(matcher).toContain("/api/auth/signup");
-    expect(matcher).toContain("/apps/installed");
-    expect(matcher).toContain("/availability");
-    expect(matcher).toContain("/login");
-    expect(matcher).toContain("/:path*/embed");
+  it("uses a single broad matcher for CSP coverage", () => {
+    expect(matcher).toHaveLength(1);
   });
 
-  it("should have no duplicate entries", () => {
-    const uniqueEntries = new Set(matcher);
-    expect(uniqueEntries.size).toBe(matcher.length);
-  });
-
-  it("should not contain any /api/ routes except /api/auth/signup", () => {
-    const apiRoutes = matcher.filter((entry) => entry.startsWith("/api/") && entry !== "/api/auth/signup");
-    expect(apiRoutes).toEqual([]);
-  });
-
-  it("should only contain the expected reduced route set", () => {
-    expect(matcher).toEqual([
-      "/auth/login",
-      "/login",
-      "/apps/installed",
-      "/auth/logout",
-      "/:path*/embed",
-      "/availability",
-      "/api/auth/signup",
-    ]);
+  it("excludes _next/static and image asset prefixes", () => {
+    const pattern = matcher[0];
+    expect(pattern).toContain("_next/static");
+    expect(pattern).toContain("_next/image");
+    expect(pattern).toContain("favicon.ico");
   });
 });

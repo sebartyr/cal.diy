@@ -38,8 +38,13 @@ const _validateBookingTimeIsNotOutOfBounds = async <T extends ValidateBookingTim
         periodEndDate: eventType.periodEndDate,
         periodStartDate: eventType.periodStartDate,
         periodCountCalendarDays: eventType.periodCountCalendarDays,
-        bookerUtcOffset: getUTCOffsetByTimezone(reqBodyTimeZone) ?? 0,
-        eventUtcOffset: eventTimeZone ? (getUTCOffsetByTimezone(eventTimeZone) ?? 0) : 0,
+        // BUG-003: utcOffset must be resolved at the date of the slot, not "now",
+        // otherwise bookings around DST transitions get a stale offset and the
+        // bounds check accepts/rejects slots incorrectly.
+        bookerUtcOffset: getUTCOffsetByTimezone(reqBodyTimeZone, reqBodyStartTime) ?? 0,
+        eventUtcOffset: eventTimeZone
+          ? (getUTCOffsetByTimezone(eventTimeZone, reqBodyStartTime) ?? 0)
+          : 0,
       },
       eventType.minimumBookingNotice
     );

@@ -1,9 +1,7 @@
-import { TRPCError } from "@trpc/server";
-
 import { prisma } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
 import { MembershipRole } from "@calcom/prisma/enums";
-
+import { TRPCError } from "@trpc/server";
 import type { TrpcSessionUser } from "../../../types";
 
 type Options = {
@@ -13,7 +11,59 @@ type Options = {
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
+/**
+ * Parse the comma-separated TEAMS_ALLOWED_EMAIL_DOMAINS env var into a
+ * normalized set. Empty/unset → no restriction (open instance behavior).
+ *
+ * Use plural form so the same var also covers SSO scenarios with multiple
+ * employer-owned domains (e.g. `clever-cloud.com,clever-cloud.dev`).
+ */
+export function getAllowedEmailDomains(): Set<string> | null {
+  const raw = process.env.TEAMS_ALLOWED_EMAIL_DOMAINS;
+  if (!raw) return null;
+  const domains = raw
+    .split(",")
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean);
+  return domains.length > 0 ? new Set(domains) : null;
+}
+
 export async function createHandler({ ctx, input }: Options) {
+  // Optional gate for self-host instances that should only let employees
+  // create teams. Off by default — set TEAMS_ALLOWED_EMAIL_DOMAINS to enable.
+  const allowedDomains = getAllowedEmailDomains();
+  if (allowedDomains) {
+    const callerDomain = ctx.user.email?.split("@")[1]?.toLowerCase();
+    if (!callerDomain || !allowedDomains.has(callerDomain)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Your account's email domain is not allowed to create teams on this instance",
+      });
+    }
+  }
+
+  // SEC-303-FORK (Sprint 4): per-user team-creation quota. Defaults to 50
+  // for self-host parity; ops sets MAX_TEAMS_PER_USER if a tighter cap is
+  // wanted. We count teams the caller owns; counting accepted memberships
+  // would be wrong because joining many teams is fine — minting new tenants
+  // is what we want to bound.
+  const maxTeamsRaw = process.env.MAX_TEAMS_PER_USER;
+  const maxTeams = maxTeamsRaw ? Math.max(1, parseInt(maxTeamsRaw, 10) || 50) : 50;
+  const ownedCount = await prisma.membership.count({
+    where: {
+      userId: ctx.user.id,
+      role: MembershipRole.OWNER,
+      accepted: true,
+      team: { isOrganization: false },
+    },
+  });
+  if (ownedCount >= maxTeams) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You already own the maximum number of teams (${maxTeams}).`,
+    });
+  }
+
   const slug = input.slug.toLowerCase();
   if (!SLUG_RE.test(slug)) {
     throw new TRPCError({
@@ -30,12 +80,23 @@ export async function createHandler({ ctx, input }: Options) {
   }
 
   try {
+    // SEC-307-FORK / SEC-308-FORK: privacy-by-default.
+    //
+    // Upstream cal.com defaults `isPrivate: false`, which means a freshly-
+    // created team's `/team/<slug>` page lists members publicly and the
+    // booking pages are SEO-indexable. For a Clever-managed instance this
+    // is the wrong default — internal team rosters and meeting names
+    // shouldn't reach search engines until someone explicitly opts in.
+    //
+    // We set `isPrivate: true` here at the application layer rather than
+    // changing the Prisma column default (which would require a migration
+    // applied to historical rows). Owners can flip it from team settings.
     return await prisma.team.create({
       data: {
         slug,
         name: input.name,
         isOrganization: false,
-        isPrivate: false,
+        isPrivate: true,
         hideBranding: false,
         members: {
           create: {

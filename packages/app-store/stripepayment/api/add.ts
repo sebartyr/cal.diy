@@ -6,6 +6,7 @@ import { z } from "zod";
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import prisma from "@calcom/prisma";
 
+import { encodeOAuthState } from "../../_utils/oauth/encodeOAuthState";
 import { getStripeAppKeys } from "../lib/getStripeAppKeys";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -35,7 +36,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         country: process.env.NEXT_PUBLIC_IS_E2E ? "US" : undefined,
       },
       redirect_uri,
-      state: typeof req.query.state === "string" ? req.query.state : undefined,
+      // SEC-101: bind the state to the current session so the callback can
+      // verify it. Previously the raw req.query.state was passed through
+      // untouched and Stripe was on the NONCE_EXEMPT allowlist, which meant
+      // any caller could supply arbitrary `returnTo` in state. The callback
+      // would then redirect through getSafeRedirectUrl — still bounded, but
+      // a useful primitive for crafted OAuth-completion flows.
+      state: encodeOAuthState(req),
     };
     /** stringify is being dumb here */
     const params = z.record(z.any()).parse(stripeConnectParams);

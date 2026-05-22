@@ -1,0 +1,915 @@
+# Tickets remediation cal.diy fork Clever Cloud
+# Format YAML — importable Jira / GitHub via scripts wrapper
+# Arbitrages Pass 2 Codex appliqués : drops SEC-109/SEC-206/PERF-005, requalifs PERF-004
+# Overrides Clever contextuels conservés : BUG-001=P0, SEC-001=P0, SEC-200=P0 (UNKEY absent confirmé PoC)
+
+# ============================================================
+# SPRINT 0 — LOCKDOWN SELF-HOST (BLOCKING)
+# ============================================================
+
+- id: SPRINT0-001
+  title: "Lockdown scripts dev — allowlist DATABASE_URL + refus DB hosted Clever"
+  sprint: 0
+  severity: P1
+  findings: [SEC-300-FORK, SEC-301-FORK]
+  category: security
+  clever_specific: true
+  risk_chain_id: backdoor-admin
+  assignee_role: presales-eng
+  effort: S
+  description: |
+    Renforcer scripts/dev-grant-password.ts et scripts/seed-test-team.ts.
+    - Refuser si DATABASE_URL hostname != "localhost", "127.0.0.1", "db", "postgres"
+    - Refuser si NODE_ENV=production
+    - Refuser si User cible a role=ADMIN (sans confirmation interactive)
+    - seed-test-team.ts : ajouter le même guard (actuellement aucun)
+  acceptance:
+    - "DATABASE_URL=postgresql://...@*.clever-cloud.com → script refuse avec message clair"
+    - "DATABASE_URL=postgresql://...@localhost → script accepte"
+    - "Test interactif confirmation pour admin"
+  requires_pm_decision: false
+  requires_explain: false
+
+- id: SPRINT0-002
+  title: "Désactiver signup public + allowlist email domain"
+  sprint: 0
+  severity: P1
+  findings: [SEC-310-FORK]
+  category: security
+  clever_specific: true
+  risk_chain_id: backdoor-admin
+  assignee_role: backend
+  effort: S
+  description: |
+    Variable SIGNUP_DISABLED=true respectée côté :
+    - API route /api/auth/signup → 404
+    - UI page /auth/signup → 404 ou redirect
+    - tRPC procedure publicProcedure correspondante → throw
+    Allowlist optionnelle TEAMS_ALLOWED_EMAIL_DOMAIN sur signup ET teams.create.
+  acceptance:
+    - "POST /api/auth/signup → 404 avec SIGNUP_DISABLED=true"
+    - "GET /auth/signup → 404"
+    - "Avec TEAMS_ALLOWED_EMAIL_DOMAIN=clever-cloud.com, signup external@gmail.com → 403"
+  requires_pm_decision: false
+
+- id: SPRINT0-003
+  title: "Rate-limit fail-closed en production"
+  sprint: 0
+  severity: P0
+  findings: [SEC-200]
+  category: security
+  clever_specific: false
+  risk_chain_id: backdoor-admin
+  assignee_role: backend-security
+  effort: M
+  description: |
+    packages/lib/rateLimit.ts:33-42 — modifier le fallback :
+    - Si NODE_ENV=production ET !UNKEY_ROOT_KEY → throw au boot (refus démarrage)
+    - OU fallback in-memory LRU sliding-window 60s sur endpoints /api/auth/*
+    Préférence : option A (refus démarrage). Plus simple, plus explicite.
+  acceptance:
+    - "NODE_ENV=production sans UNKEY_ROOT_KEY → app refuse de démarrer"
+    - "200 POST /api/auth/callback/credentials → ≥ 1 × 429 dans 60s"
+    - "Re-run PoC SEC-200 → 429 visible"
+  requires_pm_decision: false
+
+- id: SPRINT0-004
+  title: "Dockerfile — retirer ARG NEXTAUTH_SECRET=secret + USER non-root"
+  sprint: 0
+  severity: P2
+  findings: [SEC-204]
+  category: security
+  clever_specific: false
+  risk_chain_id: backdoor-admin
+  assignee_role: infra
+  effort: S
+  description: |
+    Dockerfile:10-35, 77-94
+    - ARG NEXTAUTH_SECRET (sans default) → erreur explicite si oublié
+    - ARG CALENDSO_ENCRYPTION_KEY (sans default)
+    - RUN useradd -u 1001 -m calcom && USER calcom dans le stage runner
+    - Préférer BuildKit --secret si vraiment besoin au build
+  acceptance:
+    - "docker history cal-diy:latest | grep -i 'NEXTAUTH_SECRET=secret' → vide"
+    - "docker run --rm cal-diy id → uid != 0"
+
+- id: SPRINT0-005
+  title: "Vérification ops — UNKEY_ROOT_KEY set sur env Clever"
+  sprint: 0
+  severity: P0
+  findings: [SEC-200]
+  category: ops
+  clever_specific: true
+  assignee_role: ops
+  effort: XS
+  description: |
+    Côté infra Clever : confirmer que UNKEY_ROOT_KEY est provisionné sur l'env hosted.
+    Si non — SPRINT0-003 doit refuser le démarrage.
+  acceptance:
+    - "UNKEY_ROOT_KEY visible dans env vars Clever (sans valeur loggée)"
+
+# ============================================================
+# SPRINT 1 — P0 CONFIRMÉS EN POC
+# ============================================================
+
+- id: SPRINT1-001
+  title: "PBAC stub → vrai check Membership"
+  sprint: 1
+  severity: P0
+  findings: [SEC-001]
+  category: security
+  clever_specific: false
+  risk_chain_id: backdoor-admin
+  assignee_role: backend-security
+  effort: M
+  description: |
+    packages/trpc/server/routers/viewer/eventTypes/util.ts:15-20, 159-175 — remplacer le stub no-op par :
+    - Option A : check Membership via requireMember du fork (packages/trpc/.../teams/permissions.ts)
+    - Option B : rediriger createEventPbacProcedure vers eventOwnerProcedure (qui vérifie L65-77)
+    10 procedures concernées : delete, heavy.update, heavy.duplicate, get, getHosts*, exportHostsForWeights, getChildrenForAssignment, getHostsWithLocationOptions, massApplyHostLocation.
+  acceptance:
+    - "PoC SEC-001 re-run : eventTypes.delete cross-tenant → 403 FORBIDDEN"
+    - "Test unitaire : user non-membre × 10 procedures → 403 sur toutes"
+    - "Test unitaire : team admin légitime × même procedures → 200"
+  requires_pm_decision: false
+
+- id: SPRINT1-002
+  title: "Double-booking — pg_advisory_xact_lock sur (userId, slotStart)"
+  sprint: 1
+  severity: P0
+  findings: [BUG-001]
+  category: bug
+  clever_specific: false
+  risk_chain_id: ""
+  assignee_role: backend
+  effort: M
+  description: |
+    packages/features/bookings/lib/handleNewBooking/createBooking.ts:139-147 — englober ensureAvailableUsers + createBooking dans :
+    prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${hash(userId, slotStart)})`;
+      // ensureAvailableUsers + create
+    }, { isolationLevel: 'Serializable' })
+    Étendre BUG-013 idempotencyKey à PENDING dans le même PR.
+  acceptance:
+    - "PoC BUG-001 re-run (10 concurrent, requiresConfirmation=true) → exactement 1 booking, 9 × 409"
+    - "Test unitaire : 5 concurrent same-slot → 1 ACCEPTED, 4 conflict"
+    - "Pas de régression seats (createNewSeat utilise FOR UPDATE)"
+  requires_pm_decision: false
+
+- id: SPRINT1-003
+  title: "idempotencyKey extension couvre ACCEPTED + PENDING"
+  sprint: 1
+  severity: P2
+  findings: [BUG-013]
+  category: bug
+  assignee_role: backend
+  effort: XS
+  description: |
+    packages/prisma/extensions/booking-idempotency-key.ts:27-36 — générer idempotencyKey aussi pour PENDING ; reset à null sur CANCELLED/REJECTED.
+  acceptance:
+    - "5 POST /api/book/event PENDING même slot → 1 succès, 4 conflict"
+
+# ============================================================
+# SPRINT 2 — P1 CRITIQUES (CHAÎNE 2 + CHAÎNE 3)
+# ============================================================
+
+- id: SPRINT2-001
+  title: "Migration AES-256-CBC → AES-256-GCM avec prefix v2:"
+  sprint: 2
+  severity: P1
+  findings: [SEC-100]
+  category: security
+  clever_specific: false
+  risk_chain_id: oauth-creds-leak
+  assignee_role: backend-security
+  effort: M
+  description: |
+    packages/lib/crypto.ts:1-41 :
+    - Nouveau encrypt/decrypt en aes-256-gcm, format `v2:iv:tag:ciphertext`
+    - decrypt lit prefix : `v2:` → GCM, sans prefix → CBC legacy
+    - À chaque decrypt CBC : re-encrypt en GCM côté caller (lazy migration)
+    - Documenter une migration script optionnelle pour bulk re-encrypt
+  acceptance:
+    - "Tests unitaires : roundtrip GCM + decrypt legacy CBC"
+    - "Manual : sample 10 credentials decrypt OK avant + après deploy"
+
+- id: SPRINT2-002
+  title: "Backup codes 2FA hashés (bcrypt)"
+  sprint: 2
+  severity: P2
+  findings: [SEC-009]
+  category: security
+  assignee_role: backend-security
+  effort: M
+  description: |
+    apps/web/app/api/auth/two-factor/totp/setup/route.ts:71-79 — stocker bcrypt(code) au lieu de symmetricEncrypt.
+    Perdre la capacité de re-show — afficher les codes une seule fois à la création + lors d'un regenerate.
+    Migration : invalider les backup codes existants au prochain login (forcer regen).
+  acceptance:
+    - "Test : génération + validation d'un backup code OK"
+    - "DB inspection : backupCodes n'est plus déchiffrable"
+
+- id: SPRINT2-003
+  title: "jwt.verify early throw si CALENDSO_ENCRYPTION_KEY absent"
+  sprint: 2
+  severity: P1
+  findings: [SEC-003]
+  category: security
+  assignee_role: backend
+  effort: XS
+  description: |
+    packages/features/auth/lib/oAuthAuthorization.ts:9 :
+    if (!process.env.CALENDSO_ENCRYPTION_KEY) throw new Error("CALENDSO_ENCRYPTION_KEY missing");
+    return jwt.verify(token, process.env.CALENDSO_ENCRYPTION_KEY) as OAuthTokenPayload;
+  acceptance:
+    - "Boot sans CALENDSO_ENCRYPTION_KEY → throw"
+
+- id: SPRINT2-010
+  title: "OAuth confused-deputy — retirer Stripe de NONCE_EXEMPT_APPS"
+  sprint: 2
+  severity: P1
+  findings: [SEC-101]
+  category: security
+  risk_chain_id: oauth-creds-leak
+  assignee_role: backend-security
+  effort: S
+  description: |
+    packages/app-store/_utils/oauth/decodeOAuthState.ts:6 :
+    - Retrait immédiat de "stripe" de NONCE_EXEMPT_APPS
+    - Pour "basecamp3", "dub", "webex", "tandem" : implémenter nonce alternatif via cookie HttpOnly server-side (corrélation oauth_state_<userId>)
+  acceptance:
+    - "Test : Stripe callback avec state mismatch → 400 ou 403"
+    - "Callback Webex/Basecamp/Dub/Tandem → vérif cookie nonce avant échange code"
+
+- id: SPRINT2-011
+  title: "OAuth callbacks reject state === undefined"
+  sprint: 2
+  severity: P2
+  findings: [SEC-102]
+  category: security
+  assignee_role: backend
+  effort: S
+  description: |
+    Dans packages/app-store/{zoomvideo,office365calendar,feishucalendar,larkcalendar,googlecalendar}/api/callback.ts :
+    if (state === undefined) return res.status(400).json({ error: "missing state" });
+
+- id: SPRINT2-020
+  title: "SSRF webhook — async validate + DNS pinning"
+  sprint: 2
+  severity: P1
+  findings: [SEC-103]
+  category: security
+  risk_chain_id: oauth-creds-leak
+  assignee_role: backend-security
+  effort: M
+  description: |
+    packages/lib/ssrfProtection.ts:137-149 + packages/features/webhooks/lib/sendPayload.ts:312-321 :
+    - Bloquer link-local/metadata/loopback AVANT branche self-host (corriger l'ordre)
+    - Normaliser IPv4-map IPv6 (::ffff:169.254.169.254) → 169.254.169.254
+    - await validateUrlForSSRF (async, DNS lookup) avant chaque fetch outbound
+    - Idéal : résoudre A-record une fois, fetch par IP avec Host: header (DNS pinning anti-rebinding)
+  acceptance:
+    - "POST webhook avec subscriberUrl=http://[::ffff:169.254.169.254]/ → 400"
+    - "Test : DNS rebinding (TTL court) → bloqué au send"
+
+- id: SPRINT2-021
+  title: "SSRF CalDAV/ICS-feed — validateUrlForSSRF dans add handlers"
+  sprint: 2
+  severity: P1
+  findings: [SEC-104]
+  category: security
+  risk_chain_id: oauth-creds-leak
+  assignee_role: backend
+  effort: S
+  description: |
+    packages/app-store/caldavcalendar/api/add.ts:12-44 et packages/app-store/ics-feedcalendar/api/add.ts:13-50 :
+    await validateUrlForSSRF(url) en tête, throw HttpError(400) si invalide.
+
+- id: SPRINT2-030
+  title: "RGPD — defaults team isPrivate=true + isSEOIndexable flagué"
+  sprint: 2
+  severity: P1
+  findings: [SEC-307-FORK, SEC-308-FORK, RGPD-300-FORK]
+  category: rgpd
+  clever_specific: true
+  risk_chain_id: internal-directory-leak
+  assignee_role: backend
+  effort: XS
+  description: |
+    - packages/trpc/server/routers/viewer/teams/create.handler.ts:39 → isPrivate: true (default opt-in publication)
+    - apps/web/server/lib/team/[slug]/getServerSideProps.ts:91 → isSEOIndexable: !team.isPrivate && process.env.TEAMS_PUBLIC_INDEXABLE === "true"
+    - Migration : NE PAS toucher les teams existantes (leur isPrivate actuel reste source de vérité)
+  acceptance:
+    - "Création team via UI → isPrivate=true en DB"
+    - "GET /team/<slug> d'une team privée → no members list, robots noindex"
+
+- id: SPRINT2-031
+  title: "Vérification région Sentry (EU obligatoire)"
+  sprint: 2
+  severity: P2
+  findings: [RGPD-302-FORK]
+  category: rgpd
+  clever_specific: true
+  assignee_role: ops
+  effort: XS
+  description: |
+    Vérifier NEXT_PUBLIC_SENTRY_DSN pointe vers ingestion EU (sentry.io région EU OU self-hosted Sentry EU).
+    Sinon : désactiver Sentry, ou activer scrubbing PII via beforeSend.
+
+- id: SPRINT2-032
+  title: "DPIA déclenché par DPO sur instance interne"
+  sprint: 2
+  severity: P1
+  findings: [RGPD-300-FORK]
+  category: rgpd
+  clever_specific: true
+  risk_chain_id: internal-directory-leak
+  assignee_role: dpo
+  effort: M
+  description: |
+    Lancer une analyse d'impact sur la protection des données (DPIA Art. 35 RGPD) pour l'instance cal.diy interne Clever.
+    Couvrir : annuaire publié, traitement emails prospects, sous-traitants (Google/Pipedrive/Sentry).
+
+- id: SPRINT2-040
+  title: "inviteMember — envoi email + consommation token"
+  sprint: 2
+  severity: P1
+  findings: [SEC-302-FORK, BUG-100-FORK]
+  category: security
+  clever_specific: true
+  assignee_role: backend
+  effort: M
+  description: |
+    packages/trpc/server/routers/viewer/teams/inviteMember.handler.ts:62-66 :
+    - Implémenter envoi email (réutiliser EmailService upstream) avec URL contenant le token
+    - Idéalement : NE PAS créer la Membership avant que l'email parte (création atomique avec succès envoi)
+    - Côté acceptOrLeave : consommer le VerificationToken atomiquement (updateMany expires<now)
+  acceptance:
+    - "Test : inviteMember → 1 email envoyé visible en staging MailHog"
+    - "Test : second clic sur lien expiré → 410 Gone"
+
+- id: SPRINT2-050
+  title: "[PM DECISION] requiresBookerEmailVerification default ON"
+  sprint: 2
+  severity: P1
+  findings: [SEC-106]
+  category: security
+  clever_specific: true
+  assignee_role: backend
+  effort: M
+  requires_pm_decision: true
+  description: |
+    Trade-off : spoofing booker email (mails signés Clever vers prospects/concurrents) vs UX (étape supplémentaire).
+    Décision produit requise.
+    Alternative : rate-limit par hash(bookerEmail).
+
+- id: SPRINT2-051
+  title: "[PM DECISION] Embed iframe origin check OU désactivation"
+  sprint: 2
+  severity: P2
+  findings: [SEC-202]
+  category: security
+  assignee_role: frontend
+  effort: S
+  requires_pm_decision: true
+  description: |
+    Si l'embed iframe n'est PAS un use-case pour Clever : désactiver complètement.
+    Sinon : ajouter validation e.origin dans embed-iframe.ts:559-568 + embed.ts:1565-1582.
+
+- id: SPRINT2-052
+  title: "[PM DECISION] Booking event-type hidden → 404"
+  sprint: 2
+  severity: P2
+  findings: [SEC-105]
+  category: security
+  assignee_role: backend
+  effort: XS
+  requires_pm_decision: true
+  description: |
+    Sémantique "hidden" à clarifier produit : non listé OU non bookable ?
+    Si non bookable : packages/features/bookings/lib/handleNewBooking/getEventTypesFromDB.ts → ajouter `hidden: true` au select + throw HttpError(404) si hidden && !hashedLink.
+
+- id: SPRINT2-060
+  title: "Magic-link maxAge bug commentaire (10h → 10 min)"
+  sprint: 2
+  severity: P2
+  findings: [SEC-008]
+  category: security
+  assignee_role: backend
+  effort: XS
+  description: |
+    packages/features/auth/lib/next-auth-options.ts:362 — `maxAge: 10 * 60` (au lieu de 10 * 60 * 60).
+
+- id: SPRINT2-061
+  title: "Recurring count borné max(52)"
+  sprint: 2
+  severity: P1
+  findings: [BUG-005]
+  category: bug
+  assignee_role: backend
+  effort: XS
+  description: |
+    packages/prisma/zod-utils.ts:234-243 — `count: z.number().int().min(1).max(52)`.
+    Vérifier aussi data.length <= maxAllowed dans handleNewRecurringBooking.
+
+- id: SPRINT2-062
+  title: "bookings.find publicProc — drop description du select"
+  sprint: 2
+  severity: P3
+  findings: [SEC-012]
+  category: security
+  assignee_role: backend
+  effort: XS
+  description: |
+    packages/trpc/server/routers/viewer/bookings/_router.tsx:91-98 — retirer `description: true` du select.
+
+# ============================================================
+# SPRINT 3 — DEFENSE IN DEPTH + PERF + FORK STRATEGY
+# ============================================================
+
+- id: SPRINT3-001
+  title: "CSP étendue à toutes les pages (Report-Only 48h)"
+  sprint: 3
+  severity: P1
+  findings: [SEC-201]
+  category: security
+  assignee_role: frontend
+  effort: S
+  description: |
+    apps/web/proxy.ts:64-66 — matcher /((?!_next/static|_next/image|api|favicon).*)/
+    Phase 1 : header Content-Security-Policy-Report-Only avec endpoint report-uri 48h pour identifier les violations.
+    Phase 2 : passer en enforce après triage.
+
+- id: SPRINT3-002
+  title: "CSP retirer 'unsafe-inline' https: en prod"
+  sprint: 3
+  severity: P2
+  findings: [SEC-205]
+  category: security
+  assignee_role: frontend
+  effort: S
+  description: |
+    apps/web/lib/csp.ts:19-25 — retirer "'unsafe-inline' https:" en mode IS_PRODUCTION.
+    Garder "'nonce-${nonce}' 'strict-dynamic' 'self'".
+
+- id: SPRINT3-010
+  title: "Mesure EXPLAIN Webhook trigger queries"
+  sprint: 3
+  severity: P1
+  findings: [BUG-009]
+  category: perf
+  assignee_role: backend-security
+  effort: S
+  requires_explain: true
+  description: |
+    Avant migration : capturer EXPLAIN ANALYZE des queries SELECT FROM Webhook WHERE userId/teamId/eventTypeId ...
+    Estimer seq scan vs index scan.
+
+- id: SPRINT3-011
+  title: "Migration Webhook indexes CONCURRENTLY"
+  sprint: 3
+  severity: P1
+  findings: [BUG-009]
+  category: bug
+  assignee_role: backend
+  effort: S
+  description: |
+    packages/prisma/schema.prisma:1142-1170 → @@index([userId]) @@index([teamId]) @@index([eventTypeId]) @@index([platformOAuthClientId])
+    Migration SQL séparée en `CREATE INDEX CONCURRENTLY` + `--no-transaction` (éviter ACCESS EXCLUSIVE en prod).
+
+- id: SPRINT3-012
+  title: "Migration Booking index [eventTypeId, startTime, status]"
+  sprint: 3
+  severity: P2
+  findings: [PERF-010]
+  category: perf
+  assignee_role: backend
+  effort: S
+  requires_explain: true
+  description: |
+    packages/prisma/schema.prisma:918-929 → @@index([eventTypeId, startTime, status])
+    Précédé d'un EXPLAIN sur getBusyTimesForLimitChecks.
+
+- id: SPRINT3-020
+  title: "DST utcOffset calculé à la date du slot"
+  sprint: 3
+  severity: P1
+  findings: [BUG-003]
+  category: bug
+  assignee_role: backend
+  effort: XS
+  description: |
+    packages/features/bookings/lib/handleNewBooking/validateBookingTimeIsNotOutOfBounds.ts:41-42 :
+    getUTCOffsetByTimezone(tz, reqBodyStartTime)  // au lieu de getUTCOffsetByTimezone(tz)
+
+- id: SPRINT3-030
+  title: "Externaliser canManageEventType (réduire couplage upstream)"
+  sprint: 3
+  severity: P2
+  findings: [FORK-300-FORK]
+  category: fork-strategy
+  clever_specific: true
+  assignee_role: presales-eng
+  effort: S
+  description: |
+    Extraire canManageEventType de packages/trpc/server/routers/viewer/webhook/util.ts dans un fichier Clever-only (canManageEventType.ts).
+    Réduit le patch upstream de ~80 lignes à ~5 lignes.
+
+- id: SPRINT3-031
+  title: "FORK-NOTES.md racine + procédure rebase"
+  sprint: 3
+  severity: P2
+  findings: [FORK-301-FORK]
+  category: fork-strategy
+  clever_specific: true
+  assignee_role: presales-eng
+  effort: XS
+  description: |
+    Créer /FORK-NOTES.md (cf. fork-strategy.md §7).
+    Documenter : upstream remote, fichiers patchés, dirs Clever-only, procédure cherry-pick CVE.
+
+- id: SPRINT3-032
+  title: "Pinner strict Radix + Renovate config"
+  sprint: 3
+  severity: P3
+  findings: [SEC-309-FORK]
+  category: fork-strategy
+  clever_specific: true
+  assignee_role: infra
+  effort: S
+  description: |
+    apps/web/package.json + packages/ui/package.json — retirer les ^ des Radix versions.
+    renovate.json : rangeStrategy=pin, automerge patch only avec check-types + yarn-audit.
+
+- id: SPRINT3-033
+  title: "Semgrep + CodeQL en CI"
+  sprint: 3
+  severity: P3
+  findings: [FORK-302-FORK]
+  category: fork-strategy
+  clever_specific: true
+  assignee_role: infra
+  effort: S
+  description: |
+    .github/workflows/semgrep.yml (cf. fork-strategy.md §5.3) — démarrer sur packages/trpc/.../teams/** + scripts/**
+    .github/workflows/codeql.yml — global JS/TS, gratuit.
+
+- id: SPRINT3-040
+  title: "Audit trail actions admin (logs structurés)"
+  sprint: 3
+  severity: P2
+  findings: [SEC-305-FORK]
+  category: security
+  clever_specific: true
+  assignee_role: backend-security
+  effort: M
+  description: |
+    Logger structuré JSON stdout sur chaque mutation : actorUserId, actorRole, scope (team/eventType/user), scopeId, action, payload before/after, at.
+    Cibles : teams.{delete,adminDelete,update,removeMember,changeMemberRole,inviteMember}, users.delete, eventTypes.delete.
+    Sortir aussi en breadcrumb Sentry.
+    Évolution future : table AuditEvent avec rétention configurable.
+
+- id: SPRINT3-041
+  title: "2FA imposé pour UserPermissionRole.ADMIN"
+  sprint: 3
+  severity: P1
+  findings: [RGPD-checklist-§9]
+  category: security
+  clever_specific: true
+  assignee_role: backend-security
+  effort: S
+  description: |
+    Au login (next-auth callbacks) ou au middleware admin : si user.role === ADMIN && !user.twoFactorEnabled → forcer setup 2FA avant accès admin.
+
+# ============================================================
+# SPRINT 4 — P2/P3 CONTINU + RGPD CONTINU
+# ============================================================
+
+- id: SPRINT4-001
+  title: "Politique password ≥ 12 chars + HIBP k-anonymity"
+  sprint: 4
+  severity: P2
+  findings: [SEC-005, SEC-006]
+  category: security
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-002
+  title: "Reset-password token sha256 hash + migration"
+  sprint: 4
+  severity: P2
+  findings: [SEC-007]
+  category: security
+  assignee_role: backend-security
+  effort: M
+
+- id: SPRINT4-003
+  title: "TOTP anti-replay (twoFactorLastUsedStep)"
+  sprint: 4
+  severity: P2
+  findings: [SEC-009-sub]
+  category: security
+  assignee_role: backend-security
+  effort: S
+
+- id: SPRINT4-004
+  title: "Email verification — tokens random per-attempt + hash + consume"
+  sprint: 4
+  severity: P2
+  findings: [SEC-009-sub]
+  category: security
+  assignee_role: backend
+  effort: M
+
+- id: SPRINT4-005
+  title: "disable 2FA — exiger password aussi pour users OAuth"
+  sprint: 4
+  severity: P2
+  findings: [SEC-011]
+  category: security
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-006
+  title: "Avatar upload — limite taille décodée + magic bytes"
+  sprint: 4
+  severity: P2
+  findings: [SEC-015]
+  category: security
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-007
+  title: "OAuth refresh-token race — single-flight lock"
+  sprint: 4
+  severity: P2
+  findings: [SEC-107]
+  category: security
+  assignee_role: backend
+  effort: M
+
+- id: SPRINT4-008
+  title: "Markdown _blank + noopener noreferrer"
+  sprint: 4
+  severity: P2
+  findings: [SEC-203]
+  category: security
+  assignee_role: backend
+  effort: XS
+
+- id: SPRINT4-009
+  title: "teams.create quota + allowlist domain"
+  sprint: 4
+  severity: P2
+  findings: [SEC-303-FORK]
+  category: security
+  clever_specific: true
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-010
+  title: "Team image fields — réduire MAX_IMAGE_FIELD_LENGTH ou move to object storage"
+  sprint: 4
+  severity: P3
+  findings: [SEC-304-FORK]
+  category: security
+  clever_specific: true
+  assignee_role: backend
+  effort: M
+
+- id: SPRINT4-011
+  title: "adminDelete — refuser si bookings actifs sans force=true"
+  sprint: 4
+  severity: P2
+  findings: [SEC-306-FORK]
+  category: security
+  clever_specific: true
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-012
+  title: "Reset-password race — consume atomique updateMany"
+  sprint: 4
+  severity: P2
+  findings: [BUG-002]
+  category: bug
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-013
+  title: "DST working hours offset par date du slot"
+  sprint: 4
+  severity: P2
+  findings: [BUG-004]
+  category: bug
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-014
+  title: "Recurring booking — Promise.all batched 5 parallel"
+  sprint: 4
+  severity: P2
+  findings: [BUG-006]
+  category: bug
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-015
+  title: "Catches silencieux callbacks OAuth — logger.warn"
+  sprint: 4
+  severity: P2
+  findings: [BUG-007]
+  category: bug
+  assignee_role: backend
+  effort: XS
+
+- id: SPRINT4-016
+  title: "Migrations Prisma — pattern CONCURRENTLY documenté"
+  sprint: 4
+  severity: P2
+  findings: [BUG-011]
+  category: bug
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-017
+  title: "adminList pagination cursor"
+  sprint: 4
+  severity: P3
+  findings: [BUG-101-FORK]
+  category: bug
+  clever_specific: true
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-018
+  title: "requireMember synthetic id null au lieu de -1"
+  sprint: 4
+  severity: P1
+  findings: [BUG-102-FORK]
+  category: bug
+  clever_specific: true
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-019
+  title: "logger.silly JSON.stringify guard"
+  sprint: 4
+  severity: P2
+  findings: [PERF-002]
+  category: perf
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-020
+  title: "ISR pages publiques team/[slug]"
+  sprint: 4
+  severity: P2
+  findings: [PERF-003]
+  category: perf
+  assignee_role: backend
+  effort: M
+
+- id: SPRINT4-021
+  title: "getPublicEvent — repo bundle includes profonds"
+  sprint: 4
+  severity: P2
+  findings: [PERF-009]
+  category: perf
+  assignee_role: backend
+  effort: L
+
+- id: SPRINT4-022
+  title: "/api/logo — cap Content-Length + cache derivé"
+  sprint: 4
+  severity: P2
+  findings: [PERF-011]
+  category: perf
+  assignee_role: backend
+  effort: M
+
+# Bloc DPO/Ops continu
+- id: SPRINT4-100
+  title: "DPIA finalisé + page /privacy + liste sous-traitants"
+  sprint: 4
+  severity: P1
+  findings: [RGPD-checklist-§10]
+  category: rgpd
+  clever_specific: true
+  assignee_role: dpo
+  effort: L
+
+- id: SPRINT4-101
+  title: "Cron purge VerificationToken expirés"
+  sprint: 4
+  severity: P2
+  findings: [RGPD-301-FORK]
+  category: rgpd
+  clever_specific: true
+  assignee_role: backend
+  effort: S
+
+- id: SPRINT4-102
+  title: "Politique rétention Booking + cron purge"
+  sprint: 4
+  severity: P2
+  findings: [RGPD-301-FORK]
+  category: rgpd
+  clever_specific: true
+  assignee_role: backend
+  effort: M
+
+- id: SPRINT4-103
+  title: "Procédure breach notification < 72h"
+  sprint: 4
+  severity: P1
+  findings: [RGPD-checklist-§10]
+  category: rgpd
+  clever_specific: true
+  assignee_role: ops
+  effort: M
+
+# Investigations
+- id: INVEST-001
+  title: "[INVESTIGATE] PERF-004 — React Profiler équipe 50 hosts"
+  sprint: 4
+  severity: P3
+  findings: [PERF-004]
+  category: perf
+  assignee_role: frontend
+  effort: S
+  requires_explain: true
+  description: |
+    Pass 2 Codex : "watch ciblés, pas global". Mesurer avec React Profiler avant ticket fix.
+
+- id: INVEST-002
+  title: "[INVESTIGATE] BUG-002 reproduction DST ciblée"
+  sprint: 4
+  severity: P2
+  findings: [BUG-002]
+  category: bug
+  assignee_role: backend
+  effort: S
+  description: |
+    Reproduire le DST edge mars/octobre EU + mars/novembre US. Décider P1/P2 selon impact mesuré.
+
+- id: INVEST-003
+  title: "[INVESTIGATE] PERF-001 — mesure pool Prisma équipe 50+ hosts"
+  sprint: 4
+  severity: P1
+  findings: [PERF-001]
+  category: perf
+  assignee_role: backend
+  effort: M
+  requires_explain: true
+  description: |
+    log.warn("High-load warning") déjà présent. Mesurer round-trips DB / saturation pool sur instance staging avec team 50+ hosts.
+
+# Epic batch P3
+- id: EPIC-P3-Q3
+  title: "Epic cleanup-p3-batch-Q3 — quick wins XS groupés"
+  sprint: 4
+  severity: P3
+  findings: [SEC-004, SEC-010, SEC-013, SEC-014, SEC-016, SEC-017, SEC-108, SEC-207, BUG-008, BUG-010, BUG-012, BUG-014, PERF-006, PERF-007, PERF-008, PERF-100-FORK]
+  category: cleanup
+  assignee_role: backend
+  effort: L
+  description: |
+    Regrouper les 16 findings P3 (un commit par finding, un PR groupé) :
+    SEC-004 cookies sameSite, SEC-010 LRU TTL, SEC-013 NEXT_PUBLIC_IS_E2E,
+    SEC-014 impersonation dead-code, SEC-016 JSON.parse state, SEC-017 HMAC v2,
+    SEC-108 zod bornes, SEC-207 head scripts doc,
+    BUG-008 catch null Prisma, BUG-010 onDelete annot, BUG-012 engines.node, BUG-014 rrule bump,
+    PERF-006 optimize, PERF-007 framer LazyMotion, PERF-008 limit concurrency, PERF-100-FORK EventTeamAssignmentTab.
+
+# ============================================================
+# FINDINGS DROPPED (Pass 2 Codex)
+# ============================================================
+
+- id: DROP-001
+  title: "[DROP] SEC-109 Stripe webhook stub"
+  sprint: null
+  severity: dropped
+  findings: [SEC-109]
+  justification: "Endpoint stub 404. Pas de vuln actuelle, simple note mainteneur dans FORK-NOTES.md."
+
+- id: DROP-002
+  title: "[DROP] SEC-206 Info.tsx mute HTML"
+  sprint: null
+  severity: dropped
+  findings: [SEC-206]
+  justification: "CSS constant, pas d'entrée utilisateur. Pattern fragile mais non exploitable."
+
+- id: DROP-003
+  title: "[DROP] PERF-005 FormBuilder rerender"
+  sprint: null
+  severity: dropped
+  findings: [PERF-005]
+  justification: "useFieldArray ≠ rerender keystroke. Preuve insuffisante — pas de fix sans React Profiler."
+
+- id: DROP-004
+  title: "[FUSION] BUG-014 rrule version → couvert par BUG-005"
+  sprint: 4
+  severity: P3
+  findings: [BUG-014]
+  justification: "Bump rrule géré dans le ticket recurring count borné + check au parse."

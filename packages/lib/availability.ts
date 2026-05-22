@@ -62,6 +62,14 @@ export function getWorkingHours(
   relativeTimeUnit: {
     timeZone?: string;
     utcOffset?: number;
+    /**
+     * BUG-004 (Sprint 4): when computing working hours for a slot that may
+     * cross a DST transition, callers should pass `forDate` so the offset
+     * is resolved at that date instead of `dayjs()` (i.e. "now"). Leaving
+     * it undefined preserves the legacy behavior (offset at server-time
+     * "now"), which is still correct for short-horizon contexts.
+     */
+    forDate?: ConfigType;
   },
   availability: { userId?: number | null; days: number[]; startTime: ConfigType; endTime: ConfigType }[]
 ) {
@@ -70,7 +78,9 @@ export function getWorkingHours(
   }
   const utcOffset =
     relativeTimeUnit.utcOffset ??
-    (relativeTimeUnit.timeZone ? dayjs().tz(relativeTimeUnit.timeZone).utcOffset() : 0);
+    (relativeTimeUnit.timeZone
+      ? dayjs(relativeTimeUnit.forDate).tz(relativeTimeUnit.timeZone).utcOffset()
+      : 0);
 
   const workingHours = availability.reduce((currentWorkingHours: WorkingHours[], schedule) => {
     // Include only recurring weekly availability, not date overrides

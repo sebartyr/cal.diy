@@ -1,5 +1,8 @@
 import dayjs from "@calcom/dayjs";
+import { ErrorCode } from "@calcom/lib/errorCodes";
+import { HttpError } from "@calcom/lib/http-error";
 import { isPrismaObjOrUndefined } from "@calcom/lib/isPrismaObj";
+import logger from "@calcom/lib/logger";
 import { withReporting } from "@calcom/lib/sentryWrapper";
 import prisma from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
@@ -13,6 +16,30 @@ import type { NewBookingEventType } from "./getEventTypesFromDB";
 import type { LoadedUsers } from "./loadUsers";
 import type { OriginalRescheduledBooking } from "./originalRescheduledBookingUtils";
 import type { PaymentAppData, Tracking } from "./types";
+
+const log = logger.getSubLogger({ prefix: ["createBooking", "slotLock"] });
+
+/**
+ * Derive a (int4, int4) key pair for `pg_advisory_xact_lock`. The lock
+ * serializes concurrent createBooking() calls for the same organizer +
+ * slot start so the upstream availability check (run before the
+ * transaction) cannot be invalidated by a sibling request between the
+ * check and the INSERT.
+ *
+ * The second component is the slot start in seconds, masked to int4
+ * positive range. Future dates past 2038-01-19 wrap around — collisions
+ * are still safe (they only widen the lock scope), so we trade a small
+ * over-locking for a stable key shape.
+ */
+export function lockKeyForBookingSlot(
+  userId: number,
+  slotStart: Date
+): { userPart: number; slotPart: number } {
+  return {
+    userPart: userId,
+    slotPart: Math.floor(slotStart.getTime() / 1000) & 0x7fffffff,
+  };
+}
 
 type ReqBodyWithEnd = TgetBookingDataSchema & { end: string };
 
@@ -137,6 +164,47 @@ async function saveBooking(
   }
 
   return prisma.$transaction(async (tx) => {
+    // BUG-001 fix: serialize concurrent createBooking() calls for the same
+    // (organizer, slotStart). The upstream availability check runs OUTSIDE
+    // the transaction, leaving a TOCTOU window between
+    // `ensureAvailableUsers` and `booking.create`. Two concurrent POST
+    // /api/book/event for the same slot used to both pass the check and
+    // both produce a Booking row. Confirmed by scripts/audit-poc/poc-bug-001.
+    //
+    // We only protect ACCEPTED state here. PENDING (requiresConfirmation)
+    // is intentionally a queue — multiple attendees may request the same
+    // slot; the host accepts one. Idempotent retries on PENDING are
+    // handled by the idempotencyKey extension (BUG-013).
+    const { startTime, endTime, status: bookingStatus } = newBookingData;
+    const willBeAccepted = bookingStatus === undefined || bookingStatus === BookingStatus.ACCEPTED;
+
+    if (startTime instanceof Date && endTime instanceof Date && willBeAccepted && organizerUser.id) {
+      const { userPart, slotPart } = lockKeyForBookingSlot(organizerUser.id, startTime);
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${userPart}::int4, ${slotPart}::int4)`;
+
+      // Re-check for an overlapping accepted booking. The lock guarantees
+      // serial execution from this point forward for the same (user, slot)
+      // pair, so a row visible here is final.
+      const conflict = await tx.booking.findFirst({
+        where: {
+          userId: organizerUser.id,
+          status: BookingStatus.ACCEPTED,
+          startTime: { lt: endTime },
+          endTime: { gt: startTime },
+        },
+        select: { id: true, uid: true, startTime: true },
+      });
+      if (conflict) {
+        log.warn("Slot conflict detected after advisory lock", {
+          organizerUserId: organizerUser.id,
+          requestedStart: startTime.toISOString(),
+          conflictBookingId: conflict.id,
+          conflictBookingUid: conflict.uid,
+        });
+        throw new HttpError({ statusCode: 409, message: ErrorCode.BookingConflict });
+      }
+    }
+
     if (originalBookingUpdateDataForCancellation) {
       await tx.booking.update(originalBookingUpdateDataForCancellation);
     }

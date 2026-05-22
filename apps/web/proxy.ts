@@ -1,5 +1,5 @@
 import process from "node:process";
-import { getCspHeader, getCspNonce } from "@lib/csp";
+import { getCspHeader, getCspNonce, type CspMode } from "@lib/csp";
 import { get } from "@vercel/edge-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -61,8 +61,18 @@ const isPagePathRequest = (url: URL) => {
   return !isNonPagePathPrefix.test(pathname) && !isFile.test(pathname);
 };
 
-const shouldEnforceCsp = (url: URL) => {
-  return url.pathname.startsWith("/auth/login") || url.pathname.startsWith("/login");
+// SEC-201 (Sprint 3): widen CSP coverage. Login pages stay in "enforce" so
+// the protection there is unchanged. Every other page-path request now gets
+// a Report-Only header so we can validate the policy under real traffic
+// before turning enforcement on globally.
+const cspModeFor = (url: URL): CspMode => {
+  if (url.pathname.startsWith("/auth/login") || url.pathname.startsWith("/login")) {
+    return "enforce";
+  }
+  if (isPagePathRequest(url)) {
+    return "report-only";
+  }
+  return "off";
 };
 
 const proxy = async (req: NextRequest): Promise<NextResponse<unknown>> => {
@@ -131,7 +141,7 @@ const contentSecurityPolicy = {
       res.headers.set("x-csp-status", "not-opted-in");
       return res;
     }
-    const cspHeader = getCspHeader({ shouldEnforceCsp: shouldEnforceCsp(req.nextUrl), nonce });
+    const cspHeader = getCspHeader({ mode: cspModeFor(req.nextUrl), nonce });
     if (cspHeader) {
       res.headers.set(cspHeader.name, cspHeader.value);
     }
@@ -163,7 +173,11 @@ function enrichRequestWithHeaders({ req }: { req: NextRequest }) {
 }
 
 export const config = {
-  matcher: ["/auth/login", "/login", "/apps/installed", "/auth/logout", "/:path*/embed", "/availability", "/api/auth/signup"],
+  matcher: [
+    // SEC-201 (Sprint 3): cover every page path so Report-Only CSP applies,
+    // while excluding asset prefixes that don't need a CSP header.
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+  ],
 };
 
 export default proxy;

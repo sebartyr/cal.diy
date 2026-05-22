@@ -24,7 +24,12 @@ export function markdownToSafeHTMLClient(markdown: string | null) {
       /<ol>/g,
       "<ol style='list-style-type: decimal; list-style-position: inside; margin-left: 12px; margin-bottom: 4px'>"
     )
-    .replace(/<a\s+href=/g, "<a target='_blank' class='text-blue-500 hover:text-blue-600' href=");
+    // SEC-203 (Sprint 4): mirror markdownToSafeHTML — add rel="noopener
+    // noreferrer" to every new-tab link.
+    .replace(
+      /<a\s+href=/g,
+      "<a target='_blank' rel='noopener noreferrer' class='text-blue-500 hover:text-blue-600' href="
+    );
 
   // Match: <li>Some text </li><li><ul>...</ul></li> or
   // Convert to: <li>Some text <ul>...</ul></li>

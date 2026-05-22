@@ -16,7 +16,7 @@ import { FeaturesRepository } from "@calcom/features/flags/features.repository";
 import { getUid } from "@calcom/lib/CalEventParser";
 import { symmetricDecrypt } from "@calcom/lib/crypto";
 import { isDelegationCredential } from "@calcom/lib/delegationCredential";
-import logger from "@calcom/lib/logger";
+import logger, { isSillyEnabled } from "@calcom/lib/logger";
 import {
   getPiiFreeDestinationCalendar,
   getPiiFreeUser,
@@ -141,7 +141,7 @@ export default class EventManager {
    * @param user
    */
   constructor(user: EventManagerUser, eventTypeAppMetadata?: Record<string, any>) {
-    log.silly("Initializing EventManager", safeStringify({ user: getPiiFreeUser(user) }));
+    if (isSillyEnabled(log)) log.silly("Initializing EventManager", safeStringify({ user: getPiiFreeUser(user) }));
     const appCredentials = getApps(user.credentials, true).flatMap((app) =>
       app.credentials.map((creds) => ({ ...creds, appName: app.name }))
     );
@@ -882,7 +882,8 @@ export default class EventManager {
           // It is completely normal to fallback for delegation credential as in that case by default no destination calendar would be set.
         }
         const createdEvent = await createEvent(credential, event);
-        log.silly("Created Calendar event using credential", safeStringify({ credential, createdEvent }));
+        if (isSillyEnabled(log))
+          log.silly("Created Calendar event using credential", safeStringify({ credential, createdEvent }));
         if (createdEvent) {
           createdEvents.push(createdEvent);
         }
@@ -911,7 +912,7 @@ export default class EventManager {
       );
       for (const destination of destinationCalendars) {
         if (eventCreated) break;
-        log.silly("Creating Calendar event", JSON.stringify({ destination }));
+        if (isSillyEnabled(log)) log.silly("Creating Calendar event", JSON.stringify({ destination }));
         if (destination.credentialId || destination.delegationCredentialId) {
           let credential = getCredential({
             id: {
@@ -1104,7 +1105,7 @@ export default class EventManager {
   ): Promise<Array<EventResult<NewCalendarEventType>>> {
     let calendarReference: PartialReference[] | undefined = undefined,
       credential;
-    log.silly("updateAllCalendarEvents", JSON.stringify({ event, booking, newBookingId }));
+    if (isSillyEnabled(log)) log.silly("updateAllCalendarEvents", JSON.stringify({ event, booking, newBookingId }));
     try {
       // If a newBookingId is given, update that calendar event
       let newBooking;
@@ -1167,7 +1168,8 @@ export default class EventManager {
             (credential) => credential.type === reference?.type
           );
           for (const credential of credentials) {
-            log.silly("updateAllCalendarEvents-credential", JSON.stringify({ credentials }));
+            if (isSillyEnabled(log))
+              log.silly("updateAllCalendarEvents-credential", JSON.stringify({ credentials }));
             result.push(updateEvent(credential, event, bookingRefUid, calendarExternalId));
           }
         }

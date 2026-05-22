@@ -8,24 +8,20 @@
  * Never run against a production database — this overwrites the user's
  * identityProvider to CAL.
  */
+
+import process from "node:process";
 import { hashPassword } from "@calcom/lib/auth/hashPassword";
 import { prisma } from "@calcom/prisma";
 import { IdentityProvider } from "@calcom/prisma/enums";
+import { assertDevDatabase } from "./lib/assert-dev-database";
 
 async function main() {
+  // Hostname-based allowlist — replaces the previous `/\b(prod|production)\b/`
+  // regex which did not match hosted DBs such as `*.clever-cloud.com`.
+  assertDevDatabase();
+
   const email = process.env.EMAIL;
   const password = process.env.PASSWORD ?? "devpass";
-
-  const dbUrl = process.env.DATABASE_URL ?? "";
-  const looksLikeProd =
-    /\b(prod|production)\b/i.test(dbUrl) || process.env.NODE_ENV === "production";
-  if (looksLikeProd && process.env.I_KNOW_WHAT_IM_DOING !== "yes") {
-    console.error(
-      "Refusing to run: DATABASE_URL or NODE_ENV looks production-like.\n" +
-        "Set I_KNOW_WHAT_IM_DOING=yes to force, but really, don't."
-    );
-    process.exit(1);
-  }
 
   if (!email) {
     console.error("Missing EMAIL env var. Example: EMAIL=you@x.com PASSWORD=devpass npx tsx ...");

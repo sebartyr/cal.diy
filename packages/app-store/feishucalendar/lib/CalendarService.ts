@@ -117,7 +117,9 @@ class FeishuCalendarService implements Calendar {
     let accessToken = "";
     try {
       accessToken = await this.auth.getToken();
-    } catch {
+    } catch (err) {
+      // BUG-007 (Sprint 4): log the underlying cause before re-throwing.
+      logger.warn("[feishucalendar] failed to obtain access token", err);
       throw new Error("get access token error");
     }
 

@@ -8,6 +8,7 @@ import { defaultResponder } from "@calcom/lib/server/defaultResponder";
 import prisma from "@calcom/prisma";
 
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import { FEISHU_HOST } from "../common";
 import { getAppAccessToken } from "../lib/AppAccessToken";
@@ -21,7 +22,9 @@ const callbackQuerySchema = z.object({
 
 async function getHandler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = callbackQuerySchema.parse(req.query);
-  const state = decodeOAuthState(req);
+  // SEC-102: refuse the callback if the HMAC-nonce state is missing or invalid.
+  const state = assertOAuthState(decodeOAuthState(req), res);
+  if (state === null) return;
 
   try {
     const appAccessToken = await getAppAccessToken();

@@ -10,15 +10,12 @@ describe("crypto", () => {
     it("should encrypt text with a valid key", () => {
       const encrypted = symmetricEncrypt(testText, testKey);
 
-      // Verify the format is "iv:ciphertext"
-      expect(encrypted).toContain(":");
-      const [iv, ciphertext] = encrypted.split(":");
-
-      // IV should be 32 characters (16 bytes in hex)
-      expect(iv).toHaveLength(32);
-      // Ciphertext should exist
-      expect(ciphertext).toBeDefined();
-      expect(ciphertext.length).toBeGreaterThan(0);
+      // Fork (Clever Cloud): output is `v2:<iv>:<tag>:<ciphertext>` (AES-GCM)
+      // rather than the upstream `<iv>:<ciphertext>` (AES-CBC). See
+      // crypto-clever.ts. We only assert there's a non-empty payload here;
+      // structural assertions live in crypto-clever.test.ts.
+      expect(typeof encrypted).toBe("string");
+      expect(encrypted.length).toBeGreaterThan(0);
     });
 
     it("should produce different ciphertexts for the same input due to random IV", () => {

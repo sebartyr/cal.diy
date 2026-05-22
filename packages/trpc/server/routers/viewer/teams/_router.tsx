@@ -3,6 +3,7 @@ import { router } from "../../../trpc";
 import {
   ZAcceptOrLeaveInput,
   ZAddMembersToEventTypesInput,
+  ZAdminDeleteInput,
   ZAdminListInput,
   ZChangeMemberRoleInput,
   ZCreateInput,
@@ -91,7 +92,7 @@ export const teamsRouter = router({
     return adminListHandler({ ctx, input });
   }),
 
-  adminDelete: authedAdminProcedure.input(ZTeamIdInput).mutation(async ({ ctx, input }) => {
+  adminDelete: authedAdminProcedure.input(ZAdminDeleteInput).mutation(async ({ ctx, input }) => {
     const { adminDeleteHandler } = await import("./adminDelete.handler");
     return adminDeleteHandler({ ctx, input });
   }),
