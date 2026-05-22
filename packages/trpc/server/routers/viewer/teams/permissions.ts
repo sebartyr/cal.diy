@@ -68,8 +68,8 @@ export async function requireMember(
       teamId,
       role: MembershipRole.OWNER,
       accepted: true,
-      disableImpersonation: false,
       createdAt: new Date(),
+      updatedAt: new Date(),
       customRoleId: null,
     };
   }
