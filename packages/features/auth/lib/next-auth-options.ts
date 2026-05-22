@@ -154,55 +154,116 @@ export async function authorizeCredentials(
     | Record<"email" | "password" | "totpCode" | "backupCode" | "totpToken", string>
     | undefined
 ): Promise<User | null> {
-  log.debug("CredentialsProvider:credentials:authorize", safeStringify({ credentials }));
+  log.warn("CredentialsProvider:authorize:entry", {
+    hasCredentials: !!credentials,
+    email: credentials?.email,
+    hasPassword: !!credentials?.password,
+    hasTotpCode: !!credentials?.totpCode,
+    hasTotpToken: !!credentials?.totpToken,
+  });
   if (!credentials) {
-    console.error(`For some reason credentials are missing`);
+    log.warn("CredentialsProvider:authorize:reject:no-credentials");
     throw new Error(ErrorCode.InternalServerError);
   }
 
   const userRepo = new UserRepository(prisma);
-  const user = await userRepo.findByEmailAndIncludeProfilesAndPassword({
-    email: credentials.email,
+  let user;
+  try {
+    user = await userRepo.findByEmailAndIncludeProfilesAndPassword({
+      email: credentials.email,
+    });
+  } catch (err) {
+    log.warn("CredentialsProvider:authorize:reject:user-lookup-threw", {
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    throw err;
+  }
+  log.warn("CredentialsProvider:authorize:user-lookup-result", {
+    found: !!user,
+    userId: user?.id,
+    idP: user?.identityProvider,
+    hasPasswordHash: !!user?.password?.hash,
+    twoFactorEnabled: user?.twoFactorEnabled,
+    locked: user?.locked,
   });
   // Don't leak information about it being username or password that is invalid
   if (!user) {
+    log.warn("CredentialsProvider:authorize:reject:user-not-found", {
+      email: credentials.email,
+    });
     throw new Error(ErrorCode.IncorrectEmailPassword);
   }
 
   // Locked users cannot login
   if (user.locked) {
+    log.warn("CredentialsProvider:authorize:reject:user-locked", { userId: user.id });
     throw new Error(ErrorCode.UserAccountLocked);
   }
 
-  await checkRateLimitAndThrowError({
-    identifier: hashEmail(user.email),
-  });
+  try {
+    await checkRateLimitAndThrowError({
+      identifier: hashEmail(user.email),
+    });
+  } catch (err) {
+    log.warn("CredentialsProvider:authorize:reject:rate-limit", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
-  // Users without a password must use their identity provider (Google/SAML) to login.
-  // The OAuth+2FA flow lands here after the user finishes the IdP step: the signIn
-  // callback redirects them to /auth/login?totp=<signed JWT>, and the TOTP form
-  // submits back through this credentials provider. We allow the password check to
-  // be skipped only when the request carries a valid, unexpired JWT that we issued
-  // for this exact email and the user did NOT sign up with the CAL provider.
-  if (!user.password?.hash) {
-    if (
-      !credentials.totpToken ||
-      !credentials.totpCode ||
-      user.identityProvider === IdentityProvider.CAL
-    ) {
+  // Two paths to authorize a credentials submission:
+  //
+  // 1. Classic email+password (+ optional TOTP): user has a password hash, we
+  //    verify it, and the 2FA branch below (if enabled) validates totpCode.
+  //
+  // 2. OAuth+2FA continuation: the user finished Google/Azure OAuth, the signIn
+  //    callback redirected them to /auth/login?totp=<signed JWT>, and the TOTP
+  //    form submits back through this credentials provider. The JWT (HS256,
+  //    issued by the signIn callback, 2-min TTL) is the proof of having
+  //    completed the IdP step. When a valid JWT for this exact email is present
+  //    and the account is not CAL-native, we skip the password check — the JWT
+  //    + TOTP combination provides two factors.
+  //
+  // Hybrid accounts (e.g. email/password signup that later linked Google) still
+  // benefit from path 2: presence of the JWT triggers the OAuth flow regardless
+  // of whether a password is also set on the account.
+  const isOAuthContinuation = !!credentials.totpToken;
+
+  if (isOAuthContinuation) {
+    log.warn("CredentialsProvider:oauth-2fa-attempt", {
+      hasTotpCode: !!credentials.totpCode,
+      idP: user.identityProvider,
+      userEmail: user.email,
+    });
+    if (!credentials.totpCode || user.identityProvider === IdentityProvider.CAL) {
+      log.warn("CredentialsProvider:oauth-2fa-rejected:precheck", {
+        reason: !credentials.totpCode ? "missing-totpCode" : "cal-identity-provider",
+      });
       throw new Error(ErrorCode.IncorrectEmailPassword);
     }
+    let jwtEmail: string;
     try {
       const { verifyTotpLoginJwt } = await import("./verifyTotpLoginJwt");
-      const { email: jwtEmail } = await verifyTotpLoginJwt(credentials.totpToken);
-      if (jwtEmail.toLowerCase() !== user.email.toLowerCase()) {
-        throw new Error(ErrorCode.IncorrectEmailPassword);
-      }
-    } catch {
+      ({ email: jwtEmail } = await verifyTotpLoginJwt(credentials.totpToken));
+    } catch (err) {
+      log.warn("CredentialsProvider:oauth-2fa-rejected:jwt-verify", {
+        message: err instanceof Error ? err.message : String(err),
+      });
+      throw new Error(ErrorCode.IncorrectEmailPassword);
+    }
+    if (jwtEmail.toLowerCase() !== user.email.toLowerCase()) {
+      log.warn("CredentialsProvider:oauth-2fa-rejected:email-mismatch", {
+        jwtEmail,
+        userEmail: user.email,
+      });
       throw new Error(ErrorCode.IncorrectEmailPassword);
     }
   } else {
-    // Always verify password for users who have one
+    // Classic credentials flow: must have a password hash and verify it.
+    if (!user.password?.hash) {
+      throw new Error(ErrorCode.IncorrectEmailPassword);
+    }
     const isCorrectPassword = await verifyPassword(credentials.password, user.password.hash);
     if (!isCorrectPassword) {
       throw new Error(ErrorCode.IncorrectEmailPassword);

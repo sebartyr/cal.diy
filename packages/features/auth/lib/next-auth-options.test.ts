@@ -390,6 +390,38 @@ describe("CredentialsProvider authorize", () => {
       ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
     });
 
+    it("allows hybrid OAuth user (with password hash) to authenticate via totpToken + totpCode", async () => {
+      const originalKey = process.env.CALENDSO_ENCRYPTION_KEY;
+      process.env.CALENDSO_ENCRYPTION_KEY = "test";
+      try {
+        const { symmetricDecrypt } = await import("@calcom/lib/crypto");
+        vi.mocked(symmetricDecrypt).mockReturnValue("a".repeat(32));
+        const { totpAuthenticatorCheck } = await import("@calcom/lib/totp");
+        vi.mocked(totpAuthenticatorCheck).mockReturnValue(true);
+        mockVerifyTotpLoginJwt.mockResolvedValue({ email: "test@example.com" });
+
+        const mockUser = createMockUser({
+          password: { hash: "$2a$10$hashedpassword" },
+          identityProvider: IdentityProvider.GOOGLE,
+          twoFactorEnabled: true,
+          twoFactorSecret: "encrypted_secret",
+        });
+        mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUser);
+
+        const result = await authorizeCredentials({
+          email: "test@example.com",
+          password: "",
+          totpCode: "123456",
+          totpToken: "valid-jwt",
+        } as any);
+
+        expect(result?.id).toBe(1);
+        expect(mockVerifyTotpLoginJwt).toHaveBeenCalledWith("valid-jwt");
+      } finally {
+        process.env.CALENDSO_ENCRYPTION_KEY = originalKey;
+      }
+    });
+
     it("rejects CAL user with totpToken (only OAuth flow may bypass password)", async () => {
       mockVerifyTotpLoginJwt.mockResolvedValue({ email: "test@example.com" });
       const mockUser = createMockUser({

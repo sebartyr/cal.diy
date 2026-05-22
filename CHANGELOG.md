@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.0.4] — 2026-05-23
+
+Follow-up to v7.0.3. The previous fix only triggered when `user.password.hash`
+was null, which left **hybrid accounts** broken — e.g. an account created
+through email/password that later linked Google. The signIn callback would
+correctly redirect those to TOTP, but `authorizeCredentials` then fell into
+the classic credentials branch with an empty `password` field and rejected
+the login. Discovered in production with `idP=GOOGLE`, `hasPasswordHash=true`,
+`twoFactorEnabled=true`.
+
+Authorization mode is now driven by the **presence of `totpToken`**, not by
+the absence of a password. The signed JWT (HS256, 2-min TTL, issued by the
+signIn callback after the IdP step) is the canonical proof of having
+completed OAuth — its presence routes the request through the OAuth+2FA
+branch regardless of whether a password is also set on the account.
+
+- `next-auth-options.ts`: split authorize logic into `isOAuthContinuation`
+  (totpToken present, JWT verified, idP !== CAL, totpCode present) vs
+  classic credentials. Adds instrumentation at every reject point
+  (`authorize:entry`, `:user-lookup-result`, `:reject:user-not-found`,
+  `:reject:user-locked`, `:reject:rate-limit`, `oauth-2fa-*`) so future
+  regressions are diagnosable from logs alone.
+- `next-auth-options.test.ts`: new test for the hybrid case
+  (password hash + idP=GOOGLE + 2FA + valid JWT → success).
+
+Operational note: this fork's rate limiter (`packages/lib/rateLimit.ts`)
+fails closed in production when `UNKEY_ROOT_KEY` is missing or its key lacks
+`ratelimit.*` permissions. The same login symptom (`401` with no
+`authorize:entry` log) will appear if Unkey returns a permission error,
+since `checkRateLimitAndThrowError` runs before any auth logic. See
+SEC-200 docstring in `rateLimit.ts`.
+
 ## [7.0.3] — 2026-05-22
 
 Hotfix: Google/Azure OAuth users with 2FA enabled could no longer complete login.
