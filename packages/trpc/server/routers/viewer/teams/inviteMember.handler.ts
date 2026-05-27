@@ -1,15 +1,13 @@
-import { TRPCError } from "@trpc/server";
 import { randomBytes } from "node:crypto";
-
 import { sendTeamInviteEmail } from "@calcom/emails/organization-email-service";
 import { getTranslation } from "@calcom/i18n/server";
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import logger from "@calcom/lib/logger";
 import { prisma } from "@calcom/prisma";
 import { MembershipRole } from "@calcom/prisma/enums";
-
-import { requireMember } from "./permissions";
+import { TRPCError } from "@trpc/server";
 import type { TrpcSessionUser } from "../../../types";
+import { requireMember } from "./permissions";
 
 const log = logger.getSubLogger({ prefix: ["teams.inviteMember"] });
 
@@ -88,7 +86,15 @@ export async function inviteMemberHandler({ ctx, input }: Options) {
         // Token-bearing link so the invitee can verify ownership of the
         // email even if they're not currently logged into the matching
         // account. The token is consumed by the accept flow.
-        joinLink: `${WEBAPP_URL}/auth/login?callbackUrl=/teams?inviteToken=${token}`,
+        //
+        // BUG-103-FORK: the callbackUrl must be URL-encoded — otherwise the
+        // nested `?inviteToken=` is parsed as a param of `/auth/login` and the
+        // token is dropped. It also has to point at a route that exists in this
+        // fork: there is no `/teams` page, only `/settings/teams`, which reads
+        // the token and auto-accepts the matching pending invite.
+        joinLink: `${WEBAPP_URL}/auth/login?callbackUrl=${encodeURIComponent(
+          `/settings/teams?inviteToken=${token}`
+        )}`,
         isCalcomMember: true,
         isAutoJoin: false,
         isOrg: !!team.isOrganization,
