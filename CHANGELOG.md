@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.0.5] — 2026-05-27
+
+Team invitations were effectively broken end to end. The "Accept invite"
+button in the invite email linked to
+`/auth/login?callbackUrl=/teams?inviteToken=…`, which (a) targeted `/teams` —
+a route that does not exist in this fork (only `/settings/teams`) — and (b)
+left the nested `?inviteToken=` unencoded, so it was parsed as a param of
+`/auth/login` and dropped. The in-app team list also showed pending invites
+with only a "pending" badge and no way to accept them; clicking the row
+navigated to the team profile, which threw `FORBIDDEN` and rendered as
+"Team not found".
+
+- `inviteMember.handler.ts`: point `joinLink` at the existing `/settings/teams`
+  route with a properly URL-encoded `callbackUrl` carrying the invite token.
+- `settings/teams` view: add Accept/Decline buttons on pending invites,
+  auto-accept the matching invite when arriving via `?inviteToken=`, and stop
+  linking pending teams to the profile page (which 403s for non-members).
+- `inviteMember.test.ts`: new tests covering the encoded invite link and the
+  no-account no-op.
+
+The backend `acceptOrLeave` handler already supported both tokenless in-app
+accept and the token defense-in-depth path, so it was unchanged.
+
 ## [7.0.4] — 2026-05-23
 
 Follow-up to v7.0.3. The previous fix only triggered when `user.password.hash`
