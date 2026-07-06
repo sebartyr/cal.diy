@@ -13,6 +13,7 @@ export const VideoApiAdapterMap =
         lyra: import("./lyra/lib/VideoApiAdapter"),
         nextcloudtalk: import("./nextcloudtalk/lib/VideoApiAdapter"),
         office365video: import("./office365video/lib/VideoApiAdapter"),
+        openvisio: import("./openvisio/lib/VideoApiAdapter"),
         shimmervideo: import("./shimmervideo/lib/VideoApiAdapter"),
         sylapsvideo: import("./sylapsvideo/lib/VideoApiAdapter"),
         tandemvideo: import("./tandemvideo/lib/VideoApiAdapter"),

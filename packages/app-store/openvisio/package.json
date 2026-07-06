@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "name": "@calcom/openvisio",
+  "version": "0.0.0",
+  "main": "./index.ts",
+  "description": "OpenVisio is a sovereign, open-source video conferencing solution hosted in Europe by Clever Cloud and built on La Suite Meet.",
+  "dependencies": {
+    "@calcom/lib": "workspace:*"
+  },
+  "devDependencies": {
+    "@calcom/types": "workspace:*"
+  }
+}

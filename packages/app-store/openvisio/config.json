@@ -1,0 +1,23 @@
+{
+  "/*": "Don't modify slug - If required, do it using cli edit command",
+  "name": "OpenVisio",
+  "slug": "openvisio",
+  "type": "openvisio_video",
+  "logo": "icon.png",
+  "url": "https://visio.clever.cloud",
+  "variant": "conferencing",
+  "categories": ["conferencing"],
+  "publisher": "Clever Cloud",
+  "email": "support@clever-cloud.com",
+  "appData": {
+    "location": {
+      "type": "integrations:openvisio",
+      "label": "OpenVisio",
+      "linkType": "dynamic"
+    }
+  },
+  "description": "OpenVisio is a sovereign, open-source video conferencing solution hosted in Europe by Clever Cloud and built on La Suite Meet. Screen sharing, recording and automatic transcription over WebRTC, with no client to install.",
+  "isTemplate": false,
+  "__createdUsingCli": true,
+  "__template": "conferencing"
+}
