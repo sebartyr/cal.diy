@@ -26,6 +26,7 @@ import {
   WEBAPP_URL,
 } from "@calcom/lib/constants";
 import { symmetricDecrypt } from "@calcom/lib/crypto";
+import { isLegacyCiphertext } from "@calcom/lib/crypto-clever";
 import { defaultCookies } from "@calcom/lib/default-cookies";
 import { isENVDev } from "@calcom/lib/env";
 import logger from "@calcom/lib/logger";
@@ -262,10 +263,12 @@ export async function authorizeCredentials(
   } else {
     // Classic credentials flow: must have a password hash and verify it.
     if (!user.password?.hash) {
+      log.warn("CredentialsProvider:authorize:reject:no-password-hash", { userId: user.id });
       throw new Error(ErrorCode.IncorrectEmailPassword);
     }
     const isCorrectPassword = await verifyPassword(credentials.password, user.password.hash);
     if (!isCorrectPassword) {
+      log.warn("CredentialsProvider:authorize:reject:incorrect-password", { userId: user.id });
       throw new Error(ErrorCode.IncorrectEmailPassword);
     }
   }
@@ -310,19 +313,50 @@ export async function authorizeCredentials(
       throw new Error(ErrorCode.InternalServerError);
     }
 
-    const secret = symmetricDecrypt(user.twoFactorSecret, process.env.CALENDSO_ENCRYPTION_KEY);
-    if (secret.length !== 32) {
-      console.error(
-        `Two factor secret decryption failed. Expected key with length 32 but got ${secret.length}`
-      );
+    // symmetricDecrypt throws rather than returning garbage when the key does not
+    // match the stored ciphertext: AES-GCM verifies the auth tag, and the legacy
+    // CBC path fails its padding check. Uncaught, that raw crypto error escapes
+    // authorize() unlogged and reaches the client as an unmapped error code —
+    // rendering a bare "something went wrong" that is indistinguishable from any
+    // other 2FA failure. Hence: catch, log, and map to a known ErrorCode.
+    let secret: string;
+    try {
+      secret = symmetricDecrypt(user.twoFactorSecret, process.env.CALENDSO_ENCRYPTION_KEY);
+    } catch (err) {
+      log.error("CredentialsProvider:authorize:reject:2fa-secret-decrypt-threw", {
+        userId: user.id,
+        message: err instanceof Error ? err.message : String(err),
+        storedFormat: isLegacyCiphertext(user.twoFactorSecret) ? "v1-cbc" : "v2-gcm",
+      });
       throw new Error(ErrorCode.InternalServerError);
     }
 
-    const isValidToken = (await import("@calcom/lib/totp")).totpAuthenticatorCheck(
-      credentials.totpCode,
-      secret
-    );
+    if (secret.length !== 32) {
+      log.error("CredentialsProvider:authorize:reject:2fa-secret-bad-length", {
+        userId: user.id,
+        length: secret.length,
+      });
+      throw new Error(ErrorCode.InternalServerError);
+    }
+
+    let isValidToken: boolean;
+    try {
+      isValidToken = (await import("@calcom/lib/totp")).totpAuthenticatorCheck(
+        credentials.totpCode,
+        secret
+      );
+    } catch (err) {
+      // Reachable two ways: the dynamic import fails to resolve in the bundle, or
+      // the decrypted secret is not valid base32 and the key decoder rejects it.
+      log.error("CredentialsProvider:authorize:reject:2fa-totp-check-threw", {
+        userId: user.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      throw new Error(ErrorCode.InternalServerError);
+    }
+
     if (!isValidToken) {
+      log.warn("CredentialsProvider:authorize:reject:incorrect-2fa-code", { userId: user.id });
       throw new Error(ErrorCode.IncorrectTwoFactorCode);
     }
   }

@@ -458,6 +458,91 @@ describe("CredentialsProvider authorize", () => {
     });
   });
 
+  describe("Two-factor failure mapping", () => {
+    const withEncryptionKey = async (fn: () => Promise<void>) => {
+      const originalKey = process.env.CALENDSO_ENCRYPTION_KEY;
+      process.env.CALENDSO_ENCRYPTION_KEY = "test";
+      try {
+        await fn();
+      } finally {
+        process.env.CALENDSO_ENCRYPTION_KEY = originalKey;
+      }
+    };
+
+    const mockUserWith2Fa = () =>
+      createMockUser({
+        identityProvider: IdentityProvider.CAL,
+        twoFactorEnabled: true,
+        twoFactorSecret: "encrypted_secret",
+      });
+
+    const login = () =>
+      authorizeCredentials({
+        email: "test@example.com",
+        password: "correct-password",
+        totpCode: "123456",
+      } as any);
+
+    it("maps a decryption throw to InternalServerError instead of leaking the crypto error", async () => {
+      await withEncryptionKey(async () => {
+        vi.mocked(verifyPassword).mockResolvedValue(true);
+        const { symmetricDecrypt } = await import("@calcom/lib/crypto");
+        vi.mocked(symmetricDecrypt).mockImplementation(() => {
+          throw new Error("Unsupported state or unable to authenticate data");
+        });
+        mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUserWith2Fa());
+
+        await expect(login()).rejects.toThrow(ErrorCode.InternalServerError);
+      });
+    });
+
+    it("maps a TOTP check throw to InternalServerError", async () => {
+      await withEncryptionKey(async () => {
+        vi.mocked(verifyPassword).mockResolvedValue(true);
+        const { symmetricDecrypt } = await import("@calcom/lib/crypto");
+        vi.mocked(symmetricDecrypt).mockReturnValue("a".repeat(32));
+        const { totpAuthenticatorCheck } = await import("@calcom/lib/totp");
+        vi.mocked(totpAuthenticatorCheck).mockImplementation(() => {
+          throw new Error("Invalid base32 character");
+        });
+        mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUserWith2Fa());
+
+        await expect(login()).rejects.toThrow(ErrorCode.InternalServerError);
+      });
+    });
+
+    it("throws InternalServerError when the decrypted secret has an unexpected length", async () => {
+      await withEncryptionKey(async () => {
+        vi.mocked(verifyPassword).mockResolvedValue(true);
+        const { symmetricDecrypt } = await import("@calcom/lib/crypto");
+        vi.mocked(symmetricDecrypt).mockReturnValue("too-short");
+        mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUserWith2Fa());
+
+        await expect(login()).rejects.toThrow(ErrorCode.InternalServerError);
+      });
+    });
+
+    it("still reports IncorrectTwoFactorCode for a genuinely wrong code", async () => {
+      await withEncryptionKey(async () => {
+        vi.mocked(verifyPassword).mockResolvedValue(true);
+        const { symmetricDecrypt } = await import("@calcom/lib/crypto");
+        vi.mocked(symmetricDecrypt).mockReturnValue("a".repeat(32));
+        const { totpAuthenticatorCheck } = await import("@calcom/lib/totp");
+        vi.mocked(totpAuthenticatorCheck).mockReturnValue(false);
+        mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUserWith2Fa());
+
+        await expect(login()).rejects.toThrow(ErrorCode.IncorrectTwoFactorCode);
+      });
+    });
+
+    it("reports IncorrectEmailPassword when the password is wrong", async () => {
+      vi.mocked(verifyPassword).mockResolvedValue(false);
+      mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(mockUserWith2Fa());
+
+      await expect(login()).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
+    });
+  });
+
   describe("Inactive admin reason", () => {
     it("sets reason to 'both' when password is invalid and 2FA is disabled", async () => {
       const { isPasswordValid } = await import("@calcom/lib/auth/isPasswordValid");

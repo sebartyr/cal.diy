@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.2.1] — 2026-07-15
+
+The 2FA login screen returned a bare "something went wrong" for every kind of
+failure. The two-factor branch of `authorizeCredentials` had three unguarded
+throw sites — `symmetricDecrypt`, `totpAuthenticatorCheck`, and the dynamic
+import of `@calcom/lib/totp`. None was caught or logged, so a raw exception
+escaped `authorize()` and reached the client as an **unmapped** error code,
+which the login view renders through its `t("something_went_wrong")` fallback.
+That message is indistinguishable from a wrong password, a wrong code, or a
+rate limit, and it left no trace in the logs whatsoever. v7.0.4 instrumented
+the OAuth path but left the classic and 2FA branches silent.
+
+Each throw site now logs and maps to a known `ErrorCode`:
+
+- `2fa-secret-decrypt-threw` — key does not match the ciphertext, or corrupt row
+- `2fa-totp-check-threw` — bundle import failure, or non-base32 secret
+- `2fa-secret-bad-length` — decrypted, but unexpected length
+- `incorrect-2fa-code` — genuinely wrong TOTP
+- `incorrect-password` / `no-password-hash` — classic credentials path
+
+The decrypt log carries `storedFormat` (`v1-cbc` / `v2-gcm`). A wrong key and a
+corrupted row raise the same exception; the payload's format is what tells them
+apart.
+
+User-visible change: these failures now surface as `InternalServerError`, which
+the client maps to a real message. The previous bare error literally meant
+"unrecognised error code".
+
+This release is observability only — it changes no authentication logic.
+
+- `next-auth-options.ts`: catch, log and map the three throw sites; instrument
+  the classic credentials path.
+- `crypto-clever.ts`: `isLegacyCiphertext` is now read at runtime, so its
+  docstring no longer claims it is test-only.
+- `next-auth-options.test.ts`: 5 cases, one per mapping. The two covering the
+  raw throws fail against the unpatched code.
+
 ## [7.0.5] — 2026-05-27
 
 Team invitations were effectively broken end to end. The "Accept invite"

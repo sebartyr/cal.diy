@@ -89,9 +89,10 @@ export function symmetricDecryptV2(text: string, key: string): string {
 }
 
 /**
- * Test/migration helper — returns true if a stored payload is still in the
- * legacy AES-256-CBC format (i.e. would benefit from re-encryption on next
- * write). Not used at runtime; exposed for the lazy-migration audit script.
+ * Returns true if a stored payload is still in the legacy AES-256-CBC format
+ * (i.e. would benefit from re-encryption on next write). Used by the
+ * lazy-migration audit script, and to tag which format a payload was in when
+ * decryption fails — a wrong key and a corrupted row look identical otherwise.
  */
 export function isLegacyCiphertext(text: string): boolean {
   return typeof text === "string" && text.length > 0 && !text.startsWith(V2_PREFIX);
