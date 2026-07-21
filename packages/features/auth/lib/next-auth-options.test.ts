@@ -1,3 +1,4 @@
+import process from "node:process";
 import { IdentityProvider, UserPermissionRole } from "@calcom/prisma/enums";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorCode } from "./ErrorCode";
@@ -1496,5 +1497,133 @@ describe("Azure AD JWT callback", () => {
         })
       );
     });
+  });
+});
+
+describe("OIDC signIn callback", () => {
+  let getOptions: typeof import("./next-auth-options").getOptions;
+  let signInCallback: NonNullable<ReturnType<typeof getOptions>["callbacks"]>["signIn"];
+
+  const baseParams = {
+    user: { id: "1", email: "user@example.com", name: "User", emailVerified: null },
+    account: { provider: "oidc", providerAccountId: "oidc-123", type: "oauth" as const },
+    credentials: undefined,
+    email: undefined,
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockGetIdentityProvider.mockImplementation((provider: string) => {
+      const map: Record<string, string> = {
+        "azure-ad": "AZUREAD",
+        google: "GOOGLE",
+        oidc: "OIDC",
+        cal: "CAL",
+      };
+      return map[provider] ?? null;
+    });
+
+    const prismaModule = await import("@calcom/prisma");
+    const prismaDefault = (prismaModule as any).default;
+    prismaDefault.user = {
+      ...prismaDefault.user,
+      findFirst: mockPrismaUserFindFirst,
+      create: mockPrismaUserCreate,
+      update: mockPrismaUserUpdate,
+    };
+    prismaDefault.team = { findFirst: mockPrismaTeamFindFirst };
+
+    mockPrismaUserFindFirst.mockResolvedValue(null);
+    mockPrismaUserCreate.mockResolvedValue({ id: 100, email: "user@example.com", twoFactorEnabled: false });
+    mockPrismaUserUpdate.mockResolvedValue({});
+    mockPrismaTeamFindFirst.mockResolvedValue(null);
+
+    const adapterModule = await import("./next-auth-custom-adapter");
+    (adapterModule.default as any).mockReturnValue({ linkAccount: mockLinkAccount });
+    mockLinkAccount.mockResolvedValue(undefined);
+
+    mockWaitUntil.mockImplementation((p: Promise<any>) => p.catch(() => {}));
+
+    const authModule = await import("./next-auth-options");
+    getOptions = authModule.getOptions;
+    const options = getOptions({ getDubId: () => undefined, getTrackingData: () => ({}) as any });
+    signInCallback = options.callbacks!.signIn! as any;
+  });
+
+  it("rejects login when the IdP does not assert email_verified", async () => {
+    const result = await signInCallback({
+      ...baseParams,
+      profile: { email_verified: false } as any,
+    } as any);
+
+    expect(result).toBe("/auth/error?error=unverified-email");
+  });
+
+  it("converts a verified CAL user to OIDC on first OIDC login", async () => {
+    mockPrismaUserFindFirst
+      .mockResolvedValueOnce(null) // lookup by identityProvider + providerAccountId
+      .mockResolvedValueOnce(null) // legacy lookup
+      .mockResolvedValueOnce({
+        id: 60,
+        email: "user@example.com",
+        emailVerified: new Date(),
+        identityProvider: "CAL",
+        password: { hash: "hashed" },
+        twoFactorEnabled: false,
+      });
+
+    const result = await signInCallback({
+      ...baseParams,
+      profile: { email_verified: true } as any,
+    } as any);
+
+    expect(mockPrismaUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          identityProvider: "OIDC",
+          identityProviderId: "oidc-123",
+        }),
+      })
+    );
+    expect(result).toBe(true);
+  });
+
+  it("blocks OIDC linking onto an unverified CAL account (anti-hijack)", async () => {
+    mockPrismaUserFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 61,
+        email: "user@example.com",
+        emailVerified: null,
+        identityProvider: "CAL",
+        password: { hash: "hashed" },
+        twoFactorEnabled: false,
+      });
+
+    const result = await signInCallback({
+      ...baseParams,
+      profile: { email_verified: true } as any,
+    } as any);
+
+    expect(result).toBe("/auth/error?error=unverified-email");
+  });
+
+  it("auto-merges an existing GOOGLE user on OIDC login when email is verified", async () => {
+    mockPrismaUserFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 62,
+      email: "user@example.com",
+      emailVerified: new Date(),
+      identityProvider: "GOOGLE",
+      password: null,
+      twoFactorEnabled: false,
+    });
+
+    const result = await signInCallback({
+      ...baseParams,
+      profile: { email_verified: true } as any,
+    } as any);
+
+    expect(result).toBe(true);
   });
 });

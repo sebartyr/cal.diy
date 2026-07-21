@@ -5,6 +5,15 @@ import { createGoogleCalendarServiceWithGoogleType } from "@calcom/app-store/goo
 import { getIdentityProvider } from "@calcom/features/auth/lib/identityProviders";
 import { MAGIC_LINK_MAX_AGE_SECONDS } from "@calcom/features/auth/lib/magicLinkMaxAge";
 import {
+  IS_OIDC_LOGIN_ENABLED,
+  OIDC_CLIENT_ID,
+  OIDC_CLIENT_SECRET,
+  OIDC_ISSUER,
+  OIDC_PROVIDER_NAME,
+  OIDC_SCOPES,
+  OIDC_WELL_KNOWN,
+} from "@calcom/features/auth/lib/oidc";
+import {
   OUTLOOK_CLIENT_ID,
   OUTLOOK_CLIENT_SECRET,
   OUTLOOK_LOGIN_ENABLED,
@@ -130,7 +139,7 @@ export const checkIfUserBelongsToActiveTeam = <T extends UserTeams>(user: T) =>
 
 const checkIfUserShouldBelongToOrg = async (idP: IdentityProvider, email: string) => {
   const [orgUsername, apexDomain] = email.split("@");
-  if (!ORGANIZATIONS_AUTOLINK || (idP !== "GOOGLE" && idP !== "AZUREAD"))
+  if (!ORGANIZATIONS_AUTOLINK || (idP !== "GOOGLE" && idP !== "AZUREAD" && idP !== "OIDC"))
     return { orgUsername, orgId: undefined };
   const existingOrg = await prisma.team.findFirst({
     where: {
@@ -151,9 +160,7 @@ const checkIfUserShouldBelongToOrg = async (idP: IdentityProvider, email: string
  * Extracted for testability
  */
 export async function authorizeCredentials(
-  credentials:
-    | Record<"email" | "password" | "totpCode" | "backupCode" | "totpToken", string>
-    | undefined
+  credentials: Record<"email" | "password" | "totpCode" | "backupCode" | "totpToken", string> | undefined
 ): Promise<User | null> {
   log.warn("CredentialsProvider:authorize:entry", {
     hasCredentials: !!credentials,
@@ -341,10 +348,7 @@ export async function authorizeCredentials(
 
     let isValidToken: boolean;
     try {
-      isValidToken = (await import("@calcom/lib/totp")).totpAuthenticatorCheck(
-        credentials.totpCode,
-        secret
-      );
+      isValidToken = (await import("@calcom/lib/totp")).totpAuthenticatorCheck(credentials.totpCode, secret);
     } catch (err) {
       // Reachable two ways: the dynamic import fails to resolve in the bundle, or
       // the decrypted secret is not valid base32 and the key decoder rejects it.
@@ -474,6 +478,36 @@ if (OUTLOOK_LOGIN_ENABLED && OUTLOOK_CLIENT_ID && OUTLOOK_CLIENT_SECRET) {
       },
     })
   );
+}
+
+if (IS_OIDC_LOGIN_ENABLED) {
+  providers.push({
+    id: "oidc",
+    name: OIDC_PROVIDER_NAME,
+    type: "oauth",
+    // Endpoints are resolved from the IdP's discovery document rather than hardcoded,
+    // so the same provider works against Keycloak, Authentik, Zitadel, Okta, etc.
+    wellKnown: OIDC_WELL_KNOWN,
+    issuer: OIDC_ISSUER,
+    clientId: OIDC_CLIENT_ID,
+    clientSecret: OIDC_CLIENT_SECRET,
+    allowDangerousEmailAccountLinking: true,
+    idToken: true,
+    checks: ["pkce", "state"],
+    authorization: { params: { scope: OIDC_SCOPES } },
+    // Left untyped like the Google/Azure AD providers above: at this stage `id` is still the
+    // IdP subject string, which conflicts with the `User.id: number` module augmentation.
+    profile(profile) {
+      return {
+        id: profile.sub,
+        // Keycloak only populates `name` when the user has both first and last name set,
+        // and signIn() rejects nameless users, so fall back to the username.
+        name: profile.name ?? profile.preferred_username ?? profile.email ?? null,
+        email: profile.email,
+        image: profile.picture ?? null,
+      };
+    },
+  });
 }
 
 providers.push(
@@ -984,7 +1018,10 @@ export const getOptions = ({
         }
 
         if (!isEmailVerified && idP !== IdentityProvider.AZUREAD) {
-          log.error("Attention: SAML/Google User email is not verified in the IdP", safeStringify({ user }));
+          log.error(
+            "Attention: SAML/Google/OIDC User email is not verified in the IdP",
+            safeStringify({ user })
+          );
           return "/auth/error?error=unverified-email";
         }
 
@@ -1147,12 +1184,13 @@ export const getOptions = ({
             }
           }
 
-          // User signs up with email/password and then tries to login with Google/SAML/AzureAD using the same email
+          // User signs up with email/password and then tries to login with Google/SAML/AzureAD/OIDC using the same email
           if (
             existingUserWithEmail.identityProvider === IdentityProvider.CAL &&
             (idP === IdentityProvider.GOOGLE ||
               idP === IdentityProvider.SAML ||
-              idP === IdentityProvider.AZUREAD)
+              idP === IdentityProvider.AZUREAD ||
+              idP === IdentityProvider.OIDC)
           ) {
             // Prevent account pre-hijacking: block OAuth linking for unverified accounts
             if (!existingUserWithEmail.emailVerified) {
@@ -1224,7 +1262,7 @@ export const getOptions = ({
           return `/auth/error?error=wrong-provider&provider=${existingUserWithEmail.identityProvider}`;
         }
 
-        // Associate with organization if enabled by flag and idP is Google or Azure AD
+        // Associate with organization if enabled by flag and idP is Google, Azure AD or OIDC
         const { orgUsername, orgId } = await checkIfUserShouldBelongToOrg(idP, user.email);
 
         try {
