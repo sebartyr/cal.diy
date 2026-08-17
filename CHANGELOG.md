@@ -6,6 +6,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.3.0] — 2026-08-17
+
+Fork synchronised with `upstream/main` up to #29940, and the security
+`resolutions` block brought back up to date.
+
+### Upstream sync
+
+Nineteen commits cherry-picked with `-x`; `git cherry` confirmed the other
+twenty-eight upstream commits were already applied to the fork. Notable ones:
+`parseIpFromHeaders` now trims whitespace (#29857) — untrimmed headers let a
+crafted `X-Forwarded-For` slip past the IP banlist; all seat payments are
+refunded when a paid seated booking is cancelled (#29685); cancelled bookings
+send `METHOD:CANCEL` in their ICS (#29708); `customReplyToEmail` is no longer
+dropped when `hideOrganizerEmail` is set (#29940); `getEventLocationType` is
+renamed to `getLocationByType` (#28567).
+
+One conflict, in `markdownToSafeHTML.ts` and `markdownToSafeHTMLClient.ts`:
+#29648 rewrites the `.replace()` chain the fork had amended for SEC-203. Both
+intents are kept — the fork's `rel="noopener noreferrer"` on every new-tab link
+**and** upstream's `h1`/`h2` rendering.
+
+### Security — dependencies
+
+The CI `security-audit` job was already failing: it blocks on
+`yarn npm audit --severity critical` and three critical advisories were open.
+None of them comes from the sync — no cherry-picked commit touches a manifest.
+The cause is that the security `resolutions` block had drifted, several entries
+pinning a version that had since become vulnerable (`axios` held at 1.15.0 when
+the fix landed in 1.16.0, likewise `tar`, `form-data`, `multer`, `hono`,
+`protobufjs`).
+
+- `next-auth` 4.24.13 → 4.24.15 — GHSA-7rqj-j65f-68wh: the email normaliser
+  validates the address *before* Unicode normalisation, so an `@` homoglyph
+  bypasses account matching on the magic-link flow. The only one of the three
+  criticals on a real authentication path, and on a flow this fork already
+  hardened (SEC-008).
+- `tar` 7.5.11 → 7.5.22 (decompression DoS, via `sqlite3` ← `saml-jackson`) and
+  `websocket-driver` 0.7.4 → 0.7.5 (message corruption, via `faye-websocket`).
+- Markdown path, widened by #29648 now that headings render: `sanitize-html`
+  2.17.0 → 2.17.7 (incomplete URI scheme validation let `javascript:` through
+  `action`/`formaction`/`poster`), `dompurify` 3.3.2 → 3.4.13, `linkify-it`
+  5.0.0 → 5.0.2 (quadratic DoS on attacker text).
+- `next` 16.2.3 → 16.2.12 on `apps/web` — App Router middleware bypass, SSRF via
+  rewrites, Server Actions DoS. Docs and example workspaces aligned too: no
+  production code, but they accounted for 43 advisories and drowned the signal.
+- `axios` 1.19.0, `form-data` 4.0.6, `multer` 2.2.0, `hono` 4.13.2,
+  `protobufjs` 7.6.5, `@xmldom/xmldom`, `brace-expansion`, `nanoid` 3.x,
+  `js-yaml` 4.3.1, `fast-uri` 3.1.5.
+
+Production advisories 265 → 106; criticals 3 → 0; highs 93 → 29. No new
+advisory, no major-version change, no new peer-dependency warning.
+
+### Still open
+
+`nodemailer` stays on 7.0.12 with a `high`: the message-level `raw` option
+bypasses `disableFileAccess`/`disableUrlAccess`, allowing arbitrary file read.
+The fix requires 9.x — a major on the email path, deliberately left to its own
+change. The remaining highs are mostly build-tooling DoS (`vite`, `postcss`,
+`glob`, `tmp`, `svgo`) or transitives not reachable from a request.
+
 ## [7.2.1] — 2026-07-15
 
 The 2FA login screen returned a bare "something went wrong" for every kind of
