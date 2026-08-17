@@ -6,6 +6,73 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.4.0] — 2026-08-17
+
+Adds a generic OpenID Connect login provider, so a self-hosted instance can
+authenticate against Keycloak — or any other compliant IdP (Authentik, Zitadel,
+Okta…) — instead of Google.
+
+### Generic OIDC provider
+
+Endpoints are resolved from the IdP's discovery document
+(`${OIDC_ISSUER}/.well-known/openid-configuration`) rather than hardcoded, so one
+implementation covers every compliant provider. Google, Azure AD and credentials
+login are untouched.
+
+The provider is opt-in and inert by default: it is only registered when
+`OIDC_LOGIN_ENABLED=true` *and* issuer, client id and client secret are all set.
+Existing deployments see no change. `IdentityProvider.OIDC` is a new enum value —
+the migration is purely additive (`ALTER TYPE … ADD VALUE`) and touches no
+existing rows.
+
+### Accounts are namespaced per issuer
+
+`sub` is only unique within its own issuer, so persisting it alone would let a
+replacement IdP that reuses a subject identifier resolve the account created for
+the previous one — NextAuth looks the account up before the `signIn` callback
+ever runs. The persisted `providerAccountId` is `sha256(issuer):sub`, so a
+different issuer yields a different account.
+
+The practical consequence: changing `OIDC_ISSUER` detaches the accounts created
+under the previous one. Users are signed back in through the regular
+verified-email matching on their next login.
+
+### UserInfo claims are read, not just the ID token
+
+NextAuth builds the raw profile from the ID token claims when `idToken: true` and
+never calls UserInfo on its own, which rejected compliant IdPs that only release
+`email`, `email_verified` or `name` there. A `userinfo.request` handler — which
+takes precedence over `idToken` in NextAuth's OAuth callback — now merges both,
+the ID token winning on conflicts so a signed `email_verified: false` cannot be
+overridden by a laxer UserInfo response. The UserInfo `sub` must be present and
+identical to the token's (OIDC Core 5.3.2); `openid-client` performs no such
+check here, since it is handed the raw access token rather than a `TokenSet`. A
+UserInfo network failure falls back to the token claims.
+
+### Account linking
+
+Linking reuses the existing matrix rather than introducing a parallel path. An
+OIDC identity auto-merges onto a matching account whose email is verified on both
+sides — including an account originally created through Google, which keeps its
+bookings, username and teams. Converting a `CAL` account still requires
+`emailVerified` to already be true, so the anti pre-hijacking guard added for
+Google and Azure AD applies unchanged. The merge trusts the IdP's
+`email_verified` claim, as it already does for Google and Azure AD.
+
+`checkIfUserShouldBelongToOrg` accepts `OIDC` alongside Google and Azure AD; this
+has no effect unless `ORGANIZATIONS_AUTOLINK` is enabled.
+
+### Not covered
+
+The real OAuth negotiation was never exercised: discovery, PKCE and the code
+exchange need a live IdP. The tests cover claim handling and identity linking
+only, so a manual run against a real Keycloak instance is still advisable before
+enabling this in production.
+
+Every new variable is documented in `.env.example`. Verified with
+`type-check:ci` (9/9), `TZ=UTC yarn vitest run packages/features/auth/lib` (131
+green across 8 files), and Biome.
+
 ## [7.3.1] — 2026-08-17
 
 Closes the last `high` advisory v7.3.0 left open, on `nodemailer` — bumped
