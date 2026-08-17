@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.3.1] — 2026-08-17
+
+Closes the last `high` advisory v7.3.0 left open, on `nodemailer` — bumped
+7.0.12 → 9.0.5.
+
+The advisory: the message-level `raw` option bypassed `disableFileAccess` /
+`disableUrlAccess`, allowing arbitrary file read and full message forgery
+(fixed in 9.0.1). The bump also clears five more advisories on the same
+package — SMTP command injection via `envelope.size` and via CRLF in the
+transport name, CRLF injection in `List-*` header comments, a `jsonTransport`
+bypass of the same file/url access flags, and improper TLS certificate
+validation when fetching OAuth2 tokens.
+
+Three breaking changes sit between the two versions; none applies here:
+
+- `8.0.0` renames error code `NoAuth` to `ENOAUTH` — neither is referenced in
+  this repository.
+- `9.0.0` makes remote content fetches validate TLS certificates by default
+  (attachment `href`/`path`, OAuth2 token endpoints, proxy `CONNECT`). The two
+  templates that attach transcripts fetch them themselves and pass a `Buffer`
+  as `content`, so nodemailer issues no request of its own; `icalEvent` is
+  likewise inline through `generateIcsFile`; and `detectTransport()` produces
+  neither an OAuth2 transport nor a proxy. Distinct from the SMTP connection's
+  own `tls.rejectUnauthorized`, which this change does not touch and which
+  stays driven by `serverConfig` — self-hosters on a self-signed SMTP
+  certificate are unaffected.
+- `7.0.0` (SESv2 SDK) predates the version in use.
+
+`@types/nodemailer` moved 6.4.5 → 8.0.1 in the same pass, the old types still
+describing nodemailer 6. Nodemailer still ships no types of its own, so the
+`@types` package remains necessary.
+
+Production advisories 106 → 100, highs 29 → 28. No new advisory. Verified with
+`type-check:ci` (9/9), `TZ=UTC yarn vitest run packages/emails
+packages/features/auth/lib` (129 green across 13 files), and Biome.
+
 ## [7.3.0] — 2026-08-17
 
 Fork synchronised with `upstream/main` up to #29940, and the security
