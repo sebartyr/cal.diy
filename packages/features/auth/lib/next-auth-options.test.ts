@@ -1,7 +1,11 @@
 import process from "node:process";
 import { IdentityProvider, UserPermissionRole } from "@calcom/prisma/enums";
+import type { Adapter } from "next-auth/adapters";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorCode } from "./ErrorCode";
+import type { ExtendedOAuthProfile } from "./next-auth-options";
+import type { OidcProfileClaims } from "./oidc";
+import { mergeOidcProfile } from "./oidc";
 
 // Mock dependencies
 vi.mock("@calcom/prisma", () => ({
@@ -1501,15 +1505,34 @@ describe("Azure AD JWT callback", () => {
 });
 
 describe("OIDC signIn callback", () => {
-  let getOptions: typeof import("./next-auth-options").getOptions;
-  let signInCallback: NonNullable<ReturnType<typeof getOptions>["callbacks"]>["signIn"];
+  type SignInCallback = NonNullable<
+    NonNullable<ReturnType<typeof import("./next-auth-options").getOptions>["callbacks"]>["signIn"]
+  >;
+  type SignInParams = Parameters<SignInCallback>[0];
 
-  const baseParams = {
+  let signInCallback: SignInCallback;
+
+  const baseParams: Omit<SignInParams, "profile"> = {
     user: { id: "1", email: "user@example.com", name: "User", emailVerified: null },
-    account: { provider: "oidc", providerAccountId: "oidc-123", type: "oauth" as const },
+    account: { provider: "oidc", providerAccountId: "oidc-123", type: "oauth" },
     credentials: undefined,
     email: undefined,
   };
+
+  /**
+   * NextAuth hands the raw OIDC claims to `signIn()`, which reads them as an
+   * `ExtendedOAuthProfile`. This mirrors that narrowing so the tests can feed real claim
+   * objects without casting.
+   */
+  const toOAuthProfile = ({ sub, name, email, email_verified }: OidcProfileClaims): ExtendedOAuthProfile => ({
+    sub,
+    name,
+    email,
+    email_verified,
+  });
+
+  const signInWithProfile = (profile: OidcProfileClaims) =>
+    signInCallback({ ...baseParams, profile: toOAuthProfile(profile) });
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -1524,7 +1547,10 @@ describe("OIDC signIn callback", () => {
     });
 
     const prismaModule = await import("@calcom/prisma");
-    const prismaDefault = (prismaModule as any).default;
+    const prismaDefault = prismaModule.default as unknown as {
+      user: Record<string, unknown>;
+      team: Record<string, unknown>;
+    };
     prismaDefault.user = {
       ...prismaDefault.user,
       findFirst: mockPrismaUserFindFirst,
@@ -1539,22 +1565,18 @@ describe("OIDC signIn callback", () => {
     mockPrismaTeamFindFirst.mockResolvedValue(null);
 
     const adapterModule = await import("./next-auth-custom-adapter");
-    (adapterModule.default as any).mockReturnValue({ linkAccount: mockLinkAccount });
+    vi.mocked(adapterModule.default).mockReturnValue({ linkAccount: mockLinkAccount } as unknown as Adapter);
     mockLinkAccount.mockResolvedValue(undefined);
 
-    mockWaitUntil.mockImplementation((p: Promise<any>) => p.catch(() => {}));
+    mockWaitUntil.mockImplementation((promise: Promise<unknown>) => promise.catch(() => {}));
 
-    const authModule = await import("./next-auth-options");
-    getOptions = authModule.getOptions;
-    const options = getOptions({ getDubId: () => undefined, getTrackingData: () => ({}) as any });
-    signInCallback = options.callbacks!.signIn! as any;
+    const { getOptions } = await import("./next-auth-options");
+    const options = getOptions({ getDubId: () => undefined, getTrackingData: () => ({}) });
+    signInCallback = options.callbacks!.signIn!;
   });
 
   it("rejects login when the IdP does not assert email_verified", async () => {
-    const result = await signInCallback({
-      ...baseParams,
-      profile: { email_verified: false } as any,
-    } as any);
+    const result = await signInWithProfile({ email_verified: false });
 
     expect(result).toBe("/auth/error?error=unverified-email");
   });
@@ -1572,10 +1594,7 @@ describe("OIDC signIn callback", () => {
         twoFactorEnabled: false,
       });
 
-    const result = await signInCallback({
-      ...baseParams,
-      profile: { email_verified: true } as any,
-    } as any);
+    const result = await signInWithProfile({ email_verified: true });
 
     expect(mockPrismaUserUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1601,10 +1620,7 @@ describe("OIDC signIn callback", () => {
         twoFactorEnabled: false,
       });
 
-    const result = await signInCallback({
-      ...baseParams,
-      profile: { email_verified: true } as any,
-    } as any);
+    const result = await signInWithProfile({ email_verified: true });
 
     expect(result).toBe("/auth/error?error=unverified-email");
   });
@@ -1619,10 +1635,18 @@ describe("OIDC signIn callback", () => {
       twoFactorEnabled: false,
     });
 
-    const result = await signInCallback({
-      ...baseParams,
-      profile: { email_verified: true } as any,
-    } as any);
+    const result = await signInWithProfile({ email_verified: true });
+
+    expect(result).toBe(true);
+  });
+
+  // Regression guard for the UserInfo merge: an IdP that only releases `email_verified`
+  // through UserInfo must reach signIn() with the claim already merged into the profile.
+  it("accepts a login whose email_verified claim only came from UserInfo", async () => {
+    const idTokenClaims = { sub: "abc-123", iss: "https://idp.example.com/realms/cal" };
+    const userInfo = { sub: "abc-123", email: "user@example.com", email_verified: true, name: "User" };
+
+    const result = await signInWithProfile(mergeOidcProfile(idTokenClaims, userInfo));
 
     expect(result).toBe(true);
   });

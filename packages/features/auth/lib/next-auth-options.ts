@@ -5,13 +5,16 @@ import { createGoogleCalendarServiceWithGoogleType } from "@calcom/app-store/goo
 import { getIdentityProvider } from "@calcom/features/auth/lib/identityProviders";
 import { MAGIC_LINK_MAX_AGE_SECONDS } from "@calcom/features/auth/lib/magicLinkMaxAge";
 import {
+  fetchOidcProfile,
   IS_OIDC_LOGIN_ENABLED,
+  mapOidcProfileToUser,
   OIDC_CLIENT_ID,
   OIDC_CLIENT_SECRET,
   OIDC_ISSUER,
   OIDC_PROVIDER_NAME,
   OIDC_SCOPES,
   OIDC_WELL_KNOWN,
+  toOidcProfileClaims,
 } from "@calcom/features/auth/lib/oidc";
 import {
   OUTLOOK_CLIENT_ID,
@@ -70,7 +73,7 @@ type UserWithProfiles = NonNullable<
   Awaited<ReturnType<UserRepository["findByEmailAndIncludeProfilesAndPassword"]>>
 >;
 
-interface ExtendedOAuthProfile extends Profile {
+export interface ExtendedOAuthProfile extends Profile {
   email_verified?: boolean; // Google/OIDC standard
   xms_edov?: boolean | string | number; // Azure AD specific
 }
@@ -495,17 +498,18 @@ if (IS_OIDC_LOGIN_ENABLED) {
     idToken: true,
     checks: ["pkce", "state"],
     authorization: { params: { scope: OIDC_SCOPES } },
-    // Left untyped like the Google/Azure AD providers above: at this stage `id` is still the
-    // IdP subject string, which conflicts with the `User.id: number` module augmentation.
+    // `userinfo.request` takes precedence over `idToken: true` in NextAuth's OAuth callback,
+    // which is what lets us keep the signed token as the source of truth while still reading
+    // the claims a compliant IdP only releases through UserInfo (email, email_verified, name).
+    userinfo: {
+      request: ({ tokens, client }) => fetchOidcProfile({ tokens, client }),
+    },
     profile(profile) {
-      return {
-        id: profile.sub,
-        // Keycloak only populates `name` when the user has both first and last name set,
-        // and signIn() rejects nameless users, so fall back to the username.
-        name: profile.name ?? profile.preferred_username ?? profile.email ?? null,
-        email: profile.email,
-        image: profile.picture ?? null,
-      };
+      // `User.id` is augmented repo-wide to the numeric Prisma id (packages/types/next-auth.d.ts),
+      // but at the OAuth profile stage it is still the IdP subject string — the adapter maps it
+      // to a Cal user afterwards. Google and Azure AD dodge this only because their `profile()`
+      // lives in node_modules; bridging through `unknown` keeps the mismatch explicit and local.
+      return mapOidcProfileToUser(toOidcProfileClaims(profile)) as unknown as User;
     },
   });
 }
