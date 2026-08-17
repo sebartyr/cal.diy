@@ -156,7 +156,21 @@ describe("mergeOidcProfile", () => {
   });
 
   it("rejects a UserInfo response describing another subject", () => {
-    expect(() => mergeOidcProfile({ sub: "abc-123" }, { sub: "other-sub" })).toThrow(/sub/);
+    expect(() => mergeOidcProfile({ sub: "abc-123" }, { sub: "other-sub" })).toThrow(
+      /does not match the ID token/
+    );
+  });
+
+  it("rejects a UserInfo response that asserts no subject", () => {
+    expect(() =>
+      mergeOidcProfile({ sub: "abc-123" }, { email: "user@example.com", email_verified: true })
+    ).toThrow(/UserInfo response is missing the `sub` claim/);
+  });
+
+  it("rejects a merge when the ID token itself asserts no subject", () => {
+    expect(() => mergeOidcProfile({}, { sub: "abc-123", email_verified: true })).toThrow(
+      /ID token is missing the `sub` claim/
+    );
   });
 });
 
@@ -214,7 +228,31 @@ describe("fetchOidcProfile", () => {
         tokens: buildTokens({ sub: "abc-123" }),
         client: buildClient({ userinfo }),
       })
-    ).rejects.toThrow(/sub/);
+    ).rejects.toThrow(/does not match the ID token/);
+  });
+
+  // openid-client does not compare the subjects for us here, since it is handed the raw
+  // access token rather than a TokenSet.
+  it("rejects a UserInfo response with no subject to compare against", async () => {
+    const userinfo = vi.fn().mockResolvedValue({ email: "attacker@example.com", email_verified: true });
+
+    await expect(
+      fetchOidcProfile({
+        tokens: buildTokens({ sub: "abc-123" }),
+        client: buildClient({ userinfo }),
+      })
+    ).rejects.toThrow(/UserInfo response is missing the `sub` claim/);
+  });
+
+  it("rejects the merge when the ID token carries no subject", async () => {
+    const userinfo = vi.fn().mockResolvedValue({ sub: "abc-123", email_verified: true });
+
+    await expect(
+      fetchOidcProfile({
+        tokens: buildTokens({ iss: ISSUER }),
+        client: buildClient({ userinfo }),
+      })
+    ).rejects.toThrow(/ID token is missing the `sub` claim/);
   });
 });
 

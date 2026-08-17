@@ -122,9 +122,18 @@ export function mergeOidcProfile(
 ): OidcProfileClaims {
   if (!userInfo) return idTokenClaims;
 
-  // OIDC Core 5.3.2: a UserInfo response whose `sub` differs from the ID token's must be
-  // discarded — it belongs to another end user (or to a substituted response).
-  if (idTokenClaims.sub && userInfo.sub && idTokenClaims.sub !== userInfo.sub) {
+  // OIDC Core 5.3.2: the UserInfo `sub` must be present and identical to the ID token's,
+  // otherwise the response describes another end user (or was substituted) and must be
+  // discarded. `client.userinfo()` is called with the raw access token rather than a
+  // `TokenSet` — NextAuth types these tokens as `TokenSetParameters`, which openid-client
+  // will not accept without a cast — so openid-client performs no such check of its own.
+  if (!idTokenClaims.sub) {
+    throw new Error("OIDC ID token is missing the `sub` claim, cannot validate the UserInfo response");
+  }
+  if (!userInfo.sub) {
+    throw new Error("OIDC UserInfo response is missing the `sub` claim");
+  }
+  if (idTokenClaims.sub !== userInfo.sub) {
     throw new Error("OIDC UserInfo `sub` does not match the ID token `sub`");
   }
 
