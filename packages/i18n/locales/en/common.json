@@ -3138,6 +3138,7 @@
   "signup_with_google": "Sign up with Google",
   "signup_with_microsoft": "Sign up with Microsoft",
   "signin_with_microsoft": "Sign in with Microsoft",
+  "signin_with_provider": "Sign in with {{provider}}",
   "continue_with_microsoft": "Continue with Microsoft",
   "forward_params_redirect": "Forward parameters such as ?email=...&name=.... and more",
   "assignment_description": "Schedule meetings when everyone is available or rotate through members on your team",
