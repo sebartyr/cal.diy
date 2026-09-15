@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.5.6] — 2026-09-15
+
+### Added
+
+- Event types page: a "New team" button to the right of the profile / team
+  tabs, linking to `/settings/teams/new`. The tab bar is hidden when the user
+  only has a personal profile, so there was no visible way to create a team
+  from the main page; the button is shown in that case too (#11).
+
 ## [7.5.5] — 2026-09-14
 
 ### Removed
