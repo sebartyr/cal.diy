@@ -243,8 +243,10 @@ const getTabs = (
     icon: "users",
     children: [
       {
-        name: "all_teams",
+        name: "my_teams",
         href: "/settings/teams",
+        // Prefix matching would also highlight this entry on /settings/teams/new.
+        matchFullPath: true,
         trackingMetadata: { section: "teams", page: "list" },
       },
       {
@@ -488,6 +490,7 @@ const SettingsSidebarContainer = ({
                     name={t(child.name)}
                     isExternalLink={child.isExternalLink}
                     href={child.href || "/"}
+                    matchFullPath={child.matchFullPath}
                     trackingMetadata={child.trackingMetadata}
                     textClassNames="text-emphasis font-medium text-sm"
                     className={`h-auto min-h-7 w-fit px-2! py-1! ${

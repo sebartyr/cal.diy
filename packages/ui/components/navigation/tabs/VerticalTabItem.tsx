@@ -1,13 +1,11 @@
-import Link from "next/link";
-import { Fragment } from "react";
-import posthog from "posthog-js";
-
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { useUrlMatchesCurrentUrl } from "@calcom/lib/hooks/useUrlMatchesCurrentUrl";
 import classNames from "@calcom/ui/classNames";
-
-import { Icon } from "../../icon";
+import Link from "next/link";
+import posthog from "posthog-js";
+import { Fragment } from "react";
 import type { IconName } from "../../icon";
+import { Icon } from "../../icon";
 
 export type VerticalTabItemProps = {
   name: string;
@@ -28,6 +26,7 @@ export type VerticalTabItemProps = {
   iconClassName?: string;
   onClick?: (name: string) => void;
   isActive?: boolean;
+  matchFullPath?: boolean;
   isBadged?: boolean;
   "data-testid"?: string;
   //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,9 +41,10 @@ const VerticalTabItem = ({
   disableChevron,
   linkShallow,
   linkScroll,
+  matchFullPath,
   ...props
 }: VerticalTabItemProps) => {
-  const isCurrent = useUrlMatchesCurrentUrl(href) || props?.isActive;
+  const isCurrent = useUrlMatchesCurrentUrl(href, matchFullPath) || props?.isActive;
   const { t } = useLocale();
 
   return (
