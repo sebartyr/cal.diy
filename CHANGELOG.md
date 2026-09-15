@@ -15,6 +15,19 @@ its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independen
   only has a personal profile, so there was no visible way to create a team
   from the main page; the button is shown in that case too (#11).
 
+### Fixed
+
+- Settings sidebar: "All teams" and "New team" were both highlighted on
+  `/settings/teams/new` because the list entry was matched by URL prefix.
+  `VerticalTabItem` now supports `matchFullPath` like `HorizontalTabItem`.
+
+### Changed
+
+- Settings sidebar: the teams list entry reads "My teams" instead of
+  "All teams" — it only lists the user's own memberships, the instance-wide
+  view being the admin-only `/settings/admin/teams`. The unused `all_teams`
+  translation key is removed (#12).
+
 ## [7.5.5] — 2026-09-14
 
 ### Removed
