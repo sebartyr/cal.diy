@@ -76,6 +76,37 @@ describe("getSecondaryHostnameRedirectUrl", () => {
     ).toBeNull();
   });
 
+  it("serves API routes in place on an alias so webhooks and API clients don't hit a redirect", () => {
+    for (const path of [
+      "/api",
+      "/api/book/event",
+      "/api/integrations/stripepayment/webhook",
+      "/api/cron/x",
+    ]) {
+      expect(
+        getSecondaryHostnameRedirectUrl({
+          url: new URL(`https://rdv.example.com${path}`),
+          host: "rdv.example.com",
+          secondaryHostnames,
+          canonicalUrl,
+        })
+      ).toBeNull();
+    }
+  });
+
+  it("still redirects NextAuth, tRPC and look-alike paths on an alias", () => {
+    for (const path of ["/api/auth/session", "/api/auth", "/api/trpc/me/get", "/apis", "/api-docs"]) {
+      expect(
+        getSecondaryHostnameRedirectUrl({
+          url: new URL(`https://rdv.example.com${path}`),
+          host: "rdv.example.com",
+          secondaryHostnames,
+          canonicalUrl,
+        })?.toString()
+      ).toBe(`https://cal.example.com${path}`);
+    }
+  });
+
   it("refuses to redirect when the canonical host is listed as an alias, to avoid a loop", () => {
     expect(
       getSecondaryHostnameRedirectUrl({

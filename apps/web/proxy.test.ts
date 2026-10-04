@@ -236,6 +236,31 @@ describe("Middleware Integration Tests", () => {
       expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/robots.txt`);
     });
 
+    it("serves a webhook POST on an alias in place", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/api/integrations/stripepayment/webhook",
+        method: "POST",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 200);
+      expect(getHeader(res, "x-middleware-next")).toBe("1");
+    });
+
+    it("redirects NextAuth routes on an alias", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/api/auth/csrf",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 308);
+      expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/api/auth/csrf`);
+    });
+
     it("lets requests on the canonical host through", async () => {
       vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
       const req = createTestRequest({ headers: { host: new URL(WEBAPP_URL).host } });

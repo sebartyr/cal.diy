@@ -88,8 +88,7 @@ const proxy = async (req: NextRequest): Promise<NextResponse<unknown>> => {
   });
   if (secondaryHostnameRedirectUrl) {
     // 308 keeps the method and body for clients that follow redirects (browsers, form posts).
-    // Webhook senders and API clients that don't follow redirects, and cross-origin CORS
-    // preflights, won't reach the canonical endpoint: they must be configured with WEBAPP_URL.
+    // API routes other than NextAuth and tRPC are never redirected, see isServedOnSecondaryHostname.
     return NextResponse.redirect(secondaryHostnameRedirectUrl, 308);
   }
 
