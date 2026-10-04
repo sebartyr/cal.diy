@@ -87,7 +87,9 @@ const proxy = async (req: NextRequest): Promise<NextResponse<unknown>> => {
     canonicalUrl: WEBAPP_URL,
   });
   if (secondaryHostnameRedirectUrl) {
-    // 308 keeps the method and body, so form posts and API calls to an alias still land.
+    // 308 keeps the method and body for clients that follow redirects (browsers, form posts).
+    // Webhook senders and API clients that don't follow redirects, and cross-origin CORS
+    // preflights, won't reach the canonical endpoint: they must be configured with WEBAPP_URL.
     return NextResponse.redirect(secondaryHostnameRedirectUrl, 308);
   }
 
@@ -190,7 +192,9 @@ export const config = {
   matcher: [
     // SEC-201 (Sprint 3): cover every page path so Report-Only CSP applies,
     // while excluding asset prefixes that don't need a CSP header.
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+    // robots.txt, sitemap.xml and favicon.ico stay matched so secondary hostnames
+    // redirect them too; CSP skips them because isPagePathRequest rejects files.
+    "/((?!_next/static|_next/image).*)",
   ],
 };
 

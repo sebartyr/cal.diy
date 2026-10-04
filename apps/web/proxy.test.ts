@@ -224,6 +224,18 @@ describe("Middleware Integration Tests", () => {
       expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/team/sales?date=2026-10-05`);
     });
 
+    it("redirects robots.txt on an alias", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/robots.txt",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 308);
+      expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/robots.txt`);
+    });
+
     it("lets requests on the canonical host through", async () => {
       vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
       const req = createTestRequest({ headers: { host: new URL(WEBAPP_URL).host } });
@@ -484,6 +496,15 @@ describe("Middleware Matcher Configuration (SEC-201)", () => {
     const pattern = matcher[0];
     expect(pattern).toContain("_next/static");
     expect(pattern).toContain("_next/image");
-    expect(pattern).toContain("favicon.ico");
+  });
+
+  it("matches robots.txt, sitemap.xml and favicon.ico so secondary hostnames redirect them", () => {
+    const pattern = new RegExp(`^${matcher[0]}$`);
+    for (const path of ["/robots.txt", "/sitemap.xml", "/favicon.ico", "/team/sales"]) {
+      expect(pattern.test(path)).toBe(true);
+    }
+    for (const path of ["/_next/static/chunks/main.js", "/_next/image"]) {
+      expect(pattern.test(path)).toBe(false);
+    }
   });
 });
