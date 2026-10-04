@@ -206,6 +206,34 @@ describe("Middleware Integration Tests", () => {
     });
   });
 
+  describe("Secondary hostnames", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("redirects a request on an alias to the canonical URL with a 308", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/team/sales?date=2026-10-05",
+        method: "POST",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 308);
+      expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/team/sales?date=2026-10-05`);
+    });
+
+    it("lets requests on the canonical host through", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({ headers: { host: new URL(WEBAPP_URL).host } });
+      const res = await callProxy(req);
+
+      expectStatus(res, 200);
+      expect(getHeader(res, "x-middleware-next")).toBe("1");
+    });
+  });
+
   describe("Signup Control", () => {
     it("should block signup when disabled", async () => {
       (edgeConfigGet as Mock).mockImplementation(
