@@ -1,12 +1,13 @@
+import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
+import { availabilityRouter } from "@calcom/trpc/server/routers/viewer/availability/_router";
+import { travelSchedulesRouter } from "@calcom/trpc/server/routers/viewer/travelSchedules/_router";
+import { buildLegacyRequest } from "@lib/buildLegacyCtx";
 import { createRouterCaller } from "app/_trpc/context";
 import type { PageProps } from "app/_types";
 import { _generateMetadata } from "app/_utils";
-import { notFound } from "next/navigation";
+import { cookies, headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
-
-import { availabilityRouter } from "@calcom/trpc/server/routers/viewer/availability/_router";
-import { travelSchedulesRouter } from "@calcom/trpc/server/routers/viewer/travelSchedules/_router";
-
 import { AvailabilitySettingsWebWrapper } from "~/availability/[schedule]/schedule-view";
 
 const querySchema = z.object({
@@ -34,6 +35,11 @@ const Page = async ({ params }: PageProps) => {
     notFound();
   }
   const scheduleId = parsed.data.schedule;
+
+  const session = await getServerSession({ req: buildLegacyRequest(await headers(), await cookies()) });
+  if (!session?.user?.id) {
+    redirect(`/auth/login?callbackUrl=/availability/${scheduleId}`);
+  }
 
   const [availabilityCaller, travelSchedulesCaller] = await Promise.all([
     createRouterCaller(availabilityRouter),

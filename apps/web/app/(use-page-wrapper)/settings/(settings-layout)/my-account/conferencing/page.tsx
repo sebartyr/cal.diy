@@ -1,9 +1,12 @@
-import { createRouterCaller } from "app/_trpc/context";
-import { _generateMetadata } from "app/_utils";
-
-import { ConferencingAppsViewWebWrapper } from "@calcom/web/modules/apps/components/ConferencingAppsViewWebWrapper";
+import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { appsRouter } from "@calcom/trpc/server/routers/viewer/apps/_router";
 import { eventTypesRouter } from "@calcom/trpc/server/routers/viewer/eventTypes/_router";
+import { ConferencingAppsViewWebWrapper } from "@calcom/web/modules/apps/components/ConferencingAppsViewWebWrapper";
+import { buildLegacyRequest } from "@lib/buildLegacyCtx";
+import { createRouterCaller } from "app/_trpc/context";
+import { _generateMetadata } from "app/_utils";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const generateMetadata = async () =>
   await _generateMetadata(
@@ -15,6 +18,11 @@ export const generateMetadata = async () =>
   );
 
 const Page = async () => {
+  const session = await getServerSession({ req: buildLegacyRequest(await headers(), await cookies()) });
+  if (!session?.user?.id) {
+    redirect("/auth/login?callbackUrl=/settings/my-account/conferencing");
+  }
+
   const [appsCaller, eventTypesCaller] = await Promise.all([
     createRouterCaller(appsRouter),
     createRouterCaller(eventTypesRouter),
