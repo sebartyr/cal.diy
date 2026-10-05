@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.6.0] — 2026-10-05
+
+### Added
+
+- Secondary hostnames: a new `SECONDARY_HOSTNAMES` variable (comma-separated)
+  lists alias domains attached to the instance. Requests on an alias get a
+  308 to the same path and query on `NEXT_PUBLIC_WEBAPP_URL`. Aliases are
+  redirected rather than served because the canonical URL is baked into the
+  client bundle and drives NextAuth cookies, the OIDC redirect URI and CSP;
+  the Keycloak client keeps its single redirect URI. `/api/*` is served in
+  place on aliases so webhook senders and API clients that don't follow
+  redirects keep working, except `/api/auth/*` and `/api/trpc/*`, which stay
+  canonical. `robots.txt`, `sitemap.xml` and `favicon.ico` are now matched by
+  the proxy so they redirect too. Webhooks whose signature covers the full
+  URL (Twilio) must keep using the canonical URL (#15).
+
+### Fixed
+
+- Settings and availability pages: `my-account/calendars`,
+  `my-account/conferencing`, `my-account/profile`, `developer/webhooks/new`
+  and `availability/[schedule]` called session-guarded tRPC procedures
+  before checking the session. Layouts and pages render in parallel in the
+  App Router, so the settings layout redirect did not stop them: logged-out
+  requests, mostly scanner bots, logged bursts of `TRPCError: UNAUTHORIZED`.
+  Each page now checks the session first and redirects to
+  `/auth/login?callbackUrl=…` (#13).
+
+### Upstream sync
+
+Fork synchronised with `upstream/main` up to #30190: five commits
+cherry-picked with `-x`, no conflict (#14). Indonesian locale (#30134);
+the embed iframe ready handler is guarded (#30135); duplicated words removed
+from three user-visible strings (#30190). #30140 and #30171 cancel out: only
+the `CacheProvider` `@ts-expect-error` comment changes.
+
 ## [7.5.6] — 2026-09-15
 
 ### Added
