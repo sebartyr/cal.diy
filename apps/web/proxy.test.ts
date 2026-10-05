@@ -206,6 +206,71 @@ describe("Middleware Integration Tests", () => {
     });
   });
 
+  describe("Secondary hostnames", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("redirects a request on an alias to the canonical URL with a 308", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/team/sales?date=2026-10-05",
+        method: "POST",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 308);
+      expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/team/sales?date=2026-10-05`);
+    });
+
+    it("redirects robots.txt on an alias", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/robots.txt",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 308);
+      expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/robots.txt`);
+    });
+
+    it("serves a webhook POST on an alias in place", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/api/integrations/stripepayment/webhook",
+        method: "POST",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 200);
+      expect(getHeader(res, "x-middleware-next")).toBe("1");
+    });
+
+    it("redirects NextAuth routes on an alias", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({
+        url: "https://rdv.example.com/api/auth/csrf",
+        headers: { host: "rdv.example.com" },
+      });
+      const res = await callProxy(req);
+
+      expectStatus(res, 308);
+      expect(getHeader(res, "location")).toBe(`${new URL(WEBAPP_URL).origin}/api/auth/csrf`);
+    });
+
+    it("lets requests on the canonical host through", async () => {
+      vi.stubEnv("SECONDARY_HOSTNAMES", "rdv.example.com");
+      const req = createTestRequest({ headers: { host: new URL(WEBAPP_URL).host } });
+      const res = await callProxy(req);
+
+      expectStatus(res, 200);
+      expect(getHeader(res, "x-middleware-next")).toBe("1");
+    });
+  });
+
   describe("Signup Control", () => {
     it("should block signup when disabled", async () => {
       (edgeConfigGet as Mock).mockImplementation(
@@ -456,6 +521,15 @@ describe("Middleware Matcher Configuration (SEC-201)", () => {
     const pattern = matcher[0];
     expect(pattern).toContain("_next/static");
     expect(pattern).toContain("_next/image");
-    expect(pattern).toContain("favicon.ico");
+  });
+
+  it("matches robots.txt, sitemap.xml and favicon.ico so secondary hostnames redirect them", () => {
+    const pattern = new RegExp(`^${matcher[0]}$`);
+    for (const path of ["/robots.txt", "/sitemap.xml", "/favicon.ico", "/team/sales"]) {
+      expect(pattern.test(path)).toBe(true);
+    }
+    for (const path of ["/_next/static/chunks/main.js", "/_next/image"]) {
+      expect(pattern.test(path)).toBe(false);
+    }
   });
 });

@@ -1,0 +1,52 @@
+export const parseSecondaryHostnames = (value: string | undefined): Set<string> => {
+  const hostnames = new Set<string>();
+  if (!value) return hostnames;
+
+  for (const entry of value.split(",")) {
+    const hostname = entry.trim().toLowerCase();
+    if (hostname) hostnames.add(hostname);
+  }
+  return hostnames;
+};
+
+const stripPort = (host: string) => host.replace(/:\d+$/, "");
+
+const isPathPrefix = (pathname: string, prefix: string) =>
+  pathname === prefix || pathname.startsWith(`${prefix}/`);
+
+// API routes authenticate with API keys or webhook signatures, not the session, so they
+// work on any host. Serving them in place matters because webhook senders and most API
+// clients don't follow a 308. NextAuth and tRPC stay canonical: they depend on the
+// session cookie, CSRF token and OIDC redirect URI, all bound to the canonical host.
+const isServedOnSecondaryHostname = (pathname: string) =>
+  isPathPrefix(pathname, "/api") &&
+  !isPathPrefix(pathname, "/api/auth") &&
+  !isPathPrefix(pathname, "/api/trpc");
+
+/**
+ * Aliases are redirected rather than served because the canonical URL is baked
+ * into the client bundle and drives NextAuth cookies, OIDC redirect URIs and CSP.
+ */
+export const getSecondaryHostnameRedirectUrl = ({
+  url,
+  host,
+  secondaryHostnames,
+  canonicalUrl,
+}: {
+  url: URL;
+  host: string | null;
+  secondaryHostnames: Set<string>;
+  canonicalUrl: string;
+}): URL | null => {
+  if (!host || secondaryHostnames.size === 0) return null;
+  if (!secondaryHostnames.has(stripPort(host.trim().toLowerCase()))) return null;
+  if (isServedOnSecondaryHostname(url.pathname)) return null;
+
+  const target = new URL(canonicalUrl);
+  // Guards against a misconfiguration listing the canonical host as an alias, which would loop.
+  if (secondaryHostnames.has(target.hostname.toLowerCase())) return null;
+
+  target.pathname = url.pathname;
+  target.search = url.search;
+  return target;
+};

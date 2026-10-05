@@ -1,5 +1,7 @@
 import process from "node:process";
-import { getCspHeader, getCspNonce, type CspMode } from "@lib/csp";
+import { WEBAPP_URL } from "@calcom/lib/constants";
+import { type CspMode, getCspHeader, getCspNonce } from "@lib/csp";
+import { getSecondaryHostnameRedirectUrl, parseSecondaryHostnames } from "@lib/secondaryHostnames";
 import { get } from "@vercel/edge-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -77,6 +79,19 @@ const cspModeFor = (url: URL): CspMode => {
 
 const proxy = async (req: NextRequest): Promise<NextResponse<unknown>> => {
   const url = req.nextUrl;
+
+  const secondaryHostnameRedirectUrl = getSecondaryHostnameRedirectUrl({
+    url,
+    host: req.headers.get("host"),
+    secondaryHostnames: parseSecondaryHostnames(process.env.SECONDARY_HOSTNAMES),
+    canonicalUrl: WEBAPP_URL,
+  });
+  if (secondaryHostnameRedirectUrl) {
+    // 308 keeps the method and body for clients that follow redirects (browsers, form posts).
+    // API routes other than NextAuth and tRPC are never redirected, see isServedOnSecondaryHostname.
+    return NextResponse.redirect(secondaryHostnameRedirectUrl, 308);
+  }
+
   const reqWithEnrichedHeaders = enrichRequestWithHeaders({ req });
   const requestHeaders = new Headers(reqWithEnrichedHeaders.headers);
 
@@ -176,7 +191,9 @@ export const config = {
   matcher: [
     // SEC-201 (Sprint 3): cover every page path so Report-Only CSP applies,
     // while excluding asset prefixes that don't need a CSP header.
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+    // robots.txt, sitemap.xml and favicon.ico stay matched so secondary hostnames
+    // redirect them too; CSP skips them because isPagePathRequest rejects files.
+    "/((?!_next/static|_next/image).*)",
   ],
 };
 
