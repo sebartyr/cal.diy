@@ -1,5 +1,5 @@
 import { createEvent as createIcsEvent } from "ics";
-import { createCalendarObject, updateCalendarObject } from "tsdav";
+import { createAccount, createCalendarObject, fetchCalendarObjects, updateCalendarObject } from "tsdav";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("ics", () => ({
@@ -18,6 +18,7 @@ vi.mock("tsdav", () => ({
 
 vi.mock("@calcom/lib/logger", () => ({
   default: {
+    error: vi.fn(),
     getSubLogger: () => ({
       debug: vi.fn(),
       error: vi.fn(),
@@ -33,6 +34,10 @@ vi.mock("@calcom/lib/crypto", () => ({
     }
     return text;
   }),
+}));
+
+vi.mock("node:dns/promises", () => ({
+  default: { lookup: vi.fn().mockResolvedValue([{ address: "93.184.215.14", family: 4 }]) },
 }));
 
 vi.mock("./CalEventParser", () => ({
@@ -60,7 +65,7 @@ const createMockEvent = (overrides: Partial<CalendarServiceEvent> = {}): Calenda
 });
 
 class TestCalendarService extends BaseCalendarService {
-  constructor() {
+  constructor(serverUrl = "https://caldav.example.com") {
     super(
       {
         id: 1,
@@ -78,7 +83,7 @@ class TestCalendarService extends BaseCalendarService {
         },
       },
       "caldav",
-      "https://caldav.example.com"
+      serverUrl
     );
   }
 
@@ -746,5 +751,74 @@ describe("CalendarService - SCHEDULE-AGENT injection", () => {
 
       await expect(service.createEvent(event, 1)).rejects.toThrow();
     });
+  });
+});
+
+describe("CalendarService - SSRF protection", () => {
+  const METADATA_URL = "https://169.254.169.254/latest/meta-data/";
+
+  class AccountOnlyCalendarService extends BaseCalendarService {
+    constructor(serverUrl: string) {
+      super(
+        {
+          id: 1,
+          type: "caldav_calendar",
+          delegationCredentialId: null,
+          user: { email: "test@example.com" },
+          userId: 1,
+          teamId: null,
+          appId: "caldav",
+          invalid: false,
+          key: { username: "test", password: "test", url: serverUrl },
+        },
+        "caldav"
+      );
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("refuses to contact an internal CalDAV server URL when listing calendars", async () => {
+    const service = new AccountOnlyCalendarService(METADATA_URL);
+
+    await expect(service.listCalendars()).rejects.toThrow("URL is not allowed");
+    expect(createAccount).not.toHaveBeenCalled();
+  });
+
+  it("skips selected calendars pointing to internal URLs when fetching availability", async () => {
+    vi.mocked(fetchCalendarObjects).mockResolvedValue([]);
+    const service = new TestCalendarService();
+
+    const busy = await service.getAvailability({
+      dateFrom: "2023-01-01T00:00:00Z",
+      dateTo: "2023-01-02T00:00:00Z",
+      selectedCalendars: [
+        { externalId: "https://caldav.example.com/calendar/", integration: "caldav" },
+        { externalId: METADATA_URL, integration: "caldav" },
+      ],
+      mode: "slots",
+    });
+
+    expect(busy).toEqual([]);
+    expect(fetchCalendarObjects).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetchCalendarObjects).mock.calls[0][0].calendar.url).toBe(
+      "https://caldav.example.com/calendar/"
+    );
+  });
+
+  it("does not write events to a calendar URL pointing to an internal address", async () => {
+    vi.mocked(createIcsEvent).mockReturnValue({
+      error: null as unknown as Error,
+      value: "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nEND:VEVENT\r\nEND:VCALENDAR",
+    });
+    const service = new TestCalendarService();
+    vi.spyOn(service, "listCalendars").mockResolvedValue([
+      { externalId: METADATA_URL, name: "Evil", primary: true, integration: "caldav" },
+    ]);
+
+    await expect(service.createEvent(createMockEvent(), 1)).rejects.toThrow("URL is not allowed");
+    expect(createCalendarObject).not.toHaveBeenCalled();
   });
 });

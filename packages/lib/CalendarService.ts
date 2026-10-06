@@ -34,6 +34,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getLocation, getRichDescription } from "./CalEventParser";
 import { symmetricDecrypt } from "./crypto";
 import logger from "./logger";
+import { assertUrlIsSafeForSSRF } from "./ssrfProtection";
 
 const TIMEZONE_FORMAT = "YYYY-MM-DDTHH:mm:ss[Z]";
 const DEFAULT_CALENDAR_TYPE = "caldav";
@@ -470,16 +471,17 @@ export default abstract class BaseCalendarService implements Calendar {
               ? c.externalId === mainHostDestinationCalendar.externalId
               : true
           )
-          .map((calendar) =>
-            createCalendarObject({
+          .map(async (calendar) => {
+            await this.assertSafeUrl(calendar.externalId);
+            return createCalendarObject({
               calendar: {
                 url: calendar.externalId,
               },
               filename: `${uid}.ics`,
               iCalString: injectScheduleAgent(iCalStringWithTimezone),
               headers: this.headers,
-            })
-          )
+            });
+          })
       );
 
       if (responses.some((r) => !r.ok)) {
@@ -544,8 +546,9 @@ export default abstract class BaseCalendarService implements Calendar {
       let calendarEvent: CalendarEventType;
       const eventsToUpdate = events.filter((e) => e.uid === uid);
       return Promise.all(
-        eventsToUpdate.map((eventItem) => {
+        eventsToUpdate.map(async (eventItem) => {
           calendarEvent = eventItem;
+          await this.assertSafeUrl(eventItem.url);
           return updateCalendarObject({
             calendarObject: {
               url: calendarEvent.url,
@@ -593,7 +596,8 @@ export default abstract class BaseCalendarService implements Calendar {
 
       const eventsToDelete = events.filter((event) => event.uid === uid);
       await Promise.all(
-        eventsToDelete.map((event) => {
+        eventsToDelete.map(async (event) => {
+          await this.assertSafeUrl(event.url);
           return deleteCalendarObject({
             calendarObject: {
               url: event.url,
@@ -871,6 +875,7 @@ export default abstract class BaseCalendarService implements Calendar {
   }: FetchObjectsWithOptionalExpandOptionsType): Promise<DAVObject[]> {
     const filteredCalendars = selectedCalendars.filter((sc) => sc.externalId);
     const fetchPromises = filteredCalendars.map(async (sc) => {
+      await this.assertSafeUrl(sc.externalId);
       const response = await fetchCalendarObjects({
         urlFilter: (url) => this.isValidFormat(url),
         calendar: {
@@ -927,6 +932,7 @@ export default abstract class BaseCalendarService implements Calendar {
     objectUrls?: string[] | null
   ) {
     try {
+      await this.assertSafeUrl(calId);
       const objects = await fetchCalendarObjects({
         calendar: {
           url: calId,
@@ -1010,7 +1016,21 @@ export default abstract class BaseCalendarService implements Calendar {
     return events;
   }
 
+  /**
+   * CalDAV URLs (the account URL and the calendar/object URLs it returns) are user-controlled and
+   * used long after the credential was added, including from anonymous booking pages. Re-validate
+   * at every use to catch DNS rebinding. Limitation: tsdav (cross-fetch) follows HTTP redirects
+   * itself and exposes no fetch override, so a redirect from a validated URL is not re-checked.
+   */
+  private async assertSafeUrl(url: string): Promise<void> {
+    await assertUrlIsSafeForSSRF(url, {
+      integration: this.integrationName,
+      credentialId: this.credential.id,
+    });
+  }
+
   private async getAccount(): Promise<DAVAccount> {
+    await this.assertSafeUrl(this.url);
     return createAccount({
       account: {
         serverUrl: this.url,

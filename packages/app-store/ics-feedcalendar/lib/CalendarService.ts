@@ -4,6 +4,7 @@
 import process from "node:process";
 import dayjs from "@calcom/dayjs";
 import { symmetricDecrypt } from "@calcom/lib/crypto";
+import { fetchWithSSRFProtection } from "@calcom/lib/ssrfProtection";
 import type {
   Calendar,
   CalendarEvent,
@@ -83,7 +84,9 @@ class ICSFeedCalendarService implements Calendar {
   }
 
   fetchCalendars = async (): Promise<{ url: string; vcalendar: ICAL.Component }[]> => {
-    const reqPromises = await Promise.allSettled(this.urls.map((x) => fetch(x).then((y) => [x, y])));
+    const reqPromises = await Promise.allSettled(
+      this.urls.map((x) => fetchWithSSRFProtection(x).then((y) => [x, y]))
+    );
     const reqs = reqPromises
       .filter((x) => x.status === "fulfilled")
       .map((x) => (x as PromiseFulfilledResult<[string, Response]>).value);
