@@ -1,9 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import { storeHuddle01Credential } from "../utils/storage";
 
@@ -15,6 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!session) {
     return res.status(401).json({ message: "Unauthorized" });
   }
+
+  // SEC-102: refuse to store an identityToken unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
 
   const userId = session.user.id;
 

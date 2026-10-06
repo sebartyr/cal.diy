@@ -1,12 +1,11 @@
+import { WEBAPP_URL } from "@calcom/lib/constants";
+import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import axios from "axios";
 import type { NextApiRequest, NextApiResponse } from "next";
 import qs from "qs";
-
-import { WEBAPP_URL } from "@calcom/lib/constants";
-import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
-
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import createOAuthAppCredential from "../../_utils/oauth/createOAuthAppCredential";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import appConfig from "../config.json";
@@ -27,6 +26,7 @@ function isAuthorizedAccountsServerUrl(accountsServer: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code, "accounts-server": accountsServer } = req.query;
+  const state = decodeOAuthState(req);
 
   if (code === undefined && typeof code !== "string") {
     res.status(400).json({ message: "`code` must be a string" });
@@ -46,6 +46,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!req.session?.user?.id) {
     return res.status(401).json({ message: "You must be logged in to do this" });
   }
+
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
 
   let clientId = "";
   let clientSecret = "";
@@ -76,8 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   zohoCrmTokenInfo.data.accountServer = accountsServer;
 
   await createOAuthAppCredential({ appId: appConfig.slug, type: appConfig.type }, zohoCrmTokenInfo.data, req);
-
-  const state = decodeOAuthState(req);
 
   res.redirect(
     getSafeRedirectUrl(state?.returnTo) ?? getInstalledAppPath({ variant: "other", slug: "zohocrm" })

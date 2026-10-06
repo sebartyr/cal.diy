@@ -1,12 +1,11 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import logger from "@calcom/lib/logger";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import createOAuthAppCredential from "../../_utils/oauth/createOAuthAppCredential";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 
@@ -14,6 +13,7 @@ const log = logger.getSubLogger({ prefix: [`[[intercom/api/callback]`] });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query;
+  const state = decodeOAuthState(req);
 
   if (code && typeof code !== "string") {
     res.status(400).json({ message: "`code` must be a string" });
@@ -22,6 +22,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!req.session?.user?.id) {
     return res.status(401).json({ message: "You must be logged in to do this" });
   }
+
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
 
   let clientId = "";
   let clientSecret = "";
@@ -79,13 +82,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     },
   });
 
-  createOAuthAppCredential(
+  await createOAuthAppCredential(
     { appId: "intercom", type: "intercom_automation" },
     JSON.stringify({ access_token: responseBody.access_token, admin_id: adminId }),
     req
   );
-
-  const state = decodeOAuthState(req);
 
   res.redirect(
     getSafeRedirectUrl(`${WEBAPP_URL}/apps/installed/automation?hl=intercom`) ??
