@@ -2,9 +2,25 @@ import { createHmac } from "node:crypto";
 import process from "node:process";
 import { safeCompareSecret } from "./cron-auth";
 
-// 262992 minutes is 6 months
-export function generateVideoToken(recordingId: string, expiresInMinutes = 262992) {
-  const secret = process.env.CAL_VIDEO_RECORDING_TOKEN_SECRET || "default-secret-change-me";
+// No hard-coded fallback: a public default secret would let anyone forge
+// recording download tokens. Without a secret, recording links are disabled.
+function getVideoTokenSecret(): string | null {
+  return process.env.CAL_VIDEO_RECORDING_TOKEN_SECRET || null;
+}
+
+const SIX_MONTHS_IN_MINUTES = 262992;
+
+/**
+ * Returns null when CAL_VIDEO_RECORDING_TOKEN_SECRET is not configured, so
+ * callers can skip the recording link instead of failing the whole flow.
+ */
+export function generateVideoToken(
+  recordingId: string,
+  expiresInMinutes = SIX_MONTHS_IN_MINUTES
+): string | null {
+  const secret = getVideoTokenSecret();
+  if (!secret) return null;
+
   const expires = Date.now() + expiresInMinutes * 60 * 1000;
 
   const payload = `${recordingId}:${expires}`;
@@ -18,14 +34,16 @@ export function verifyVideoToken(token: string): {
   recordingId?: string;
 } {
   try {
-    const [recordingId, expires, receivedHmac] = token.split(":");
-    const secret = process.env.CAL_VIDEO_RECORDING_TOKEN_SECRET || "default-secret-change-me";
+    const secret = getVideoTokenSecret();
+    if (!secret) return { valid: false };
 
-    if (Date.now() > parseInt(expires, 10)) {
+    const [recordingId, expires, receivedHmac] = token.split(":");
+    const expiresAt = Number.parseInt(expires, 10);
+
+    if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
       return { valid: false };
     }
 
-    // Verify HMAC
     const payload = `${recordingId}:${expires}`;
     const expectedHmac = createHmac("sha256", secret).update(payload).digest("hex");
 

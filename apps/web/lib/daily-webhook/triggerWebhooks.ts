@@ -41,7 +41,7 @@ export const triggerRecordingReadyWebhook = async ({
   booking,
 }: {
   evt: CalendarEvent;
-  downloadLink: string;
+  downloadLink?: string;
   booking: Booking;
 }) => {
   const eventTrigger: WebhookTriggerEvents = "RECORDING_READY";
@@ -78,7 +78,7 @@ export const triggerTranscriptionGeneratedWebhook = async ({
   evt: CalendarEvent;
   downloadLinks?: {
     transcription: TGetTranscriptAccessLink["transcription"];
-    recording: string;
+    recording?: string;
   };
   booking: Booking;
 }) => {
