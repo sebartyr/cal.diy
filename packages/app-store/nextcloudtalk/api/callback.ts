@@ -1,11 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import createOAuthAppCredential from "../../_utils/oauth/createOAuthAppCredential";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 
@@ -15,6 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!userId) {
     return res.status(404).json({ message: "No user found" });
   }
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
+
   const { code } = req.query;
   const appKeys = await getAppKeysFromSlug("nextcloudtalk");
   const hostUrl = appKeys.nextcloudTalkHost as string;

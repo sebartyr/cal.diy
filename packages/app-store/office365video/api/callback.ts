@@ -1,11 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { WEBAPP_URL, WEBAPP_URL_FOR_OAUTH } from "@calcom/lib/constants";
 import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import createOAuthAppCredential from "../../_utils/oauth/createOAuthAppCredential";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import { OFFICE365_VIDEO_SCOPES } from "./add";
@@ -26,6 +25,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(400).json({ message: "No code returned" });
     return;
   }
+
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
 
   let clientId = "";
   let clientSecret = "";
