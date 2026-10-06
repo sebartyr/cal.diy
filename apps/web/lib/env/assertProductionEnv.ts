@@ -15,6 +15,9 @@ const REQUIRED_VARS = [
 
 const PLACEHOLDER_VALUES = new Set(["secret", "changeme", "change-me", "TODO"]);
 
+// Published in .env.example, so anyone can call the cron routes with it.
+const EXAMPLE_CRON_API_KEY = "0cc0e6c35519bba620c9360cfe3e68d0";
+
 export type AssertProductionEnvResult =
   | { ok: true }
   | { ok: false; missing: string[]; placeholders: string[] };
@@ -23,9 +26,7 @@ export type AssertProductionEnvResult =
  * Pure check — returns a structured result. Caller decides whether to
  * `throw` (production) or just `log` (tests).
  */
-export function checkProductionEnv(
-  env: Record<string, string | undefined>
-): AssertProductionEnvResult {
+export function checkProductionEnv(env: Record<string, string | undefined>): AssertProductionEnvResult {
   // Skip the check whenever we're not in a production runtime; the dev
   // server, vitest, and Next's edge runtime each have their own guarantees.
   if (env.NODE_ENV !== "production") return { ok: true };
@@ -51,6 +52,18 @@ export function checkProductionEnv(
   const encKey = env.CALENDSO_ENCRYPTION_KEY;
   if (encKey && !PLACEHOLDER_VALUES.has(encKey) && encKey.length < 24) {
     placeholders.push("CALENDSO_ENCRYPTION_KEY(too-short)");
+  }
+
+  // CRON_API_KEY is optional, but when it is set it must be a real secret:
+  // some cron routes compare it directly to `?apiKey=`, so an empty value
+  // would authorize an empty query param.
+  const cronApiKey = env.CRON_API_KEY;
+  if (cronApiKey !== undefined) {
+    if (cronApiKey === "") {
+      placeholders.push("CRON_API_KEY(empty)");
+    } else if (cronApiKey === EXAMPLE_CRON_API_KEY || PLACEHOLDER_VALUES.has(cronApiKey)) {
+      placeholders.push("CRON_API_KEY(.env.example value)");
+    }
   }
 
   if (missing.length === 0 && placeholders.length === 0) return { ok: true };
