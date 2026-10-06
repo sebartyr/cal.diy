@@ -43,7 +43,6 @@ vi.mock("@jsforce/jsforce-node", () => ({ default: { Connection: mocks.jsforceCo
 
 const NEXTAUTH_SECRET = "test-nextauth-secret";
 const USER_ID = 42;
-const originalSecret = process.env.NEXTAUTH_SECRET;
 
 type MockResponse = NextApiResponse & {
   status: ReturnType<typeof vi.fn>;
@@ -97,12 +96,12 @@ describe("OAuth callbacks refuse to exchange a code without a valid state (SEC-1
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NEXTAUTH_SECRET = NEXTAUTH_SECRET;
+    vi.stubEnv("NEXTAUTH_SECRET", NEXTAUTH_SECRET);
     fetchSpy.mockRejectedValue(new Error("fetch must not be called"));
   });
 
   afterAll(() => {
-    process.env.NEXTAUTH_SECRET = originalSecret;
+    vi.unstubAllEnvs();
     fetchSpy.mockRestore();
   });
 
