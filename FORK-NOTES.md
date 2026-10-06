@@ -67,6 +67,7 @@ bouge.
 | Teams `isPrivate: true` par défaut | `packages/trpc/.../teams/create.handler.ts` | SPRINT2-030 |
 | Sentry `beforeSend` PII scrub | `apps/web/lib/sentry/scrubEvent.ts`, `apps/web/sentry.server.config.ts` | SPRINT2-031 |
 | Invite email + token consumption | `packages/trpc/.../teams/inviteMember.handler.ts`, `.../acceptOrLeave.handler.ts` | SPRINT2-040 |
+| Webhooks : `teamId` contrôlé (create), scope figé + allow-list (edit), stub permission → rôles Membership (list/getByViewer, secret masqué aux MEMBER), `getPublicEvent` équipes privées | `packages/trpc/.../webhook/{create,edit}.handler.ts`, `packages/features/webhooks/lib/repository/WebhookRepository.ts`, `packages/features/eventtypes/lib/getPublicEvent.ts` | SEC-WEBHOOK-TEAM |
 
 ## Procédure de rebase (à chaque sync upstream)
 

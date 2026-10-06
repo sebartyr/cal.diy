@@ -25,18 +25,19 @@ import {
 } from "@calcom/prisma/zod-utils";
 import type { UserProfile } from "@calcom/types/UserProfile";
 
-class PermissionCheckService {
-  constructor(_prisma?: unknown) {}
-  async checkPermission(..._args: unknown[]) {
-    return true;
-  }
-  async hasPermission(..._args: unknown[]) {
-    return true;
-  }
-  async getTeamIdsWithPermission(..._args: unknown[]): Promise<number[]> {
-    return [];
-  }
-}
+// Cal.diy has no PBAC: private team members are only visible to accepted
+// ADMIN/OWNER members of the team or of its parent organization.
+const isAcceptedTeamAdminOrOwner = async (
+  prisma: PrismaClient,
+  { userId, teamId }: { userId: number; teamId: number }
+): Promise<boolean> => {
+  const membership = await prisma.membership.findUnique({
+    where: { userId_teamId: { userId, teamId } },
+    select: { role: true, accepted: true },
+  });
+  if (!membership?.accepted) return false;
+  return membership.role === MembershipRole.ADMIN || membership.role === MembershipRole.OWNER;
+};
 const getSlugOrRequestedSlug = (slug: string) => ({ slug });
 const getBookerBaseUrlSync = (_orgSlug?: string | number | null): string =>
   process.env.NEXT_PUBLIC_WEBAPP_URL || "https://app.cal.com";
@@ -305,8 +306,7 @@ export const getPublicEvent = async (
     // this reason (sortUsersByDynamicList in getLocationValuesForDb.ts) — without the same sort
     // here, the booking page can advertise a different location than the one actually booked.
     const users = [...usersInOrgContext].sort(
-      (a, b) =>
-        usernameList.indexOf(a.username ?? "") - usernameList.indexOf(b.username ?? "")
+      (a, b) => usernameList.indexOf(a.username ?? "") - usernameList.indexOf(b.username ?? "")
     );
 
     const defaultEvent = getDefaultEvent(eventSlug);
@@ -541,20 +541,15 @@ export const getPublicEvent = async (
   }
   let canViewPrivateTeamMembers = false;
   if (currentUserId && event.teamId) {
-    const permissionCheckService = new PermissionCheckService();
-    canViewPrivateTeamMembers = await permissionCheckService.checkPermission({
+    canViewPrivateTeamMembers = await isAcceptedTeamAdminOrOwner(prisma, {
       userId: currentUserId,
       teamId: event.teamId,
-      permission: "team.read",
-      fallbackRoles: [MembershipRole.ADMIN, MembershipRole.OWNER],
     });
 
     if (!canViewPrivateTeamMembers && event.team?.parentId) {
-      canViewPrivateTeamMembers = await permissionCheckService.checkPermission({
+      canViewPrivateTeamMembers = await isAcceptedTeamAdminOrOwner(prisma, {
         userId: currentUserId,
         teamId: event.team.parentId,
-        permission: "team.read",
-        fallbackRoles: [MembershipRole.ADMIN, MembershipRole.OWNER],
       });
     }
   }
