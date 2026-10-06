@@ -1,3 +1,4 @@
+import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import { MembershipRole } from "@calcom/prisma/enums";
@@ -7,6 +8,7 @@ import { BookingAccessService } from "./BookingAccessService";
 
 vi.mock("../repositories/BookingRepository");
 vi.mock("@calcom/features/users/repositories/UserRepository");
+vi.mock("@calcom/features/membership/repositories/MembershipRepository");
 
 vi.mock("@calcom/prisma", () => ({
   default: {},
@@ -341,6 +343,77 @@ describe("BookingAccessService", () => {
 
         expect(result).toBe(false);
         expect(mockPermissionCheckService.checkPermission).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe("Membership-based permission checks (no PBAC stub)", () => {
+      let membershipService: BookingAccessService;
+      let mockMembershipRepo: { hasAcceptedMembershipWithRoles: ReturnType<typeof vi.fn> };
+
+      beforeEach(() => {
+        mockMembershipRepo = { hasAcceptedMembershipWithRoles: vi.fn() };
+        vi.mocked(MembershipRepository).mockImplementation(function () {
+          return mockMembershipRepo as unknown as MembershipRepository;
+        });
+        membershipService = new BookingAccessService(mockPrismaClient);
+      });
+
+      it("denies access to a team booking when the user is not an accepted admin/owner of the team", async () => {
+        mockBookingRepo.findByUidIncludeEventType.mockResolvedValue({
+          userId: 456,
+          eventType: { teamId: 100 },
+          attendees: [],
+        });
+        mockMembershipRepo.hasAcceptedMembershipWithRoles.mockResolvedValue(false);
+
+        const result = await membershipService.doesUserIdHaveAccessToBooking({
+          userId: 123,
+          bookingUid: "test-booking-uid",
+        });
+
+        expect(result).toBe(false);
+        expect(mockMembershipRepo.hasAcceptedMembershipWithRoles).toHaveBeenCalledWith({
+          userId: 123,
+          teamId: 100,
+          roles: [MembershipRole.OWNER, MembershipRole.ADMIN],
+        });
+      });
+
+      it("grants access to a team booking when the user is an accepted admin/owner of the team", async () => {
+        mockBookingRepo.findByUidIncludeEventType.mockResolvedValue({
+          userId: 456,
+          eventType: { teamId: 100 },
+          attendees: [],
+        });
+        mockMembershipRepo.hasAcceptedMembershipWithRoles.mockResolvedValue(true);
+
+        const result = await membershipService.doesUserIdHaveAccessToBooking({
+          userId: 123,
+          bookingUid: "test-booking-uid",
+        });
+
+        expect(result).toBe(true);
+      });
+
+      it("denies access to a personal booking when the user administers none of the organizer's teams", async () => {
+        mockBookingRepo.findByUidIncludeEventType.mockResolvedValue({
+          userId: 456,
+          eventType: null,
+          attendees: [],
+        });
+        mockUserRepo.getUserOrganizationAndTeams.mockResolvedValue({
+          organizationId: 200,
+          teams: [{ teamId: 300 }],
+        });
+        mockMembershipRepo.hasAcceptedMembershipWithRoles.mockResolvedValue(false);
+
+        const result = await membershipService.doesUserIdHaveAccessToBooking({
+          userId: 123,
+          bookingUid: "test-booking-uid",
+        });
+
+        expect(result).toBe(false);
+        expect(mockMembershipRepo.hasAcceptedMembershipWithRoles).toHaveBeenCalledTimes(2);
       });
     });
   });
