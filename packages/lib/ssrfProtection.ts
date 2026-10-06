@@ -15,28 +15,67 @@ const log: ReturnType<typeof logger.getSubLogger> = logger.getSubLogger({ prefix
  * access to internal networks and cloud metadata services
  */
 
-const BLOCKED_IP_RANGES: readonly string[] = [
-  "unspecified", // 0.0.0.0/8, ::/128
-  "loopback", // 127.0.0.0/8, ::1/128
-  "private", // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-  "linkLocal", // 169.254.0.0/16, fe80::/10
-  "uniqueLocal", // fc00::/7
-  "carrierGradeNat", // 100.64.0.0/10 (RFC 6598)
-  "reserved", // Documentation ranges (RFC 5737), etc.
-  "benchmarking", // 198.18.0.0/15 (RFC 2544)
-] as const;
+// Never reachable through user-controlled URLs, even on self-hosted instances and even when allowlisted
+const ALWAYS_BLOCKED_IPV4_RANGES: ReadonlySet<string> = new Set([
+  "unspecified", // 0.0.0.0/8
+  "broadcast", // 255.255.255.255/32
+  "multicast", // 224.0.0.0/4
+  "linkLocal", // 169.254.0.0/16 (cloud metadata lives here)
+  "loopback", // 127.0.0.0/8
+  "reserved", // documentation, benchmarking (198.18.0.0/15), 240.0.0.0/4, ...
+]);
 
-// Cloud metadata endpoints (blocked even on self-hosted)
-const CLOUD_METADATA_ENDPOINTS: string[] = [
-  "169.254.169.254", // AWS/Azure/DigitalOcean/Oracle metadata
+const ALWAYS_BLOCKED_IPV6_RANGES: ReadonlySet<string> = new Set([
+  "unspecified", // ::
+  "linkLocal", // fe80::/10
+  "multicast", // ff00::/8
+  "loopback", // ::1
+  "discard", // 100::/64
+  "teredo", // 2001::/32, tunnels to an obfuscated IPv4 that is not decoded here
+  "benchmarking",
+  "deprecated",
+  "orchid2",
+  "reserved", // 2001:db8::/32, ...
+]);
+
+// Internal networks: blocked by default, can be opened with SSRF_ALLOWED_PRIVATE_HOSTS
+const PRIVATE_IPV4_RANGES: ReadonlySet<string> = new Set([
+  "private", // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+  "carrierGradeNat", // 100.64.0.0/10 (RFC 6598)
+]);
+
+const PRIVATE_IPV6_RANGES: ReadonlySet<string> = new Set([
+  "uniqueLocal", // fc00::/7
+]);
+
+// Deprecated site-local fec0::/10 is not classified by ipaddr.js but some networks still route it internally
+const IPV6_SITE_LOCAL: [ipaddr.IPv6, number] = ipaddr.IPv6.parseCIDR("fec0::/10");
+// RFC 8215 local-use NAT64 prefix, not classified by ipaddr.js
+const IPV6_LOCAL_NAT64: [ipaddr.IPv6, number] = ipaddr.IPv6.parseCIDR("64:ff9b:1::/48");
+
+// Metadata services, including those outside the always-blocked ranges, so an allowlist can never open them
+const CLOUD_METADATA_IPS: ReadonlySet<string> = new Set([
+  "169.254.169.254", // AWS/Azure/GCP/DigitalOcean/Oracle
   "169.254.169.253", // Azure alternate
-  "metadata.google.internal", // GCP metadata
-  "metadata.google.com", // GCP alternate
+  "169.254.170.2", // AWS ECS task metadata
+  "100.100.100.200", // Alibaba Cloud (inside the CGNAT range)
+  "192.0.0.192", // Oracle Cloud alternate
+  "fd00:ec2::254", // AWS IMDS over IPv6 (inside fc00::/7)
+]);
+
+// Cloud metadata hostnames (blocked even on self-hosted)
+const CLOUD_METADATA_ENDPOINTS: string[] = [
+  "169.254.169.254",
+  "169.254.169.253",
+  "metadata",
+  "metadata.google.internal",
+  "metadata.google.com",
+  "instance-data",
+  "instance-data.ec2.internal",
 ];
 
 const LOOPBACK_HOSTNAMES: string[] = ["localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0"];
 
-// Hostnames blocked on Cal.diy SaaS (includes metadata + loopback)
 const BLOCKED_HOSTNAMES: string[] = [...CLOUD_METADATA_ENDPOINTS, ...LOOPBACK_HOSTNAMES];
 
 const CAL_AVATAR_PATH_REGEX = /^\/api\/avatar\/.+\.png$/;
@@ -46,6 +85,7 @@ const ERRORS = {
   INVALID_PROTOCOL: "Only HTTP and HTTPS protocols are allowed",
   PRIVATE_IP: "Private IP address",
   PRIVATE_IP_DNS: "Hostname resolves to private IP",
+  DNS_FAILURE: "Hostname could not be resolved",
   BLOCKED_HOSTNAME: "Blocked hostname",
   INVALID_URL: "Invalid URL format",
   NON_IMAGE_DATA_URL: "Non-image data URL",
@@ -62,35 +102,133 @@ function stripIPv6Brackets(hostname: string): string {
   return hostname;
 }
 
-export function isPrivateIP(ip: string): boolean {
-  const cleanIp = stripIPv6Brackets(ip);
+function ipv4FromLow32Bits(ipv6: ipaddr.IPv6): ipaddr.IPv4 {
+  return new ipaddr.IPv4(ipv6.toByteArray().slice(12, 16));
+}
 
-  if (!ipaddr.isValid(cleanIp)) {
-    return true;
+/**
+ * IPv6 forms that carry an IPv4 destination are judged on that IPv4, otherwise
+ * [::ffff:a9fe:a9fe] or [64:ff9b::a9fe:a9fe] would reach 169.254.169.254 as a "public" IPv6.
+ */
+function extractEmbeddedIPv4(ipv6: ipaddr.IPv6): ipaddr.IPv4 | null {
+  const range = ipv6.range();
+  if (range === "ipv4Mapped" || range === "rfc6145" || range === "rfc6052" || ipv6.match(IPV6_LOCAL_NAT64)) {
+    return ipv4FromLow32Bits(ipv6);
   }
+  if (range === "6to4") {
+    return new ipaddr.IPv4(ipv6.toByteArray().slice(2, 6));
+  }
+  // Deprecated IPv4-compatible form ::a.b.c.d (:: and ::1 keep their own IPv6 meaning)
+  const { parts } = ipv6;
+  const isIPv4Compatible = parts.slice(0, 6).every((part) => part === 0) && (parts[6] !== 0 || parts[7] > 1);
+  return isIPv4Compatible ? ipv4FromLow32Bits(ipv6) : null;
+}
 
+/** Parses any IP notation (decimal, octal, hex IPv4 included) and unwraps IPv6 addresses embedding an IPv4 */
+function parseNormalizedIP(ip: string): ipaddr.IPv4 | ipaddr.IPv6 | null {
+  const cleanIp = stripIPv6Brackets(ip);
+  if (!ipaddr.isValid(cleanIp)) return null;
   try {
     const addr = ipaddr.parse(cleanIp);
-
     if (addr.kind() === "ipv6") {
-      const ipv6 = addr as ipaddr.IPv6;
-      if (ipv6.isIPv4MappedAddress()) {
-        const ipv4 = ipv6.toIPv4Address();
-        return BLOCKED_IP_RANGES.includes(ipv4.range());
-      }
+      return extractEmbeddedIPv4(addr as ipaddr.IPv6) ?? addr;
     }
-
-    return BLOCKED_IP_RANGES.includes(addr.range());
+    return addr;
   } catch {
-    // If parsing fails, treat as blocked for safety
-    return true;
+    return null;
   }
+}
+
+export type IPClassification = "public" | "private" | "blocked";
+
+/**
+ * - blocked: loopback, link-local, unspecified, multicast/broadcast, reserved, cloud metadata. Never allowed.
+ * - private: RFC 1918, CGNAT, IPv6 ULA/site-local. Allowed only through SSRF_ALLOWED_PRIVATE_HOSTS.
+ * Unparseable input is classified as blocked so callers fail closed.
+ */
+export function classifyIP(ip: string): IPClassification {
+  const addr = parseNormalizedIP(ip);
+  if (!addr) return "blocked";
+
+  if (CLOUD_METADATA_IPS.has(addr.toString()) || CLOUD_METADATA_IPS.has(addr.toNormalizedString())) {
+    return "blocked";
+  }
+
+  const range = addr.range();
+  if (addr.kind() === "ipv4") {
+    if (ALWAYS_BLOCKED_IPV4_RANGES.has(range)) return "blocked";
+    if (PRIVATE_IPV4_RANGES.has(range)) return "private";
+    return "public";
+  }
+
+  if (ALWAYS_BLOCKED_IPV6_RANGES.has(range)) return "blocked";
+  if (PRIVATE_IPV6_RANGES.has(range) || (addr as ipaddr.IPv6).match(IPV6_SITE_LOCAL)) return "private";
+  return "public";
+}
+
+export function isPrivateIP(ip: string): boolean {
+  return classifyIP(ip) !== "public";
+}
+
+interface PrivateNetworkAllowlist {
+  hostnames: ReadonlySet<string>;
+  ranges: ReadonlyArray<[ipaddr.IPv4 | ipaddr.IPv6, number]>;
+}
+
+let cachedAllowlist: { raw: string; parsed: PrivateNetworkAllowlist } | null = null;
+
+/**
+ * SSRF_ALLOWED_PRIVATE_HOSTS: comma-separated hostnames, IPs and/or CIDRs allowed to resolve to
+ * private networks (e.g. an internal CalDAV or Exchange server). It never opens loopback,
+ * link-local or metadata addresses.
+ */
+function getPrivateNetworkAllowlist(): PrivateNetworkAllowlist {
+  const raw = process.env.SSRF_ALLOWED_PRIVATE_HOSTS ?? "";
+  if (cachedAllowlist?.raw === raw) return cachedAllowlist.parsed;
+
+  const hostnames = new Set<string>();
+  const ranges: [ipaddr.IPv4 | ipaddr.IPv6, number][] = [];
+  for (const entry of raw.split(",")) {
+    const value = stripIPv6Brackets(normalizeHostname(entry.trim()));
+    if (!value) continue;
+    if (ipaddr.isValidCIDR(value)) {
+      ranges.push(ipaddr.parseCIDR(value));
+      continue;
+    }
+    const addr = parseNormalizedIP(value);
+    if (addr) {
+      ranges.push([addr, addr.kind() === "ipv4" ? 32 : 128]);
+      continue;
+    }
+    hostnames.add(value);
+  }
+
+  const parsed = { hostnames, ranges };
+  cachedAllowlist = { raw, parsed };
+  return parsed;
+}
+
+function isInAllowedPrivateRange(ip: string): boolean {
+  const addr = parseNormalizedIP(ip);
+  if (!addr) return false;
+  return getPrivateNetworkAllowlist().ranges.some(
+    ([network, prefix]) => network.kind() === addr.kind() && addr.match(network, prefix)
+  );
+}
+
+/** Whether `ip` may be contacted when reached through `hostname` (the IP itself for IP-literal URLs) */
+export function isIPAllowedForHost(ip: string, hostname: string): boolean {
+  const classification = classifyIP(ip);
+  if (classification === "public") return true;
+  if (classification === "blocked") return false;
+  const host = stripIPv6Brackets(normalizeHostname(hostname));
+  return getPrivateNetworkAllowlist().hostnames.has(host) || isInAllowedPrivateRange(ip);
 }
 
 // Check if hostname is a blocked cloud metadata endpoint or localhost
 export function isBlockedHostname(hostname: string): boolean {
   const normalized = normalizeHostname(hostname);
-  return BLOCKED_HOSTNAMES.includes(normalized);
+  return BLOCKED_HOSTNAMES.includes(normalized) || normalized.endsWith(".localhost");
 }
 
 // Check if hostname is a cloud metadata endpoint (blocked even on self-hosted)
@@ -137,21 +275,16 @@ function validateUrlCore(urlString: string): SSRFValidationResult | { url: URL }
     }
   }
 
-  // Always block cloud metadata endpoints (even self-hosted may run on AWS/GCP/Azure)
   if (isCloudMetadataEndpoint(url.hostname)) {
     return { isValid: false, error: ERRORS.BLOCKED_HOSTNAME };
   }
 
-  // Self-hosted: allow HTTP and private IPs (for internal webhooks)
-  // Still restrict to HTTP/HTTPS protocols only (no file://, ftp://, etc.)
+  // Self-hosted instances commonly post webhooks to plain-HTTP services; Cal.com SaaS requires HTTPS
   if (IS_SELF_HOSTED) {
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return { isValid: false, error: ERRORS.INVALID_PROTOCOL };
     }
-    return { isValid: true };
-  }
-
-  if (url.protocol !== "https:") {
+  } else if (url.protocol !== "https:") {
     return { isValid: false, error: ERRORS.HTTPS_ONLY };
   }
 
@@ -159,10 +292,12 @@ function validateUrlCore(urlString: string): SSRFValidationResult | { url: URL }
     return { isValid: false, error: ERRORS.BLOCKED_HOSTNAME };
   }
 
-  // Check if hostname is an IP address and if it's private
+  // The URL parser already canonicalizes decimal/octal/hex IPv4 hosts (0x7f.1, 2130706433) to dotted form
   const hostnameForIPCheck = stripIPv6Brackets(url.hostname);
-  if (ipaddr.isValid(hostnameForIPCheck) && isPrivateIP(hostnameForIPCheck)) {
-    return { isValid: false, error: ERRORS.PRIVATE_IP };
+  if (ipaddr.isValid(hostnameForIPCheck)) {
+    return isIPAllowedForHost(hostnameForIPCheck, url.hostname)
+      ? { isValid: true }
+      : { isValid: false, error: ERRORS.PRIVATE_IP };
   }
 
   return { url };
@@ -170,7 +305,7 @@ function validateUrlCore(urlString: string): SSRFValidationResult | { url: URL }
 
 /**
  * Async SSRF validation with DNS rebinding protection
- * Resolves hostname and checks all IPs against private ranges
+ * Resolves every A and AAAA record of the hostname and rejects if any of them is not allowed
  */
 export async function validateUrlForSSRF(urlString: string): Promise<SSRFValidationResult> {
   const result = validateUrlCore(urlString);
@@ -179,16 +314,23 @@ export async function validateUrlForSSRF(urlString: string): Promise<SSRFValidat
     return result;
   }
 
-  // DNS rebinding protection: resolve IPs and check each one
+  const { hostname } = result.url;
+  let addresses: { address: string }[];
   try {
-    const addresses = await dns.lookup(result.url.hostname, { all: true });
-    for (const { address } of addresses) {
-      if (isPrivateIP(address)) {
-        return { isValid: false, error: ERRORS.PRIVATE_IP_DNS };
-      }
-    }
+    addresses = await dns.lookup(hostname, { all: true, verbatim: true });
   } catch {
-    // Allow DNS failures to avoid breaking legitimate hosts with flaky DNS
+    // Fail closed: fetch() resolves through the same getaddrinfo call, so it would fail there too
+    return { isValid: false, error: ERRORS.DNS_FAILURE };
+  }
+
+  if (addresses.length === 0) {
+    return { isValid: false, error: ERRORS.DNS_FAILURE };
+  }
+
+  for (const { address } of addresses) {
+    if (!isIPAllowedForHost(address, hostname)) {
+      return { isValid: false, error: ERRORS.PRIVATE_IP_DNS };
+    }
   }
 
   return { isValid: true };
