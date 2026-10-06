@@ -1018,7 +1018,7 @@ export const getOptions = ({
         if (!isEmailVerified && idP !== IdentityProvider.AZUREAD) {
           log.error(
             "Attention: SAML/Google/OIDC User email is not verified in the IdP",
-            safeStringify({ user })
+            safeStringify({ idP, userId: user.id, emailDomain: user.email?.split("@")[1] })
           );
           return "/auth/error?error=unverified-email";
         }
