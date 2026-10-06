@@ -1,6 +1,7 @@
 import { getDefaultLocations } from "@calcom/app-store/_utils/getDefaultLocations";
 import { DailyLocationType } from "@calcom/app-store/constants";
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
+import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import type { PrismaClient } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
 import { MembershipRole, SchedulingType } from "@calcom/prisma/enums";
@@ -8,7 +9,6 @@ import type { eventTypeLocations } from "@calcom/prisma/zod-utils";
 import { TRPCError } from "@trpc/server";
 import type { z } from "zod";
 import type { TrpcSessionUser } from "../../../../types";
-import { PermissionCheckService } from "../util";
 import type { TCreateInputSchema } from "./create.schema";
 
 type EventTypeLocation = z.infer<typeof eventTypeLocations>[number];
@@ -51,7 +51,7 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
   const isManagedEventType = schedulingType === SchedulingType.MANAGED;
   const isOrgAdmin = !!ctx.user?.organization?.isOrgAdmin;
 
-  const permissionService = new PermissionCheckService(ctx.prisma);
+  const permissionService = getTeamRolePermissionService();
   // Check if user has organization-level eventType.create permission (equivalent to org admin for event types)
   let hasOrgEventTypeCreatePermission = isOrgAdmin; // Default fallback
 

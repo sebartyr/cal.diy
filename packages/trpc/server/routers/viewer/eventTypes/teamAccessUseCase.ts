@@ -1,5 +1,6 @@
+import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
+import type { TeamRolePermissionService } from "@calcom/features/membership/services/TeamRolePermissionService";
 import type { Membership, Team } from "@calcom/prisma/client";
-import { PermissionCheckService } from "./util";
 
 type TeamMembershipWithTeam = Membership & {
   team: Team & {
@@ -15,7 +16,12 @@ type TeamMembershipWithTeam = Membership & {
 };
 
 export class TeamAccessUseCase {
-  constructor(private permissionCheckService: PermissionCheckService = new PermissionCheckService()) {}
+  constructor(
+    private permissionCheckService: Pick<
+      TeamRolePermissionService,
+      "checkPermission"
+    > = getTeamRolePermissionService()
+  ) {}
 
   async filterTeamsByEventTypeReadPermission(
     memberships: TeamMembershipWithTeam[],

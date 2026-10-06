@@ -1,7 +1,8 @@
 import type { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
+import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
-import prisma, { type PrismaClient } from "@calcom/prisma";
+import prisma from "@calcom/prisma";
 import type { MembershipRole } from "@calcom/prisma/enums";
 import { PeriodType } from "@calcom/prisma/enums";
 import type { CustomInputSchema } from "@calcom/prisma/zod-utils";
@@ -12,66 +13,6 @@ import authedProcedure from "../../../procedures/authedProcedure";
 import type { TUpdateInputSchema } from "./types";
 
 type PermissionString = string;
-
-/**
- * Cal.diy MIT relicensing replaced the upstream PBAC layer with a no-op
- * stub that returned `true` for every call. The result was a cross-tenant
- * IDOR on every PBAC-gated event-type procedure: any authenticated user
- * could call `eventTypes.delete`, `eventTypes.heavy.update`, etc. on a
- * team event id they didn't own (see SEC-001, confirmed by poc-sec-001).
- *
- * This implementation restores a real check based on Membership, with the
- * same surface (checkPermission / hasPermission / getTeamIdsWithPermission)
- * the call sites already use. The `permission` string is intentionally not
- * looked up — PBAC's fine-grained mapping isn't part of MIT — and we fall
- * back to the `fallbackRoles` set provided by each call site.
- */
-export class PermissionCheckService {
-  constructor(private readonly prismaClient: PrismaClient = prisma) {}
-
-  async checkPermission({
-    userId,
-    teamId,
-    fallbackRoles,
-  }: {
-    userId: number;
-    teamId: number | null | undefined;
-    permission: PermissionString;
-    fallbackRoles: MembershipRole[];
-  }): Promise<boolean> {
-    if (!teamId) return false;
-    const m = await this.prismaClient.membership.findUnique({
-      where: { userId_teamId: { userId, teamId } },
-      select: { role: true, accepted: true },
-    });
-    if (!m || !m.accepted) return false;
-    return fallbackRoles.includes(m.role);
-  }
-
-  async hasPermission(args: {
-    userId: number;
-    teamId: number | null | undefined;
-    permission: PermissionString;
-    fallbackRoles: MembershipRole[];
-  }): Promise<boolean> {
-    return this.checkPermission(args);
-  }
-
-  async getTeamIdsWithPermission({
-    userId,
-    fallbackRoles,
-  }: {
-    userId: number;
-    permission: PermissionString;
-    fallbackRoles: MembershipRole[];
-  }): Promise<number[]> {
-    const memberships = await this.prismaClient.membership.findMany({
-      where: { userId, accepted: true, role: { in: fallbackRoles } },
-      select: { teamId: true },
-    });
-    return memberships.map((m) => m.teamId);
-  }
-}
 
 type EventType = Awaited<ReturnType<EventTypeRepository["findAllByUpId"]>>[number];
 
@@ -212,8 +153,7 @@ export const createEventPbacProcedure = (
         }
       } else {
         // Team event - check Membership against the requested fallback roles.
-        const permissionCheckService = new PermissionCheckService(ctx.prisma);
-        const hasPermission = await permissionCheckService.checkPermission({
+        const hasPermission = await getTeamRolePermissionService().checkPermission({
           userId: ctx.user.id,
           teamId: event.teamId,
           permission,
