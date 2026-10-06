@@ -8,6 +8,12 @@ export type TeamPermissionCheckInput = {
   fallbackRoles: MembershipRole[];
 };
 
+export type TeamIdsWithPermissionInput = {
+  userId: number;
+  permission: string;
+  fallbackRoles: MembershipRole[];
+};
+
 /**
  * Role-based replacement for upstream's PBAC PermissionCheckService, which is not
  * part of the MIT release and was stubbed to always return `true`. With teams
@@ -17,7 +23,10 @@ export type TeamPermissionCheckInput = {
  */
 export class TeamRolePermissionService {
   constructor(
-    private readonly membershipRepository: Pick<MembershipRepository, "hasAcceptedMembershipWithRoles">
+    private readonly membershipRepository: Pick<
+      MembershipRepository,
+      "hasAcceptedMembershipWithRoles" | "listAcceptedTeamIdsWithRoles"
+    >
   ) {}
 
   async checkPermission({ userId, teamId, fallbackRoles }: TeamPermissionCheckInput): Promise<boolean> {
@@ -25,6 +34,14 @@ export class TeamRolePermissionService {
     return this.membershipRepository.hasAcceptedMembershipWithRoles({
       userId,
       teamId,
+      roles: fallbackRoles,
+    });
+  }
+
+  async getTeamIdsWithPermission({ userId, fallbackRoles }: TeamIdsWithPermissionInput): Promise<number[]> {
+    if (fallbackRoles.length === 0) return [];
+    return this.membershipRepository.listAcceptedTeamIdsWithRoles({
+      userId,
       roles: fallbackRoles,
     });
   }
