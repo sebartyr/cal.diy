@@ -89,6 +89,20 @@ export function symmetricDecryptV2(text: string, key: string): string {
 }
 
 /**
+ * v2-only decrypt for ciphertext that arrives from the outside world (query
+ * strings, request bodies). The legacy CBC path has no MAC, so exposing it to
+ * attacker-controlled input turns it into a padding oracle that lets anyone
+ * forge tokens without the key. Keep `symmetricDecryptV2` (with its CBC
+ * fallback) for rows we wrote to our own database only.
+ */
+export function symmetricDecryptStrictV2(text: string, key: string): string {
+  if (typeof text !== "string" || !text.startsWith(V2_PREFIX)) {
+    throw new Error("crypto: only v2 (AES-256-GCM) payloads are accepted here");
+  }
+  return decryptV2(text.slice(V2_PREFIX.length), key);
+}
+
+/**
  * Returns true if a stored payload is still in the legacy AES-256-CBC format
  * (i.e. would benefit from re-encryption on next write). Used by the
  * lazy-migration audit script, and to tag which format a payload was in when

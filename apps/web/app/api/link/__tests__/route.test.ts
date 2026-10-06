@@ -1,9 +1,10 @@
 import { confirmHandler } from "@calcom/trpc/server/routers/viewer/bookings/confirm.handler";
 import type { NextRequest } from "next/server";
 import type { Mock } from "vitest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockConfirmHandler = confirmHandler as unknown as Mock<typeof confirmHandler>;
+const VALID_PAYLOAD = JSON.stringify({ bookingUid: "test-booking-uid", userId: 1 });
 
 vi.mock("app/api/defaultResponderForAppDir", () => ({
   defaultResponderForAppDir:
@@ -28,16 +29,18 @@ vi.mock("next/server", () => ({
         },
       } as unknown as Response;
     }),
+    json: vi.fn((body: unknown, init?: { status?: number }) => {
+      return {
+        status: init?.status ?? 200,
+        json: async () => body,
+        headers: { get: () => null },
+      } as unknown as Response;
+    }),
   },
 }));
 
-vi.mock("@calcom/lib/crypto", () => ({
-  symmetricDecrypt: vi.fn().mockReturnValue(
-    JSON.stringify({
-      bookingUid: "test-booking-uid",
-      userId: 1,
-    })
-  ),
+vi.mock("@calcom/lib/crypto-clever", () => ({
+  symmetricDecryptStrictV2: vi.fn(),
 }));
 
 vi.mock("@calcom/prisma", () => {
@@ -82,6 +85,8 @@ vi.mock("@calcom/features/booking-audit/lib/makeActor", () => ({
   makeUserActor: vi.fn().mockReturnValue({ type: "user", id: "test-uuid" }),
 }));
 
+import crypto from "node:crypto";
+import { symmetricDecryptStrictV2 } from "@calcom/lib/crypto-clever";
 import prisma from "@calcom/prisma";
 // Import after mocks are set up
 import { GET } from "../route";
@@ -103,6 +108,80 @@ const EXPECTED_REDIRECT_ORIGIN = "http://app.cal.local:3000";
 describe("link route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(symmetricDecryptStrictV2).mockReturnValue(VALID_PAYLOAD);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  describe("GET handler - invalid tokens", () => {
+    const TEST_KEY = "12345678901234567890123456789012";
+
+    async function expectUniformRejection(url: string) {
+      const res = await GET(createMockRequest(url), { params: Promise.resolve({}) });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ message: "Invalid or expired link" });
+      expect(mockConfirmHandler).not.toHaveBeenCalled();
+    }
+
+    it("rejects a token that fails decryption", async () => {
+      vi.mocked(symmetricDecryptStrictV2).mockImplementation(() => {
+        throw new Error("bad decrypt");
+      });
+      await expectUniformRejection("https://app.example.com/api/link?action=accept&token=00:00");
+    });
+
+    it("rejects a token that decrypts to invalid JSON", async () => {
+      vi.mocked(symmetricDecryptStrictV2).mockReturnValue("not json");
+      await expectUniformRejection("https://app.example.com/api/link?action=accept&token=x");
+    });
+
+    it("rejects a token that decrypts to the wrong shape", async () => {
+      vi.mocked(symmetricDecryptStrictV2).mockReturnValue(JSON.stringify({ bookingUid: 1 }));
+      await expectUniformRejection("https://app.example.com/api/link?action=accept&token=x");
+    });
+
+    it("rejects a missing token or unknown action", async () => {
+      await expectUniformRejection("https://app.example.com/api/link?action=accept");
+      await expectUniformRejection("https://app.example.com/api/link?action=delete&token=x");
+    });
+
+    it("rejects a malformed percent-encoded token", async () => {
+      await expectUniformRejection("https://app.example.com/api/link?action=accept&token=%25E0%25A4%25A");
+    });
+
+    it("rejects a legacy CBC token even when it decrypts correctly", async () => {
+      const actual =
+        await vi.importActual<typeof import("@calcom/lib/crypto-clever")>("@calcom/lib/crypto-clever");
+      vi.mocked(symmetricDecryptStrictV2).mockImplementation(actual.symmetricDecryptStrictV2);
+      vi.stubEnv("CALENDSO_ENCRYPTION_KEY", TEST_KEY);
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(TEST_KEY, "latin1"), iv);
+      const legacyToken = `${iv.toString("hex")}:${cipher.update(VALID_PAYLOAD, "utf8", "hex")}${cipher.final("hex")}`;
+
+      await expectUniformRejection(
+        `https://app.example.com/api/link?action=accept&token=${encodeURIComponent(legacyToken)}`
+      );
+    });
+
+    it("accepts a v2 token produced by symmetricEncryptV2", async () => {
+      const actual =
+        await vi.importActual<typeof import("@calcom/lib/crypto-clever")>("@calcom/lib/crypto-clever");
+      vi.mocked(symmetricDecryptStrictV2).mockImplementation(actual.symmetricDecryptStrictV2);
+      vi.stubEnv("CALENDSO_ENCRYPTION_KEY", TEST_KEY);
+      const token = actual.symmetricEncryptV2(VALID_PAYLOAD, TEST_KEY);
+
+      const res = await GET(
+        createMockRequest(
+          `https://app.example.com/api/link?action=accept&token=${encodeURIComponent(token)}`
+        ),
+        { params: Promise.resolve({}) }
+      );
+
+      expect(res.status).toBe(302);
+      expect(mockConfirmHandler).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("GET handler - redirect URL construction", () => {
