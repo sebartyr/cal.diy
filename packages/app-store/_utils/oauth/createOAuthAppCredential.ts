@@ -1,8 +1,6 @@
-import type { NextApiRequest } from "next";
-
 import { HttpError } from "@calcom/lib/http-error";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest } from "next";
 import { decodeOAuthState } from "../oauth/decodeOAuthState";
 import { throwIfNotHaveAdminAccessToTeam } from "../throwIfNotHaveAdminAccessToTeam";
 
@@ -24,12 +22,16 @@ const createOAuthAppCredential = async (
   if (!userId) {
     throw new HttpError({ statusCode: 401, message: "You must be logged in to do this" });
   }
-  // For OAuth flows, see if a teamId was passed through the state
+  // SEC-102: every OAuth /add route signs the state, so a callback reaching this point without a
+  // session-bound nonce is a forged or replayed redirect; never attach the provider's tokens to it.
   const state = decodeOAuthState(req);
+  if (!state) {
+    throw new HttpError({ statusCode: 400, message: "Missing or invalid OAuth state" });
+  }
 
-  if (state?.teamId) {
+  if (state.teamId) {
     // Check that the user belongs to the team
-    await throwIfNotHaveAdminAccessToTeam({ teamId: state?.teamId ?? null, userId });
+    await throwIfNotHaveAdminAccessToTeam({ teamId: state.teamId, userId });
 
     return await prisma.credential.create({
       data: {
