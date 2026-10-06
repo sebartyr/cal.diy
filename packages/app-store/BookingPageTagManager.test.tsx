@@ -209,7 +209,7 @@ describe("isSafeTemplateValue", () => {
     ["TRACKING_ID", "a b"],
     ["TRACKING_ID", "a\\u0027"],
     ["SITE_ID", "<script>"],
-    ["TRACKING_ID", { toString: () => "G-1" }],
+    ["TRACKING_ID", { toString: (): string => "G-1" }],
     ["SCRIPT_URL", "javascript:alert(1)"],
     ["SCRIPT_URL", "data:text/javascript,alert(1)"],
     ["SCRIPT_URL", "//evil.example/x.js"],
