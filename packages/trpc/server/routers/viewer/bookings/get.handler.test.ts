@@ -5,7 +5,12 @@ import type { Kysely } from "kysely";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getBookings, getHandler } from "./get.handler";
 
+const { mockGetTeamIdsWithPermission } = vi.hoisted(() => ({ mockGetTeamIdsWithPermission: vi.fn() }));
+
 vi.mock("@calcom/features/bookings/lib/getAllUserBookings");
+vi.mock("@calcom/features/membership/di/TeamRolePermissionService.container", () => ({
+  getTeamRolePermissionService: () => ({ getTeamIdsWithPermission: mockGetTeamIdsWithPermission }),
+}));
 vi.mock("@calcom/kysely", () => ({
   default: {
     selectFrom: vi.fn(),
@@ -94,7 +99,7 @@ describe("getHandler", () => {
   });
 });
 
-describe("getBookings - stub PermissionCheckService behavior", () => {
+describe("getBookings - team booking permissions", () => {
   const mockUser = {
     id: 1,
     email: "user@example.com",
@@ -154,12 +159,93 @@ describe("getBookings - stub PermissionCheckService behavior", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockKysely = createMockKysely();
+    mockGetTeamIdsWithPermission.mockResolvedValue([]);
+  });
+
+  it("looks up the teams where the user is ADMIN or OWNER", async () => {
+    mockPrisma.booking.groupBy = vi.fn().mockResolvedValue([]);
+
+    await getBookings({
+      user: mockUser,
+      prisma: mockPrisma,
+      kysely: mockKysely as unknown as Kysely<DB>,
+      bookingListingByStatus: ["upcoming"],
+      filters: {},
+      take: 10,
+      skip: 0,
+    });
+
+    expect(mockGetTeamIdsWithPermission).toHaveBeenCalledWith({
+      userId: 1,
+      permission: "booking.read",
+      fallbackRoles: ["ADMIN", "OWNER"],
+    });
+  });
+
+  it("adds team-scoped booking queries only for team admins and owners", async () => {
+    mockPrisma.booking.groupBy = vi.fn().mockResolvedValue([]);
+    const run = async () =>
+      getBookings({
+        user: mockUser,
+        prisma: mockPrisma,
+        kysely: mockKysely as unknown as Kysely<DB>,
+        bookingListingByStatus: ["upcoming"],
+        filters: {},
+        take: 10,
+        skip: 0,
+      });
+
+    await run();
+    const queriesWithoutTeams = mockKysely.selectFrom.mock.calls.length;
+
+    vi.clearAllMocks();
+    mockKysely = createMockKysely();
+    mockGetTeamIdsWithPermission.mockResolvedValue([10]);
+    await run();
+
+    expect(mockKysely.selectFrom.mock.calls.length).toBeGreaterThan(queriesWithoutTeams);
+  });
+
+  it("allows a team admin to filter by members of their teams", async () => {
+    mockGetTeamIdsWithPermission.mockResolvedValue([10]);
+    mockPrisma.user.findMany = vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    mockPrisma.booking.groupBy = vi.fn().mockResolvedValue([]);
+
+    await expect(
+      getBookings({
+        user: mockUser,
+        prisma: mockPrisma,
+        kysely: mockKysely as unknown as Kysely<DB>,
+        bookingListingByStatus: ["upcoming"],
+        filters: { userIds: [2] },
+        take: 10,
+        skip: 0,
+      })
+    ).resolves.toBeDefined();
+  });
+
+  it("forbids filtering by another user when the caller administers no team", async () => {
+    mockPrisma.user.findMany = vi.fn().mockResolvedValue([{ id: 2, email: "other@example.com" }]);
+
+    await expect(
+      getBookings({
+        user: mockUser,
+        prisma: mockPrisma,
+        kysely: mockKysely as unknown as Kysely<DB>,
+        bookingListingByStatus: ["upcoming"],
+        filters: { userIds: [2] },
+        take: 10,
+        skip: 0,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("should allow access when filtering by own userId", async () => {
     mockPrisma.user.findMany = vi.fn((args: { where?: { id?: { in?: number[] } } }) => {
       if (args?.where?.id?.in?.includes(1)) {
-        return Promise.resolve([{ id: 1, email: "user@example.com" }]) as ReturnType<typeof mockPrisma.user.findMany>;
+        return Promise.resolve([{ id: 1, email: "user@example.com" }]) as ReturnType<
+          typeof mockPrisma.user.findMany
+        >;
       }
       return Promise.resolve([]) as ReturnType<typeof mockPrisma.user.findMany>;
     });
@@ -219,7 +305,9 @@ describe("getBookings - stub PermissionCheckService behavior", () => {
       skip: 0,
     });
 
-    expect((mockKysely as unknown as { executeQuery: ReturnType<typeof vi.fn> }).executeQuery).toHaveBeenCalled();
+    expect(
+      (mockKysely as unknown as { executeQuery: ReturnType<typeof vi.fn> }).executeQuery
+    ).toHaveBeenCalled();
   });
 
   it("should NOT fetch user IDs when no userIds filter is provided", async () => {
