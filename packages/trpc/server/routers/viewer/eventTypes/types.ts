@@ -17,6 +17,7 @@ import {
   intervalLimitsType,
   recurringEventType,
   rrSegmentQueryValueSchema,
+  successRedirectUrl,
 } from "@calcom/prisma/zod-utils";
 import { z } from "zod";
 
@@ -163,7 +164,7 @@ const BaseEventTypeUpdateInput: z.ZodType<TUpdateInputSchema> = z
     currency: z.string().optional(),
     slotInterval: z.number().int().nullable().optional(),
     metadata: EventTypeMetaDataSchema.optional(),
-    successRedirectUrl: z.string().nullable().optional(),
+    successRedirectUrl: successRedirectUrl.nullable(),
     forwardParamsSuccessRedirect: z.boolean().nullable().optional(),
     bookingLimits: intervalLimitsType.nullable().optional(),
     durationLimits: intervalLimitsType.nullable().optional(),

@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, beforeEach, test } from "vitest";
-
 import { useIsEmbed } from "@calcom/embed-core/embed-iframe";
 import { useCompatSearchParams } from "@calcom/lib/hooks/useCompatSearchParams";
 import { navigateInTopWindow } from "@calcom/lib/navigateInTopWindow";
-
-import { useBookingSuccessRedirect, getNewSearchParams } from "./bookingSuccessRedirect";
+import { beforeEach, describe, expect, it, test, vi } from "vitest";
+import {
+  getNewSearchParams,
+  getSafeSuccessRedirectUrl,
+  useBookingSuccessRedirect,
+} from "./bookingSuccessRedirect";
 
 const mockPush = vi.fn();
 
@@ -504,6 +506,26 @@ describe("useBookingSuccessRedirect", () => {
       expect(navigateInTopWindow).not.toHaveBeenCalled();
     });
 
+    test.each([
+      "javascript:alert(document.domain)",
+      "JAVASCRIPT:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "vbscript:msgbox(1)",
+      "not a url",
+    ])("does not navigate to unsafe stored successRedirectUrl %s", (successRedirectUrl) => {
+      const bookingSuccessRedirect = useBookingSuccessRedirect();
+
+      bookingSuccessRedirect({
+        successRedirectUrl,
+        forwardParamsSuccessRedirect: true,
+        query: {},
+        booking: mockBooking,
+      });
+
+      expect(navigateInTopWindow).not.toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("/booking/test-booking-uid?"));
+    });
+
     it("handles empty query object", () => {
       const bookingSuccessRedirect = useBookingSuccessRedirect();
 
@@ -516,5 +538,23 @@ describe("useBookingSuccessRedirect", () => {
 
       expect(navigateInTopWindow).toHaveBeenCalledWith("https://example.com/success");
     });
+  });
+});
+
+describe("getSafeSuccessRedirectUrl", () => {
+  it.each(["https://example.com/a?b=c", "http://example.com"])("returns a URL for %s", (value) => {
+    expect(getSafeSuccessRedirectUrl(value)?.toString()).toBe(new URL(value).toString());
+  });
+
+  it.each([
+    null,
+    undefined,
+    "",
+    "javascript:alert(1)",
+    " javascript:alert(1)",
+    "ftp://example.com",
+    "nope",
+  ])("returns null for %s", (value) => {
+    expect(getSafeSuccessRedirectUrl(value)).toBeNull();
   });
 });
