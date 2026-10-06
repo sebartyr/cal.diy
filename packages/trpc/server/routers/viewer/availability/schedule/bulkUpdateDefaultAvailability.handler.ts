@@ -1,7 +1,6 @@
+import { ScheduleRepository } from "@calcom/features/schedules/repositories/ScheduleRepository";
 import { prisma } from "@calcom/prisma";
-
 import { TRPCError } from "@trpc/server";
-
 import type { TrpcSessionUser } from "../../../../types";
 import type { TBulkUpdateToDefaultAvailabilityInputSchema } from "./bulkUpdateDefaultAvailability.schema";
 
@@ -24,6 +23,16 @@ export const bulkUpdateToDefaultAvailabilityHandler = async ({
       code: "BAD_REQUEST",
       message: "Default schedule not set",
     });
+  }
+
+  if (selectedDefaultScheduleId) {
+    const scheduleRepo = new ScheduleRepository(prisma);
+    const schedule = await scheduleRepo.findScheduleByIdForOwnershipCheck({
+      scheduleId: selectedDefaultScheduleId,
+    });
+    if (!schedule || schedule.userId !== ctx.user.id) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this schedule" });
+    }
   }
 
   return await prisma.eventType.updateMany({
