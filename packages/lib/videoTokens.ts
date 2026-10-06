@@ -1,4 +1,6 @@
 import { createHmac } from "node:crypto";
+import process from "node:process";
+import { safeCompareSecret } from "./cron-auth";
 
 // 262992 minutes is 6 months
 export function generateVideoToken(recordingId: string, expiresInMinutes = 262992) {
@@ -27,7 +29,7 @@ export function verifyVideoToken(token: string): {
     const payload = `${recordingId}:${expires}`;
     const expectedHmac = createHmac("sha256", secret).update(payload).digest("hex");
 
-    if (receivedHmac !== expectedHmac) {
+    if (!safeCompareSecret(receivedHmac, expectedHmac)) {
       return { valid: false };
     }
 
