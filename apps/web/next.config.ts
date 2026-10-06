@@ -1,9 +1,11 @@
+import process from "node:process";
+import i18nConfig from "@calcom/i18n/next-i18next.config";
 import { withBotId } from "botid/next/config";
 import { config as dotenvConfig } from "dotenv";
 import type { NextConfig } from "next";
 import type { RouteHas } from "next/dist/lib/load-custom-routes";
 import { withAxiom } from "next-axiom";
-import i18nConfig from "@calcom/i18n/next-i18next.config";
+import { getFrameProtectionHeaderRules } from "./lib/frameProtectionHeaders";
 import packageJson from "./package.json";
 import {
   nextJsOrgRewriteConfig,
@@ -399,6 +401,7 @@ const nextConfig = (phase: string): NextConfig => {
             },
           ],
         },
+        ...getFrameProtectionHeaderRules(),
         {
           source: "/:path*",
           headers: [
