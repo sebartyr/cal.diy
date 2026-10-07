@@ -1016,6 +1016,7 @@ export class UserRepository {
       members: {
         some: {
           userId,
+          accepted: true,
           role: { in: [MembershipRole.ADMIN, MembershipRole.OWNER] },
         },
       },
