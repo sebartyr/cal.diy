@@ -678,6 +678,36 @@ describe("CalendarService - SCHEDULE-AGENT injection", () => {
 
       expect(unfolded).toContain("SCHEDULE-AGENT=CLIENT");
     });
+
+    it("updates each copy of the event in its own calendar when the UID exists in several calendars", async () => {
+      const service = new TestCalendarService();
+      vi.mocked(createIcsEvent).mockReturnValue({
+        error: null as unknown as Error,
+        value: "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nEND:VEVENT\r\nEND:VCALENDAR",
+      });
+      (service as unknown as Record<string, unknown>).getEventsByUID = vi.fn().mockResolvedValue([
+        { uid: "test-uid", url: "https://caldav.example.com/A/test-uid.ics", etag: '"a"' },
+        { uid: "test-uid", url: "https://caldav.example.com/B/test-uid.ics", etag: '"b"' },
+      ]);
+
+      const results = await service.testUpdateEvent(
+        "test-uid",
+        createMockEvent({ uid: "test-uid" }),
+        "https://caldav.example.com/A/"
+      );
+
+      const calls = vi
+        .mocked(updateCalendarObject)
+        .mock.calls.map(([arg]) => `${arg.calendarObject.url} ${arg.calendarObject.etag}`);
+      expect(calls).toEqual([
+        'https://caldav.example.com/A/test-uid.ics "a"',
+        'https://caldav.example.com/B/test-uid.ics "b"',
+      ]);
+      expect(Array.isArray(results) && results.map((r) => r.url)).toEqual([
+        "https://caldav.example.com/A/test-uid.ics",
+        "https://caldav.example.com/B/test-uid.ics",
+      ]);
+    });
   });
 
   describe("Edge cases", () => {
