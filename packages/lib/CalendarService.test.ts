@@ -1,5 +1,5 @@
 import { createEvent as createIcsEvent } from "ics";
-import { createAccount, createCalendarObject, fetchCalendarObjects, updateCalendarObject } from "tsdav";
+import tsdav, { createCalendarObject, fetchCalendarObjects, propfind, updateCalendarObject } from "tsdav";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("ics", () => ({
@@ -7,8 +7,12 @@ vi.mock("ics", () => ({
 }));
 
 vi.mock("tsdav", () => ({
-  createAccount: vi.fn(),
-  fetchCalendars: vi.fn(),
+  default: {
+    serviceDiscovery: vi.fn(),
+    fetchPrincipalUrl: vi.fn(),
+    fetchHomeUrl: vi.fn(),
+  },
+  propfind: vi.fn(),
   fetchCalendarObjects: vi.fn(),
   createCalendarObject: vi.fn().mockResolvedValue({ ok: true }),
   updateCalendarObject: vi.fn().mockResolvedValue({ status: 200 }),
@@ -678,6 +682,36 @@ describe("CalendarService - SCHEDULE-AGENT injection", () => {
 
       expect(unfolded).toContain("SCHEDULE-AGENT=CLIENT");
     });
+
+    it("updates each copy of the event in its own calendar when the UID exists in several calendars", async () => {
+      const service = new TestCalendarService();
+      vi.mocked(createIcsEvent).mockReturnValue({
+        error: null as unknown as Error,
+        value: "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nEND:VEVENT\r\nEND:VCALENDAR",
+      });
+      (service as unknown as Record<string, unknown>).getEventsByUID = vi.fn().mockResolvedValue([
+        { uid: "test-uid", url: "https://caldav.example.com/A/test-uid.ics", etag: '"a"' },
+        { uid: "test-uid", url: "https://caldav.example.com/B/test-uid.ics", etag: '"b"' },
+      ]);
+
+      const results = await service.testUpdateEvent(
+        "test-uid",
+        createMockEvent({ uid: "test-uid" }),
+        "https://caldav.example.com/A/"
+      );
+
+      const calls = vi
+        .mocked(updateCalendarObject)
+        .mock.calls.map(([arg]) => `${arg.calendarObject.url} ${arg.calendarObject.etag}`);
+      expect(calls).toEqual([
+        'https://caldav.example.com/A/test-uid.ics "a"',
+        'https://caldav.example.com/B/test-uid.ics "b"',
+      ]);
+      expect(Array.isArray(results) && results.map((r) => r.url)).toEqual([
+        "https://caldav.example.com/A/test-uid.ics",
+        "https://caldav.example.com/B/test-uid.ics",
+      ]);
+    });
   });
 
   describe("Edge cases", () => {
@@ -784,7 +818,8 @@ describe("CalendarService - SSRF protection", () => {
     const service = new AccountOnlyCalendarService(METADATA_URL);
 
     await expect(service.listCalendars()).rejects.toThrow("URL is not allowed");
-    expect(createAccount).not.toHaveBeenCalled();
+    expect(tsdav.serviceDiscovery).not.toHaveBeenCalled();
+    expect(propfind).not.toHaveBeenCalled();
   });
 
   it("skips selected calendars pointing to internal URLs when fetching availability", async () => {
@@ -819,6 +854,19 @@ describe("CalendarService - SSRF protection", () => {
     ]);
 
     await expect(service.createEvent(createMockEvent(), 1)).rejects.toThrow("URL is not allowed");
+    expect(createCalendarObject).not.toHaveBeenCalled();
+  });
+
+  it("does not write an event whose uid resolves to an internal URL outside the calendar", async () => {
+    vi.mocked(createIcsEvent).mockReturnValue({
+      error: null as unknown as Error,
+      value: "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nEND:VEVENT\r\nEND:VCALENDAR",
+    });
+    const service = new TestCalendarService();
+
+    await expect(
+      service.createEvent(createMockEvent({ uid: "https://169.254.169.254/latest/meta-data/x" }), 1)
+    ).rejects.toThrow("URL is not allowed");
     expect(createCalendarObject).not.toHaveBeenCalled();
   });
 });
