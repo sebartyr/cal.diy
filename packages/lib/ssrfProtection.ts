@@ -352,6 +352,9 @@ export function validateUrlForSSRFSync(urlString: string): SSRFValidationResult 
 
 const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 const DEFAULT_MAX_REDIRECTS = 5;
+// Methods whose request can be sent again to a 301/302 target without side effects
+const REPLAYABLE_METHODS: ReadonlySet<string> = new Set(["GET", "HEAD", "OPTIONS", "PROPFIND", "REPORT"]);
+const CROSS_ORIGIN_STRIPPED_HEADERS = ["authorization", "proxy-authorization", "cookie"];
 
 /**
  * Validates a user-controlled URL for SSRF and throws a generic error when blocked.
@@ -375,34 +378,78 @@ export async function assertUrlIsSafeForSSRF(url: string, context?: Record<strin
   throw new ErrorWithCode(ErrorCode.BadRequest, "URL is not allowed");
 }
 
+function canFollowRedirect(status: number, method: string): boolean {
+  if (status === 307 || status === 308) return true;
+  if (status === 303) return method === "GET" || method === "HEAD";
+  return REPLAYABLE_METHODS.has(method);
+}
+
 /**
- * fetch() for user-controlled URLs. Native fetch follows redirects without re-checking the target,
- * so a public URL could 302 to an internal address. Redirects are followed manually and every hop
- * (including the first) is re-validated, which also re-resolves DNS on each call.
+ * fetch() for user-controlled URLs, also usable as the fetch override of libraries such as tsdav.
+ * Native fetch follows redirects without re-checking the target, so a public URL could 302 to an
+ * internal address. Redirects are followed manually and every hop (including the first) is
+ * re-validated, which also re-resolves DNS on each call.
+ *
+ * - 307/308 are followed with the same method, body and headers.
+ * - 301/302 are followed unchanged for replayable methods (GET, HEAD, OPTIONS, PROPFIND, REPORT).
+ *   For writes (PUT, DELETE, POST...) the redirect response is returned as-is, so the caller sees a
+ *   failure: replaying a write at another URL or downgrading it to a GET that looks like a success
+ *   are both unsafe, and servers that want the write repeated have 307/308 for that.
+ * - 303 is followed for GET/HEAD only, and returned as-is otherwise for the same reason.
+ * - Authorization, Proxy-Authorization and Cookie are dropped once a redirect leaves the origin.
+ * - A caller passing `redirect: "manual"` gets the first response back after its URL is validated.
+ *
  * Note: a residual TOCTOU window remains between our DNS lookup and the one done by fetch itself.
  */
+export function createSSRFProtectedFetch(
+  context: Record<string, unknown> = {},
+  options: { maxRedirects?: number } = {}
+): typeof fetch {
+  const maxRedirects = options.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
+
+  return async (input: Parameters<typeof fetch>[0], init: RequestInit = {}): Promise<Response> => {
+    if (input instanceof Request) {
+      // A Request body is a one-shot stream that could not be sent again after a 307/308
+      throw new TypeError("SSRF-protected fetch expects a URL, not a Request object");
+    }
+    const method = (init.method ?? "GET").toUpperCase();
+    let currentUrl = input.toString();
+    let requestInit: RequestInit = { ...init, redirect: "manual" };
+
+    for (let hop = 0; hop <= maxRedirects; hop++) {
+      await assertUrlIsSafeForSSRF(currentUrl, { ...context, hop });
+
+      const response = await fetch(currentUrl, requestInit);
+      if (init.redirect === "manual" || !REDIRECT_STATUSES.has(response.status)) return response;
+
+      const location = response.headers.get("location");
+      if (!location) return response;
+      if (init.redirect === "error") {
+        await response.body?.cancel();
+        throw new ErrorWithCode(ErrorCode.BadRequest, "Unexpected redirect");
+      }
+      if (!canFollowRedirect(response.status, method)) return response;
+
+      await response.body?.cancel();
+      const nextUrl = new URL(location, currentUrl);
+      if (requestInit.headers && nextUrl.origin !== new URL(currentUrl).origin) {
+        const headers = new Headers(requestInit.headers);
+        for (const name of CROSS_ORIGIN_STRIPPED_HEADERS) headers.delete(name);
+        requestInit = { ...requestInit, headers };
+      }
+      currentUrl = nextUrl.toString();
+    }
+
+    throw new ErrorWithCode(ErrorCode.BadRequest, `Too many redirects (max ${maxRedirects})`);
+  };
+}
+
 export async function fetchWithSSRFProtection(
   url: string,
   init: RequestInit = {},
   options: { maxRedirects?: number } = {}
 ): Promise<Response> {
-  const maxRedirects = options.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
-  let currentUrl = url;
-
-  for (let hop = 0; hop <= maxRedirects; hop++) {
-    await assertUrlIsSafeForSSRF(currentUrl, { hop });
-
-    const response = await fetch(currentUrl, { ...init, redirect: "manual" });
-    if (!REDIRECT_STATUSES.has(response.status)) return response;
-
-    const location = response.headers.get("location");
-    if (!location) return response;
-
-    await response.body?.cancel();
-    currentUrl = new URL(location, currentUrl).toString();
-  }
-
-  throw new ErrorWithCode(ErrorCode.BadRequest, `Too many redirects (max ${maxRedirects})`);
+  return createSSRFProtectedFetch({}, options)(url, init);
 }
 
 // Check if URL belongs to the same origin as the webapp (trusted internal URL)

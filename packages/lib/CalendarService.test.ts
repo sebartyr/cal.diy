@@ -1,5 +1,11 @@
 import { createEvent as createIcsEvent } from "ics";
-import tsdav, { createCalendarObject, fetchCalendarObjects, propfind, updateCalendarObject } from "tsdav";
+import {
+  createCalendarObject,
+  fetchCalendarObjects,
+  propfind,
+  serviceDiscovery,
+  updateCalendarObject,
+} from "tsdav";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("ics", () => ({
@@ -7,12 +13,11 @@ vi.mock("ics", () => ({
 }));
 
 vi.mock("tsdav", () => ({
-  default: {
-    serviceDiscovery: vi.fn(),
-    fetchPrincipalUrl: vi.fn(),
-    fetchHomeUrl: vi.fn(),
-  },
+  serviceDiscovery: vi.fn(),
+  fetchPrincipalUrl: vi.fn(),
+  fetchHomeUrl: vi.fn(),
   propfind: vi.fn(),
+  davRequest: vi.fn(),
   fetchCalendarObjects: vi.fn(),
   createCalendarObject: vi.fn().mockResolvedValue({ ok: true }),
   updateCalendarObject: vi.fn().mockResolvedValue({ status: 200 }),
@@ -818,7 +823,7 @@ describe("CalendarService - SSRF protection", () => {
     const service = new AccountOnlyCalendarService(METADATA_URL);
 
     await expect(service.listCalendars()).rejects.toThrow("URL is not allowed");
-    expect(tsdav.serviceDiscovery).not.toHaveBeenCalled();
+    expect(serviceDiscovery).not.toHaveBeenCalled();
     expect(propfind).not.toHaveBeenCalled();
   });
 

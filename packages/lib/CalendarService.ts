@@ -21,22 +21,25 @@ import ICAL from "ical.js";
 import type { Attendee, DateArray, DurationObject } from "ics";
 import { createEvent } from "ics";
 import type { DAVAccount, DAVObject } from "tsdav";
-// serviceDiscovery, fetchPrincipalUrl and fetchHomeUrl are only exposed on the default export
-import tsdav, {
+import {
   createCalendarObject,
+  davRequest,
   deleteCalendarObject,
   fetchCalendarObjects,
+  fetchHomeUrl,
+  fetchPrincipalUrl,
   getBasicAuthHeaders,
   propfind,
+  serviceDiscovery,
   updateCalendarObject,
 } from "tsdav";
 import { v4 as uuidv4 } from "uuid";
 import { getLocation, getRichDescription } from "./CalEventParser";
 import { symmetricDecrypt } from "./crypto";
+import { ErrorWithCode } from "./errors";
 import logger from "./logger";
-import { assertUrlIsSafeForSSRF } from "./ssrfProtection";
+import { assertUrlIsSafeForSSRF, createSSRFProtectedFetch } from "./ssrfProtection";
 
-const TIMEZONE_FORMAT = "YYYY-MM-DDTHH:mm:ss[Z]";
 const DEFAULT_CALENDAR_TYPE = "caldav";
 
 const CALENDSO_ENCRYPTION_KEY = process.env.CALENDSO_ENCRYPTION_KEY || "";
@@ -393,6 +396,12 @@ export default abstract class BaseCalendarService implements Calendar {
   protected integrationName = "";
   private log: typeof logger;
   private credential: CredentialPayload;
+  /**
+   * Passed to every tsdav call: CalDAV URLs (the account URL and the calendar/object URLs it
+   * returns) are user-controlled and used long after the credential was added, including from
+   * anonymous booking pages, and tsdav would otherwise follow redirects to any address.
+   */
+  private readonly fetch: typeof fetch;
 
   constructor(credential: CredentialPayload, integrationName: string, url?: string) {
     this.integrationName = integrationName;
@@ -408,6 +417,10 @@ export default abstract class BaseCalendarService implements Calendar {
     this.credentials = { username, password };
     this.headers = getBasicAuthHeaders({ username, password });
     this.credential = credential;
+    this.fetch = createSSRFProtectedFetch({
+      integration: this.integrationName,
+      credentialId: this.credential.id,
+    });
 
     this.log = logger.getSubLogger({ prefix: [`[[lib] ${this.integrationName}`] });
   }
@@ -482,6 +495,7 @@ export default abstract class BaseCalendarService implements Calendar {
               filename,
               iCalString: injectScheduleAgent(iCalStringWithTimezone),
               headers: this.headers,
+              fetch: this.fetch,
             });
           })
       );
@@ -558,6 +572,7 @@ export default abstract class BaseCalendarService implements Calendar {
               etag: eventItem.etag,
             },
             headers: this.headers,
+            fetch: this.fetch,
           });
         })
       );
@@ -606,6 +621,7 @@ export default abstract class BaseCalendarService implements Calendar {
               etag: event?.etag,
             },
             headers: this.headers,
+            fetch: this.fetch,
           });
         })
       );
@@ -852,8 +868,9 @@ export default abstract class BaseCalendarService implements Calendar {
   /**
    * The fetchObjectsWithOptionalExpand function is responsible for fetching calendar objects
    * from an array of selectedCalendars. It attempts to fetch objects with the expand option
-   * alone such that it works if a calendar supports it. If any calendar object has an undefined 'data' property
-   * and etag isn't undefined, the function makes a new request without the expand option to retrieve the data.
+   * alone such that it works if a calendar supports it. tsdav rejects the whole calendar when an
+   * expanded object comes back without calendar-data, in which case the calendar is fetched again
+   * without the expand option. Calendars that still fail are skipped.
    * The result is a flattened array of calendar objects with the structure { url: ..., etag: ..., data: ...}.
    *
    * @param {Object} options - The options object containing the following properties:
@@ -873,77 +890,66 @@ export default abstract class BaseCalendarService implements Calendar {
     const filteredCalendars = selectedCalendars.filter((sc) => sc.externalId);
     const fetchPromises = filteredCalendars.map(async (sc) => {
       await this.assertSafeUrl(sc.externalId);
-      const response = await fetchCalendarObjects({
-        urlFilter: (url) => this.isValidFormat(url),
-        calendar: {
-          url: sc.externalId,
-        },
-        headers,
-        expand: true,
-        timeRange: {
-          start: startISOString,
-          end: new Date(dateTo).toISOString(),
-        },
-      });
+      const fetchObjects = (expand: boolean) =>
+        fetchCalendarObjects({
+          urlFilter: (url) => this.isValidFormat(url),
+          calendar: {
+            url: sc.externalId,
+          },
+          headers,
+          fetch: this.fetch,
+          expand,
+          timeRange: {
+            start: startISOString,
+            end: new Date(dateTo).toISOString(),
+          },
+        });
 
-      const processedResponse = await Promise.all(
-        response.map(async (calendarObject) => {
-          const calendarObjectHasEtag = calendarObject.etag !== undefined;
-          const calendarObjectDataUndefined = calendarObject.data === undefined;
-          if (calendarObjectDataUndefined && calendarObjectHasEtag) {
-            const responseWithoutExpand = await fetchCalendarObjects({
-              urlFilter: (url) => this.isValidFormat(url),
-              calendar: {
-                url: sc.externalId,
-              },
-              headers,
-              expand: false,
-              timeRange: {
-                start: startISOString,
-                end: new Date(dateTo).toISOString(),
-              },
-            });
-
-            return responseWithoutExpand.find(
-              (obj) => obj.url === calendarObject.url && obj.etag === calendarObject.etag
-            );
-          }
-          return calendarObject;
-        })
-      );
-      return processedResponse;
+      try {
+        return await fetchObjects(true);
+      } catch (error) {
+        // A blocked URL would be blocked again
+        if (error instanceof ErrorWithCode) throw error;
+        return fetchObjects(false);
+      }
     });
     const resolvedPromises = await Promise.allSettled(fetchPromises);
     const fulfilledPromises = resolvedPromises.filter(
-      (promise): promise is PromiseFulfilledResult<(DAVObject | undefined)[]> =>
-        promise.status === "fulfilled"
+      (promise): promise is PromiseFulfilledResult<DAVObject[]> => promise.status === "fulfilled"
     );
-    const flatResult = fulfilledPromises.flatMap((promise) => promise.value).filter((obj) => obj !== null);
-    return flatResult as DAVObject[];
+    return fulfilledPromises.flatMap((promise) => promise.value);
   }
 
-  private async getEvents(
-    calId: string,
-    dateFrom: string | null,
-    dateTo: string | null,
-    objectUrls?: string[] | null
-  ) {
+  private async getEvents(calId: string, objectUrls: string[]) {
     try {
       await this.assertSafeUrl(calId);
-      const objects = await fetchCalendarObjects({
-        calendar: {
-          url: calId,
+      // A raw calendar-multiget: since tsdav 2.4, fetchCalendarObjects and calendarMultiGet reject the
+      // whole calendar on the 404 returned for an object it does not hold, and getEventsByUID looks
+      // the uid up in every calendar
+      const responses = await davRequest({
+        url: calId,
+        init: {
+          method: "REPORT",
+          headers: { ...this.headers, depth: "1" },
+          namespace: "c",
+          body: {
+            "calendar-multiget": {
+              _attributes: { "xmlns:d": "DAV:", "xmlns:c": "urn:ietf:params:xml:ns:caldav" },
+              "d:prop": { "d:getetag": {}, "c:calendar-data": {} },
+              "d:href": objectUrls.map((url) => new URL(url).pathname),
+            },
+          },
         },
-        objectUrls: objectUrls ? objectUrls : undefined,
-        timeRange:
-          dateFrom && dateTo
-            ? {
-                start: dayjs(dateFrom).utc().format(TIMEZONE_FORMAT),
-                end: dayjs(dateTo).utc().format(TIMEZONE_FORMAT),
-              }
-            : undefined,
-        headers: this.headers,
+        fetch: this.fetch,
       });
+      const objects = responses
+        .filter((response) => response.ok)
+        .map((response) => ({
+          url: new URL(response.href ?? "", calId).href,
+          // An empty etag is dropped from If-Match by tsdav, as a missing one would be
+          etag: typeof response.props?.getetag === "string" ? response.props.getetag : "",
+          data: response.props?.calendarData?._cdata ?? response.props?.calendarData,
+        }));
 
       const events = objects
         .filter((e) => !!e.data)
@@ -1003,7 +1009,7 @@ export default abstract class BaseCalendarService implements Calendar {
     const calendars = await this.listCalendars();
 
     for (const cal of calendars) {
-      const calEvents = await this.getEvents(cal.externalId, null, null, [`${cal.externalId}${uid}.ics`]);
+      const calEvents = await this.getEvents(cal.externalId, [`${cal.externalId}${uid}.ics`]);
 
       for (const ev of calEvents) {
         events.push(ev);
@@ -1014,10 +1020,10 @@ export default abstract class BaseCalendarService implements Calendar {
   }
 
   /**
-   * CalDAV URLs (the account URL and the calendar/object URLs it returns) are user-controlled and
-   * used long after the credential was added, including from anonymous booking pages. Re-validate
-   * at every use to catch DNS rebinding. Limitation: tsdav (cross-fetch) follows HTTP redirects
-   * itself and exposes no fetch override, so a redirect from a validated URL is not re-checked.
+   * Every request already goes through this.fetch. Checking URLs before handing them to tsdav as
+   * well fails fast with a clear error where tsdav would swallow it (serviceDiscovery falls back
+   * to the server URL when its request throws), and rejects hostile URLs returned by the server
+   * before they are stored as calendar ids.
    */
   private async assertSafeUrl(url: string): Promise<void> {
     await assertUrlIsSafeForSSRF(url, {
@@ -1027,12 +1033,11 @@ export default abstract class BaseCalendarService implements Calendar {
   }
 
   /**
-   * Same discovery as tsdav's createAccount, one step at a time: createAccount requests the principal
-   * and home URLs read from the server's XML before returning them, so a hostile server could point
-   * them at an internal address. Each URL is validated before the request that uses it.
+   * Same discovery as tsdav's createAccount, one step at a time, so that the principal and home URLs
+   * read from the server's XML are validated before the request that uses them.
    */
   private async getAccount(): Promise<DAVAccount> {
-    const { headers } = this;
+    const { headers, fetch } = this;
     const account: DAVAccount = {
       serverUrl: this.url,
       accountType: DEFAULT_CALENDAR_TYPE,
@@ -1040,19 +1045,19 @@ export default abstract class BaseCalendarService implements Calendar {
     };
     await this.assertSafeUrl(account.serverUrl);
     // May come from a Location header returned by /.well-known/caldav
-    account.rootUrl = await tsdav.serviceDiscovery({ account, headers });
+    account.rootUrl = await serviceDiscovery({ account, headers, fetch });
     await this.assertSafeUrl(account.rootUrl);
-    account.principalUrl = await tsdav.fetchPrincipalUrl({ account, headers });
+    account.principalUrl = await fetchPrincipalUrl({ account, headers, fetch });
     await this.assertSafeUrl(account.principalUrl);
-    account.homeUrl = await tsdav.fetchHomeUrl({ account, headers });
+    account.homeUrl = await fetchHomeUrl({ account, headers, fetch });
     await this.assertSafeUrl(account.homeUrl);
     return account;
   }
 
   /**
-   * Replaces tsdav's fetchCalendars, which sends a PROPFIND to every calendar URL listed by the server
-   * (supported-report-set) before returning them, so those URLs could not be validated first. Only
-   * the properties used by listCalendars are requested. A hostile calendar URL fails the whole listing.
+   * Replaces tsdav's fetchCalendars, which also sends a PROPFIND to every calendar URL listed by the
+   * server (supported-report-set). Only the properties used by listCalendars are requested, in a
+   * single request. A hostile calendar URL fails the whole listing.
    */
   private async fetchCalendars(
     account: DAVAccount
@@ -1070,6 +1075,7 @@ export default abstract class BaseCalendarService implements Calendar {
       },
       depth: "1",
       headers: this.headers,
+      fetch: this.fetch,
     });
 
     const calendars = responses
