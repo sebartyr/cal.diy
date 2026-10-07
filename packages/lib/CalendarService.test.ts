@@ -1,5 +1,5 @@
 import { createEvent as createIcsEvent } from "ics";
-import { createAccount, createCalendarObject, fetchCalendarObjects, updateCalendarObject } from "tsdav";
+import tsdav, { createCalendarObject, fetchCalendarObjects, propfind, updateCalendarObject } from "tsdav";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("ics", () => ({
@@ -7,8 +7,12 @@ vi.mock("ics", () => ({
 }));
 
 vi.mock("tsdav", () => ({
-  createAccount: vi.fn(),
-  fetchCalendars: vi.fn(),
+  default: {
+    serviceDiscovery: vi.fn(),
+    fetchPrincipalUrl: vi.fn(),
+    fetchHomeUrl: vi.fn(),
+  },
+  propfind: vi.fn(),
   fetchCalendarObjects: vi.fn(),
   createCalendarObject: vi.fn().mockResolvedValue({ ok: true }),
   updateCalendarObject: vi.fn().mockResolvedValue({ status: 200 }),
@@ -814,7 +818,8 @@ describe("CalendarService - SSRF protection", () => {
     const service = new AccountOnlyCalendarService(METADATA_URL);
 
     await expect(service.listCalendars()).rejects.toThrow("URL is not allowed");
-    expect(createAccount).not.toHaveBeenCalled();
+    expect(tsdav.serviceDiscovery).not.toHaveBeenCalled();
+    expect(propfind).not.toHaveBeenCalled();
   });
 
   it("skips selected calendars pointing to internal URLs when fetching availability", async () => {
@@ -849,6 +854,19 @@ describe("CalendarService - SSRF protection", () => {
     ]);
 
     await expect(service.createEvent(createMockEvent(), 1)).rejects.toThrow("URL is not allowed");
+    expect(createCalendarObject).not.toHaveBeenCalled();
+  });
+
+  it("does not write an event whose uid resolves to an internal URL outside the calendar", async () => {
+    vi.mocked(createIcsEvent).mockReturnValue({
+      error: null as unknown as Error,
+      value: "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nEND:VEVENT\r\nEND:VCALENDAR",
+    });
+    const service = new TestCalendarService();
+
+    await expect(
+      service.createEvent(createMockEvent({ uid: "https://169.254.169.254/latest/meta-data/x" }), 1)
+    ).rejects.toThrow("URL is not allowed");
     expect(createCalendarObject).not.toHaveBeenCalled();
   });
 });

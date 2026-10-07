@@ -20,14 +20,14 @@ import type { CredentialPayload } from "@calcom/types/Credential";
 import ICAL from "ical.js";
 import type { Attendee, DateArray, DurationObject } from "ics";
 import { createEvent } from "ics";
-import type { DAVAccount, DAVCalendar, DAVObject } from "tsdav";
-import {
-  createAccount,
+import type { DAVAccount, DAVObject } from "tsdav";
+// serviceDiscovery, fetchPrincipalUrl and fetchHomeUrl are only exposed on the default export
+import tsdav, {
   createCalendarObject,
   deleteCalendarObject,
   fetchCalendarObjects,
-  fetchCalendars,
   getBasicAuthHeaders,
+  propfind,
   updateCalendarObject,
 } from "tsdav";
 import { v4 as uuidv4 } from "uuid";
@@ -472,12 +472,14 @@ export default abstract class BaseCalendarService implements Calendar {
               : true
           )
           .map(async (calendar) => {
-            await this.assertSafeUrl(calendar.externalId);
+            const filename = `${uid}.ics`;
+            // tsdav PUTs to new URL(filename, calendarUrl), which leaves the calendar host for an absolute uid
+            await this.assertSafeUrl(new URL(filename, calendar.externalId).href);
             return createCalendarObject({
               calendar: {
                 url: calendar.externalId,
               },
-              filename: `${uid}.ics`,
+              filename,
               iCalString: injectScheduleAgent(iCalStringWithTimezone),
               headers: this.headers,
             });
@@ -823,12 +825,7 @@ export default abstract class BaseCalendarService implements Calendar {
     try {
       const account = await this.getAccount();
 
-      const calendars = (await fetchCalendars({
-        account,
-        headers: this.headers,
-      })) /** @url https://github.com/natelindev/tsdav/pull/139 */ as (Omit<DAVCalendar, "displayName"> & {
-        displayName?: string | Record<string, unknown>;
-      })[];
+      const calendars = await this.fetchCalendars(account);
 
       return calendars.reduce<IntegrationCalendar[]>((newCalendars, calendar) => {
         if (!calendar.components?.includes("VEVENT")) return newCalendars;
@@ -1029,15 +1026,69 @@ export default abstract class BaseCalendarService implements Calendar {
     });
   }
 
+  /**
+   * Same discovery as tsdav's createAccount, one step at a time: createAccount requests the principal
+   * and home URLs read from the server's XML before returning them, so a hostile server could point
+   * them at an internal address. Each URL is validated before the request that uses it.
+   */
   private async getAccount(): Promise<DAVAccount> {
-    await this.assertSafeUrl(this.url);
-    return createAccount({
-      account: {
-        serverUrl: this.url,
-        accountType: DEFAULT_CALENDAR_TYPE,
-        credentials: this.credentials,
+    const { headers } = this;
+    const account: DAVAccount = {
+      serverUrl: this.url,
+      accountType: DEFAULT_CALENDAR_TYPE,
+      credentials: this.credentials,
+    };
+    await this.assertSafeUrl(account.serverUrl);
+    // May come from a Location header returned by /.well-known/caldav
+    account.rootUrl = await tsdav.serviceDiscovery({ account, headers });
+    await this.assertSafeUrl(account.rootUrl);
+    account.principalUrl = await tsdav.fetchPrincipalUrl({ account, headers });
+    await this.assertSafeUrl(account.principalUrl);
+    account.homeUrl = await tsdav.fetchHomeUrl({ account, headers });
+    await this.assertSafeUrl(account.homeUrl);
+    return account;
+  }
+
+  /**
+   * Replaces tsdav's fetchCalendars, which sends a PROPFIND to every calendar URL listed by the server
+   * (supported-report-set) before returning them, so those URLs could not be validated first. Only
+   * the properties used by listCalendars are requested. A hostile calendar URL fails the whole listing.
+   */
+  private async fetchCalendars(
+    account: DAVAccount
+  ): Promise<{ url: string; displayName: unknown; components: string[] }[]> {
+    if (!account.homeUrl || !account.rootUrl) {
+      throw new Error("CalDAV account discovery did not return a calendar home URL");
+    }
+    const rootUrl = account.rootUrl;
+    const responses = await propfind({
+      url: account.homeUrl,
+      props: {
+        "d:displayname": {},
+        "d:resourcetype": {},
+        "c:supported-calendar-component-set": {},
       },
+      depth: "1",
       headers: this.headers,
     });
+
+    const calendars = responses
+      .filter((response) => Object.keys(response.props?.resourcetype ?? {}).includes("calendar"))
+      .map((response) => {
+        const comp = response.props?.supportedCalendarComponentSet?.comp;
+        const components = (Array.isArray(comp) ? comp : [comp])
+          .map((c) => c?._attributes?.name)
+          .filter((name): name is string => typeof name === "string");
+        const displayName = response.props?.displayname;
+        return {
+          url: new URL(response.href ?? "", rootUrl).href,
+          /** @url https://github.com/natelindev/tsdav/pull/139 */
+          displayName: displayName?._cdata ?? displayName,
+          components,
+        };
+      });
+
+    await Promise.all(calendars.map((calendar) => this.assertSafeUrl(calendar.url)));
+    return calendars;
   }
 }
