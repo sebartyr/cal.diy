@@ -13,6 +13,7 @@ vi.mock("node:dns/promises", () => ({ default: { lookup: lookupMock } }));
 import {
   assertUrlIsSafeForSSRF,
   classifyIP,
+  createSSRFProtectedFetch,
   fetchWithSSRFProtection,
   isBlockedHostname,
   isIPAllowedForHost,
@@ -488,6 +489,148 @@ describe("fetchWithSSRFProtection", () => {
     const response = await fetchWithSSRFProtection("https://8.8.8.8/feed.ics");
 
     expect(response.status).toBe(302);
+  });
+});
+
+describe("createSSRFProtectedFetch", () => {
+  const fetchMock = vi.fn();
+  const guardedFetch = createSSRFProtectedFetch({ integration: "test" });
+
+  const redirectTo = (location: string, status: number) =>
+    new Response(null, { status, headers: { location } });
+  const sentRequest = (index: number) => {
+    const [url, init] = fetchMock.mock.calls[index] as [string, RequestInit];
+    const headers = new Headers(init.headers);
+    return { url, method: init.method, body: init.body, authorization: headers.get("authorization") };
+  };
+  const davInit = (method: string): RequestInit => ({
+    method,
+    body: "<d:propfind/>",
+    headers: { authorization: "Basic dGVzdDp0ZXN0", depth: "1" },
+  });
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([307, 308])("replays the method, body and headers on a %i", async (status) => {
+    fetchMock
+      .mockResolvedValueOnce(redirectTo("/moved/event.ics", status))
+      .mockResolvedValueOnce(new Response(null, { status: 201 }));
+
+    const response = await guardedFetch("https://8.8.8.8/event.ics", davInit("PUT"));
+
+    expect(response.status).toBe(201);
+    expect(sentRequest(1)).toEqual({
+      url: "https://8.8.8.8/moved/event.ics",
+      method: "PUT",
+      body: "<d:propfind/>",
+      authorization: "Basic dGVzdDp0ZXN0",
+    });
+  });
+
+  it.each(["PROPFIND", "REPORT", "GET"])("follows a 301/302 unchanged for %s", async (method) => {
+    fetchMock
+      .mockResolvedValueOnce(redirectTo("https://8.8.8.8/dav/", 301))
+      .mockResolvedValueOnce(redirectTo("https://8.8.8.8/dav2/", 302))
+      .mockResolvedValueOnce(new Response("ok", { status: 207 }));
+
+    const response = await guardedFetch("https://8.8.8.8/dav", davInit(method));
+
+    expect(response.status).toBe(207);
+    expect(sentRequest(2)).toEqual(
+      expect.objectContaining({ url: "https://8.8.8.8/dav2/", method, body: "<d:propfind/>" })
+    );
+  });
+
+  it.each([
+    ["PUT", 301],
+    ["PUT", 302],
+    ["DELETE", 302],
+    ["POST", 302],
+    ["PUT", 303],
+    ["PROPFIND", 303],
+  ])("returns the redirect of a %s answered with a %i without following it", async (method, status) => {
+    fetchMock.mockResolvedValueOnce(redirectTo("https://8.8.4.4/elsewhere", status));
+
+    const response = await guardedFetch("https://8.8.8.8/event.ics", davInit(method));
+
+    expect(response.status).toBe(status);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("follows a 303 for a GET", async () => {
+    fetchMock
+      .mockResolvedValueOnce(redirectTo("/result", 303))
+      .mockResolvedValueOnce(new Response("ok", { status: 200 }));
+
+    const response = await guardedFetch("https://8.8.8.8/feed.ics");
+
+    expect(response.status).toBe(200);
+    expect(sentRequest(1).url).toBe("https://8.8.8.8/result");
+  });
+
+  it("drops credentials once a redirect leaves the origin, even when coming back", async () => {
+    fetchMock
+      .mockResolvedValueOnce(redirectTo("https://8.8.8.8/same-origin/", 307))
+      .mockResolvedValueOnce(redirectTo("https://8.8.4.4/other-origin/", 307))
+      .mockResolvedValueOnce(redirectTo("https://8.8.8.8/back/", 307))
+      .mockResolvedValueOnce(new Response("ok", { status: 207 }));
+
+    await guardedFetch("https://8.8.8.8/dav/", {
+      ...davInit("PROPFIND"),
+      headers: { Authorization: "Basic dGVzdDp0ZXN0", Cookie: "session=1", "Proxy-Authorization": "x" },
+    });
+
+    expect([0, 1, 2, 3].map((index) => sentRequest(index).authorization)).toEqual([
+      "Basic dGVzdDp0ZXN0",
+      "Basic dGVzdDp0ZXN0",
+      null,
+      null,
+    ]);
+    const lastHeaders = new Headers((fetchMock.mock.calls[3] as [string, RequestInit])[1].headers);
+    expect(lastHeaders.get("cookie")).toBeNull();
+    expect(lastHeaders.get("proxy-authorization")).toBeNull();
+  });
+
+  it("blocks a redirect of a write to an internal address", async () => {
+    fetchMock.mockResolvedValueOnce(redirectTo("http://169.254.169.254/latest/meta-data/", 307));
+
+    await expect(guardedFetch("https://8.8.8.8/event.ics", davInit("DELETE"))).rejects.toThrow(
+      "URL is not allowed"
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns redirects untouched to a caller asking for redirect: manual, after validating the URL", async () => {
+    fetchMock.mockResolvedValueOnce(redirectTo("http://169.254.169.254/", 302));
+
+    const response = await guardedFetch("https://8.8.8.8/.well-known/caldav", { redirect: "manual" });
+
+    expect(response.status).toBe(302);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(guardedFetch("https://169.254.169.254/", { redirect: "manual" })).rejects.toThrow(
+      "URL is not allowed"
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a redirect when the caller asks for redirect: error", async () => {
+    fetchMock.mockResolvedValueOnce(redirectTo("https://8.8.8.8/moved", 301));
+
+    await expect(guardedFetch("https://8.8.8.8/feed.ics", { redirect: "error" })).rejects.toThrow(
+      "Unexpected redirect"
+    );
+  });
+
+  it("refuses Request objects, whose body could not be replayed", async () => {
+    await expect(guardedFetch(new Request("https://8.8.8.8/feed.ics"))).rejects.toThrow(TypeError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
