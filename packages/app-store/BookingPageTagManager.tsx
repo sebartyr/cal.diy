@@ -1,3 +1,4 @@
+import { isAnalyticsAppAllowed, isUrlTemplateVariable } from "@calcom/app-store/_utils/analyticsScriptPolicy";
 import { getEventTypeAppData } from "@calcom/app-store/_utils/getEventTypeAppData";
 import { appStoreMetadata } from "@calcom/app-store/bookerAppsMetaData";
 import type { Tag } from "@calcom/app-store/types";
@@ -32,13 +33,11 @@ const TEMPLATE_VARIABLE_REGEX = /\{([A-Z_\d]+)\}/g;
 const SAFE_TEMPLATE_VALUE_REGEX = /^[A-Za-z0-9_.:/-]+$/;
 const SAFE_URL_TEMPLATE_VALUE_REGEX = /^[A-Za-z0-9_.:/\-?=&%~+#]+$/;
 
-const isUrlTemplateVariable = (variableName: string) =>
-  variableName.endsWith("_URL") || variableName === "API_HOST";
-
 /**
  * Template values come from event type metadata, which any event type owner controls, and end up
  * inside inline <script> content and script src attributes on the public booking page. A strict
  * allowlist keeps them from breaking out of the JS string literals they are interpolated into.
+ * Where the resulting scripts may load from is enforced separately by analyticsScriptPolicy.
  */
 export function isSafeTemplateValue(variableName: string, value: unknown): boolean {
   if (typeof value !== "string" && typeof value !== "number") return false;
@@ -57,20 +56,26 @@ export function isSafeTemplateValue(variableName: string, value: unknown): boole
   }
 }
 
-export function hasUnsafeTemplateValues(templates: (string | undefined)[], appData: Record<string, unknown>) {
-  return templates.some((template) => {
-    if (!template) return false;
+function getReferencedTemplateValues(templates: (string | undefined)[], appData: Record<string, unknown>) {
+  const referenced: Record<string, unknown> = {};
+  for (const template of templates) {
+    if (!template) continue;
     const regex = new RegExp(TEMPLATE_VARIABLE_REGEX.source, "g");
     let match: RegExpExecArray | null = regex.exec(template);
     while (match) {
       const variableName = match[1];
-      const value = appData[variableName];
       // Falsy values are left as-is by parseValue, so they never reach the script.
-      if (value && !isSafeTemplateValue(variableName, value)) return true;
+      if (appData[variableName]) referenced[variableName] = appData[variableName];
       match = regex.exec(template);
     }
-    return false;
-  });
+  }
+  return referenced;
+}
+
+export function hasUnsafeTemplateValues(templates: (string | undefined)[], appData: Record<string, unknown>) {
+  return Object.entries(getReferencedTemplateValues(templates, appData)).some(
+    ([variableName, value]) => !isSafeTemplateValue(variableName, value)
+  );
 }
 
 function getAnalyticsApps(eventType: Parameters<typeof getEventTypeAppData>[0]) {
@@ -174,6 +179,19 @@ export default function BookingPageTagManager({
           }
           return val;
         };
+
+        const resolvedScriptSrcs = scripts
+          .map((script) => parseValue(script.src))
+          .filter((src): src is string => !!src);
+        if (
+          !isAnalyticsAppAllowed({
+            appId,
+            referencedValues: getReferencedTemplateValues(templates, appDataRecord),
+            resolvedScriptSrcs,
+          })
+        ) {
+          return null;
+        }
 
         return scripts.map((script, index) => {
           const parsedAttributes: NonNullable<(typeof tag.scripts)[number]["attrs"]> = {};
