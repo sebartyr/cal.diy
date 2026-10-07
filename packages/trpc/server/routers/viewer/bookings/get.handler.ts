@@ -261,6 +261,7 @@ export async function getBookings({
               .select("users.email")
               .innerJoin("Membership", "Membership.userId", "users.id")
               .where("Membership.teamId", "in", teamIdsWithBookingPermission)
+              .where("Membership.accepted", "=", true)
           ),
         tables: ["Booking", "Attendee"],
       });
@@ -285,6 +286,7 @@ export async function getBookings({
               .select("users.email")
               .innerJoin("Membership", "Membership.userId", "users.id")
               .where("Membership.teamId", "in", teamIdsWithBookingPermission)
+              .where("Membership.accepted", "=", true)
           ),
         tables: ["Booking", "Attendee", "BookingSeat"],
       });
@@ -329,6 +331,7 @@ export async function getBookings({
               .selectFrom("Membership")
               .select("Membership.userId")
               .where("Membership.teamId", "in", teamIdsWithBookingPermission)
+              .where("Membership.accepted", "=", true)
           ),
         tables: ["Booking"],
       });
@@ -983,6 +986,9 @@ async function getUserIdsFromTeamIds(prisma: PrismaClient, teamIds: number[]): P
           teamId: {
             in: teamIds,
           },
+          // A pending invite is created without the invitee's consent, so it must not
+          // grant the inviting admin visibility over the invitee's bookings.
+          accepted: true,
         },
       },
     },
