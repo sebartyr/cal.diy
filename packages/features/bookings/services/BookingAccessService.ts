@@ -1,3 +1,5 @@
+import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
 import { TeamRolePermissionService } from "@calcom/features/membership/services/TeamRolePermissionService";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
@@ -130,5 +132,58 @@ export class BookingAccessService {
     }
 
     return false;
+  }
+
+  /**
+   * Instance administrators may act on any booking to support its participants. Only use this once
+   * the regular checks above have failed, so that the admin trail only records actions taken outside
+   * of the admin's own scope.
+   *
+   * `isSystemAdmin` must come from the caller's authenticated session (`isActingSystemAdmin`), which
+   * also rules impersonation out; the admin policy (role, lock, 2FA when required) is checked again
+   * on the database account so that a demotion or a 2FA removal applies immediately.
+   */
+  async doesSystemAdminHaveAccessToBooking({
+    userId,
+    isSystemAdmin,
+    bookingUid,
+    bookingId,
+    path,
+    action,
+  }: {
+    userId: number;
+    isSystemAdmin: boolean;
+    bookingUid?: string;
+    bookingId?: number;
+    /** Entry point recorded in the admin trail, e.g. the tRPC path. */
+    path: string;
+    action: string;
+  }): Promise<boolean> {
+    if (!isSystemAdmin) return false;
+
+    const bookingRepo = new BookingRepository(this.prismaClient);
+    const userRepo = new UserRepository(this.prismaClient);
+
+    const [actor, booking] = await Promise.all([
+      userRepo.findAuthIdentityById({ id: userId }),
+      bookingUid
+        ? bookingRepo.findByUidIncludeEventType({ bookingUid })
+        : bookingId
+          ? bookingRepo.findByIdIncludeEventType({ bookingId })
+          : null,
+    ]);
+
+    // Same policy as the admin routes (role, lock, 2FA), on the database state of the account.
+    if (!actor || !meetsSystemAdminPolicy(actor) || !booking) return false;
+
+    recordAdminAction({
+      actorUserId: userId,
+      actorEmail: actor.email,
+      path,
+      outcome: "granted",
+      context: { bookingId, bookingUid, action },
+    });
+
+    return true;
   }
 }

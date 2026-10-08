@@ -12,11 +12,27 @@ export class BookingDetailsService {
     this.bookingAccessService = new BookingAccessService(prismaClient);
   }
 
-  async getBookingDetails({ userId, bookingUid }: { userId: number; bookingUid: string }) {
-    const hasAccess = await this.bookingAccessService.doesUserIdHaveAccessToBooking({
-      userId,
-      bookingUid,
-    });
+  async getBookingDetails({
+    userId,
+    bookingUid,
+    isSystemAdmin = false,
+  }: {
+    userId: number;
+    bookingUid: string;
+    isSystemAdmin?: boolean;
+  }) {
+    const hasAccess =
+      (await this.bookingAccessService.doesUserIdHaveAccessToBooking({
+        userId,
+        bookingUid,
+      })) ||
+      (await this.bookingAccessService.doesSystemAdminHaveAccessToBooking({
+        userId,
+        isSystemAdmin,
+        bookingUid,
+        path: "viewer.bookings.getBookingDetails",
+        action: "getBookingDetails",
+      }));
 
     if (!hasAccess) {
       throw ErrorWithCode.Factory.Forbidden("You do not have permission to view this booking");

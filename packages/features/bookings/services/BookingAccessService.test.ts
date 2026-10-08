@@ -1,3 +1,4 @@
+import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import type { PrismaClient } from "@calcom/prisma";
@@ -7,6 +8,7 @@ import { BookingRepository } from "../repositories/BookingRepository";
 import { BookingAccessService } from "./BookingAccessService";
 
 vi.mock("../repositories/BookingRepository");
+vi.mock("@calcom/features/audit-log/adminAuditLog", () => ({ recordAdminAction: vi.fn() }));
 vi.mock("@calcom/features/users/repositories/UserRepository");
 vi.mock("@calcom/features/membership/repositories/MembershipRepository");
 
@@ -416,5 +418,106 @@ describe("BookingAccessService", () => {
         expect(mockMembershipRepo.hasAcceptedMembershipWithRoles).toHaveBeenCalledTimes(2);
       });
     });
+  });
+});
+
+describe("BookingAccessService.doesSystemAdminHaveAccessToBooking", () => {
+  const bookingRepo = {
+    findByUidIncludeEventType: vi.fn(),
+    findByIdIncludeEventType: vi.fn(),
+  };
+  const userRepo = {
+    findAuthIdentityById: vi.fn(),
+  };
+
+  const call = (
+    overrides: Partial<Parameters<BookingAccessService["doesSystemAdminHaveAccessToBooking"]>[0]>
+  ) =>
+    new BookingAccessService({} as PrismaClient).doesSystemAdminHaveAccessToBooking({
+      userId: 1,
+      isSystemAdmin: true,
+      bookingId: 10,
+      path: "viewer.bookings.confirm",
+      action: "confirm",
+      ...overrides,
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(BookingRepository).mockImplementation(function () {
+      return bookingRepo as unknown as BookingRepository;
+    });
+    vi.mocked(UserRepository).mockImplementation(function () {
+      return userRepo as unknown as UserRepository;
+    });
+    bookingRepo.findByIdIncludeEventType.mockResolvedValue({ userId: 2, attendees: [] });
+    bookingRepo.findByUidIncludeEventType.mockResolvedValue({ userId: 2, attendees: [] });
+    userRepo.findAuthIdentityById.mockResolvedValue({ id: 1, email: "admin@example.com", role: "ADMIN" });
+  });
+
+  it("grants an acting admin access to any booking and records it", async () => {
+    await expect(call({})).resolves.toBe(true);
+
+    expect(recordAdminAction).toHaveBeenCalledWith({
+      actorUserId: 1,
+      actorEmail: "admin@example.com",
+      path: "viewer.bookings.confirm",
+      outcome: "granted",
+      context: { bookingId: 10, bookingUid: undefined, action: "confirm" },
+    });
+  });
+
+  it("looks the booking up by uid when one is given", async () => {
+    await expect(call({ bookingId: undefined, bookingUid: "abc" })).resolves.toBe(true);
+    expect(bookingRepo.findByUidIncludeEventType).toHaveBeenCalledWith({ bookingUid: "abc" });
+  });
+
+  it("refuses without an acting admin session, without touching the database", async () => {
+    await expect(call({ isSystemAdmin: false })).resolves.toBe(false);
+    expect(userRepo.findAuthIdentityById).not.toHaveBeenCalled();
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the database role is no longer ADMIN", async () => {
+    userRepo.findAuthIdentityById.mockResolvedValue({ id: 1, email: "admin@example.com", role: "USER" });
+    await expect(call({})).resolves.toBe(false);
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("applies REQUIRE_2FA_FOR_ADMIN to the database account, like the admin routes", async () => {
+    vi.stubEnv("REQUIRE_2FA_FOR_ADMIN", "true");
+    try {
+      userRepo.findAuthIdentityById.mockResolvedValue({
+        id: 1,
+        email: "admin@example.com",
+        role: "ADMIN",
+        locked: false,
+        twoFactorEnabled: false,
+      });
+      await expect(call({})).resolves.toBe(false);
+      expect(recordAdminAction).not.toHaveBeenCalled();
+
+      userRepo.findAuthIdentityById.mockResolvedValue({
+        id: 1,
+        email: "admin@example.com",
+        role: "ADMIN",
+        locked: false,
+        twoFactorEnabled: true,
+      });
+      await expect(call({})).resolves.toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("refuses a locked or missing account", async () => {
+    userRepo.findAuthIdentityById.mockResolvedValue(null);
+    await expect(call({})).resolves.toBe(false);
+  });
+
+  it("refuses when the booking does not exist", async () => {
+    bookingRepo.findByIdIncludeEventType.mockResolvedValue(null);
+    await expect(call({})).resolves.toBe(false);
+    expect(recordAdminAction).not.toHaveBeenCalled();
   });
 });
