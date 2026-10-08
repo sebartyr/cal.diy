@@ -662,6 +662,13 @@ export const getOptions = ({
         return {
           ...existingUserWithoutTeamsField,
           ...token,
+          // Only ever downgrade from the DB: a demotion must not survive in a long-lived JWT, but a
+          // promotion (or INACTIVE_ADMIN -> ADMIN) must go through a fresh login so that the admin
+          // password/2FA policy in `validateRole` runs.
+          role:
+            existingUser.role === UserPermissionRole.ADMIN
+              ? (token.role ?? existingUser.role)
+              : existingUser.role,
           profileId: profile.id,
           upId,
           belongsToActiveTeam,
