@@ -1,4 +1,7 @@
-import authedProcedure, { authedAdminProcedure } from "@calcom/trpc/server/procedures/authedProcedure";
+import authedProcedure, {
+  authedAdminProcedure,
+  authedNonImpersonatedProcedure,
+} from "@calcom/trpc/server/procedures/authedProcedure";
 import { router } from "../../../trpc";
 import { ZCreateClientInputSchema } from "./createClient.schema";
 import { ZDeleteClientInputSchema } from "./deleteClient.schema";
@@ -29,16 +32,18 @@ export const oAuthRouter = router({
     });
   }),
 
-  generateAuthCode: authedProcedure.input(ZGenerateAuthCodeInputSchema).mutation(async ({ ctx, input }) => {
-    const { generateAuthCodeHandler } = await import("./generateAuthCode.handler");
+  generateAuthCode: authedNonImpersonatedProcedure
+    .input(ZGenerateAuthCodeInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { generateAuthCodeHandler } = await import("./generateAuthCode.handler");
 
-    return generateAuthCodeHandler({
-      ctx,
-      input,
-    });
-  }),
+      return generateAuthCodeHandler({
+        ctx,
+        input,
+      });
+    }),
 
-  submitClientForReview: authedProcedure
+  submitClientForReview: authedNonImpersonatedProcedure
     .input(ZSubmitClientInputSchema)
     .output(ZSubmitClientOutputSchema)
     .mutation(async ({ ctx, input }) => {
@@ -67,21 +72,25 @@ export const oAuthRouter = router({
     });
   }),
 
-  updateClient: authedProcedure.input(ZUpdateClientInputSchema).mutation(async ({ ctx, input }) => {
-    const { updateClientHandler } = await import("./updateClient.handler");
+  updateClient: authedNonImpersonatedProcedure
+    .input(ZUpdateClientInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { updateClientHandler } = await import("./updateClient.handler");
 
-    return updateClientHandler({
-      ctx,
-      input,
-    });
-  }),
+      return updateClientHandler({
+        ctx,
+        input,
+      });
+    }),
 
-  deleteClient: authedProcedure.input(ZDeleteClientInputSchema).mutation(async ({ ctx, input }) => {
-    const { deleteClientHandler } = await import("./deleteClient.handler");
+  deleteClient: authedNonImpersonatedProcedure
+    .input(ZDeleteClientInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { deleteClientHandler } = await import("./deleteClient.handler");
 
-    return deleteClientHandler({
-      ctx,
-      input,
-    });
-  }),
+      return deleteClientHandler({
+        ctx,
+        input,
+      });
+    }),
 });

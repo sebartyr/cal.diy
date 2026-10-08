@@ -1,13 +1,13 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import type { Session } from "next-auth";
-
 import { throwIfNotHaveAdminAccessToTeam } from "@calcom/app-store/_utils/throwIfNotHaveAdminAccessToTeam";
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
+import { isImpersonatedSession } from "@calcom/features/impersonation/lib/impersonationSession";
 import { deriveAppDictKeyFromType } from "@calcom/lib/deriveAppDictKeyFromType";
 import { HttpError } from "@calcom/lib/http-error";
 import { getServerErrorFromUnknown } from "@calcom/lib/server/getServerErrorFromUnknown";
 import prisma from "@calcom/prisma";
 import type { AppDeclarativeHandler, AppHandler } from "@calcom/types/AppHandler";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { Session } from "next-auth";
 
 const defaultIntegrationAddHandler = async ({
   slug,
@@ -58,6 +58,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (apiEndpoint === "add" && !req.session?.user?.id) {
     return res.status(401).json({ message: "You must be logged in to do this" });
+  }
+
+  // Installing an app or completing its OAuth callback would attach the admin's own third-party
+  // account to the impersonated user, and keep working after the impersonation ends.
+  if ((apiEndpoint === "add" || apiEndpoint === "callback") && isImpersonatedSession(req.session)) {
+    return res.status(403).json({ message: "Apps cannot be connected while impersonating a user." });
   }
 
   try {

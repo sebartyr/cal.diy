@@ -1,6 +1,5 @@
 import { ZVerifyCodeInputSchema } from "@calcom/prisma/zod-utils";
-
-import authedProcedure from "../../../procedures/authedProcedure";
+import authedProcedure, { authedNonImpersonatedProcedure } from "../../../procedures/authedProcedure";
 import publicProcedure from "../../../procedures/publicProcedure";
 import { router } from "../../../trpc";
 import { ZChangePasswordInputSchema } from "./changePassword.schema";
@@ -19,14 +18,16 @@ type AuthRouterHandlerCache = {
 };
 
 export const authRouter = router({
-  changePassword: authedProcedure.input(ZChangePasswordInputSchema).mutation(async ({ input, ctx }) => {
-    const { changePasswordHandler } = await import("./changePassword.handler");
+  changePassword: authedNonImpersonatedProcedure
+    .input(ZChangePasswordInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const { changePasswordHandler } = await import("./changePassword.handler");
 
-    return changePasswordHandler({
-      ctx,
-      input,
-    });
-  }),
+      return changePasswordHandler({
+        ctx,
+        input,
+      });
+    }),
 
   verifyPassword: authedProcedure.input(ZVerifyPasswordInputSchema).mutation(async ({ input, ctx }) => {
     const { verifyPasswordHandler } = await import("./verifyPassword.handler");
@@ -63,7 +64,7 @@ export const authRouter = router({
     });
   }),
 
-  createAccountPassword: authedProcedure.mutation(async ({ ctx }) => {
+  createAccountPassword: authedNonImpersonatedProcedure.mutation(async ({ ctx }) => {
     const { createAccountPasswordHandler } = await import("./createAccountPassword.handler");
 
     return createAccountPasswordHandler({

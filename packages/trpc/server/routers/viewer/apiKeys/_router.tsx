@@ -1,4 +1,4 @@
-import authedProcedure from "../../../procedures/authedProcedure";
+import authedProcedure, { authedNonImpersonatedProcedure } from "../../../procedures/authedProcedure";
 import { router } from "../../../trpc";
 import { ZCreateInputSchema } from "./create.schema";
 import { ZDeleteInputSchema } from "./delete.schema";
@@ -34,7 +34,7 @@ export const apiKeysRouter = router({
   }),
 
   // Create a new key
-  create: authedProcedure.input(ZCreateInputSchema).mutation(async ({ ctx, input }) => {
+  create: authedNonImpersonatedProcedure.input(ZCreateInputSchema).mutation(async ({ ctx, input }) => {
     const { createHandler } = await import("./create.handler");
 
     return createHandler({
@@ -43,7 +43,7 @@ export const apiKeysRouter = router({
     });
   }),
 
-  edit: authedProcedure.input(ZEditInputSchema).mutation(async ({ ctx, input }) => {
+  edit: authedNonImpersonatedProcedure.input(ZEditInputSchema).mutation(async ({ ctx, input }) => {
     const { editHandler } = await import("./edit.handler");
 
     return editHandler({
@@ -52,7 +52,7 @@ export const apiKeysRouter = router({
     });
   }),
 
-  delete: authedProcedure.input(ZDeleteInputSchema).mutation(async ({ ctx, input }) => {
+  delete: authedNonImpersonatedProcedure.input(ZDeleteInputSchema).mutation(async ({ ctx, input }) => {
     const { deleteHandler } = await import("./delete.handler");
 
     return deleteHandler({

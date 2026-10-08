@@ -1,21 +1,24 @@
-import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
-import { parseRequestData } from "app/api/parseRequestData";
-import { cookies, headers } from "next/headers";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { authenticator } from "otplib";
-import qrcode from "qrcode";
-
-import { generatePlaintextBackupCodes, hashBackupCodesForStorage } from "@calcom/features/auth/lib/backupCodes";
+import process from "node:process";
+import {
+  generatePlaintextBackupCodes,
+  hashBackupCodesForStorage,
+} from "@calcom/features/auth/lib/backupCodes";
 import { ErrorCode } from "@calcom/features/auth/lib/ErrorCode";
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { verifyPassword } from "@calcom/features/auth/lib/verifyPassword";
+import { isImpersonatedSession } from "@calcom/features/impersonation/lib/impersonationSession";
 import { checkRateLimitAndThrowError } from "@calcom/lib/checkRateLimitAndThrowError";
 import { symmetricEncrypt } from "@calcom/lib/crypto";
 import prisma from "@calcom/prisma";
 import { IdentityProvider } from "@calcom/prisma/enums";
-
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
+import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
+import { parseRequestData } from "app/api/parseRequestData";
+import { cookies, headers } from "next/headers";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { authenticator } from "otplib";
+import qrcode from "qrcode";
 
 async function postHandler(req: NextRequest) {
   const body = await parseRequestData(req);
@@ -23,6 +26,13 @@ async function postHandler(req: NextRequest) {
 
   if (!session) {
     return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
+  }
+
+  if (isImpersonatedSession(session)) {
+    return NextResponse.json(
+      { message: "Two-factor authentication cannot be changed while impersonating a user." },
+      { status: 403 }
+    );
   }
 
   if (!session.user?.id) {
