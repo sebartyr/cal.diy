@@ -1,15 +1,12 @@
-import { v4 } from "uuid";
-
 import { updateTriggerForExistingBookings } from "@calcom/features/webhooks/lib/scheduleTrigger";
 import { validateUrlForSSRFSync } from "@calcom/lib/ssrfProtection";
 import { prisma } from "@calcom/prisma";
-import type { Webhook } from "@calcom/prisma/client";
-import type { Prisma } from "@calcom/prisma/client";
+import type { Prisma, Webhook } from "@calcom/prisma/client";
 import { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import type { TrpcSessionUser } from "@calcom/trpc/server/types";
-
 import { TRPCError } from "@trpc/server";
-
+import { v4 } from "uuid";
+import { isTeamAdminOrOwner } from "./authorization-clever";
 import type { TCreateInputSchema } from "./create.schema";
 
 type CreateOptions = {
@@ -30,17 +27,36 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
     });
   }
 
-  const { webhookId: _webhookId, ...inputWithoutWebhookId } = input;
-  const webhookData: Prisma.WebhookCreateInput = {
-    id: v4(),
-    ...inputWithoutWebhookId,
-  };
   if (input.platform && user.role !== "ADMIN") {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  if (!input.platform && !input.eventTypeId) {
-    webhookData.user = { connect: { id: user.id } };
+  // Clever fork: the webhook router middleware never looks at `teamId`, so
+  // without this check any user could attach a webhook to another team and
+  // receive all of its booking payloads.
+  if (input.teamId && !(await isTeamAdminOrOwner({ userId: user.id, teamId: input.teamId }))) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+
+  // Explicit allow-list so new schema fields cannot silently become writable.
+  const webhookData: Prisma.WebhookUncheckedCreateInput = {
+    id: v4(),
+    subscriberUrl: input.subscriberUrl,
+    eventTriggers: input.eventTriggers,
+    active: input.active,
+    payloadTemplate: input.payloadTemplate,
+    appId: input.appId,
+    secret: input.secret,
+    time: input.time,
+    timeUnit: input.timeUnit,
+    version: input.version,
+    platform: input.platform,
+    eventTypeId: input.eventTypeId,
+    teamId: input.teamId,
+  };
+
+  if (!input.platform && !input.eventTypeId && !input.teamId) {
+    webhookData.userId = user.id;
   }
 
   if (input.eventTypeId) {
