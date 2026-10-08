@@ -4784,5 +4784,12 @@
   "error_updating_user_role": "There was an error updating this user's role.",
   "admin_user_role_change_hint": "Use the “Promote to admin” / “Remove admin role” action in the users list to change it.",
   "admin_user_identity_provider_hint": "Managed by the sign-in flow; it cannot be edited here.",
+  "admin_bookings_scope": "Bookings scope",
+  "admin_bookings_scope_all": "All bookings",
+  "admin_bookings_scope_user": "User…",
+  "admin_bookings_scope_team": "Team…",
+  "admin_bookings_search_users": "Search by email or username",
+  "admin_bookings_search_teams": "Search by team name or slug",
+  "booking_organizer_name": "Organizer: {{name}}",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

@@ -5,7 +5,6 @@ import type useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
 import BookingListItem from "@calcom/web/components/booking/BookingListItem";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo } from "react";
-
 import type { BookingListingStatus, RowData } from "../types";
 
 export function useBookingListColumns({
@@ -14,12 +13,14 @@ export function useBookingListColumns({
   canReadOthersBookings,
   bookingsV3Enabled,
   handleBookingClick,
+  isSystemAdmin = false,
 }: {
   user: ReturnType<typeof useMeQuery>["data"];
   status: BookingListingStatus;
   canReadOthersBookings: boolean;
   bookingsV3Enabled: boolean;
   handleBookingClick: (bookingUid: string) => void;
+  isSystemAdmin?: boolean;
 }) {
   const { t } = useLocale();
 
@@ -137,6 +138,7 @@ export function useBookingListColumns({
                 userTimeZone: user?.timeZone,
                 userTimeFormat: user?.timeFormat,
                 userEmail: user?.email,
+                isSystemAdmin,
               }}
               listingStatus={status}
               recurringInfo={recurringInfo}
@@ -147,5 +149,5 @@ export function useBookingListColumns({
         },
       }),
     ];
-  }, [user, status, t, bookingsV3Enabled, handleBookingClick]);
+  }, [user, status, t, bookingsV3Enabled, handleBookingClick, isSystemAdmin]);
 }

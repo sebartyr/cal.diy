@@ -27,6 +27,7 @@ type BookingsProps = {
   };
   bookingsV3Enabled: boolean;
   bookingAuditEnabled: boolean;
+  isSystemAdmin?: boolean;
 };
 
 function useSystemSegments(userId?: number) {
@@ -75,7 +76,13 @@ export default function Bookings(props: BookingsProps) {
   );
 }
 
-function BookingsContent({ status, permissions, bookingsV3Enabled, bookingAuditEnabled }: BookingsProps) {
+function BookingsContent({
+  status,
+  permissions,
+  bookingsV3Enabled,
+  bookingAuditEnabled,
+  isSystemAdmin = false,
+}: BookingsProps) {
   const [view] = useBookingsView({ bookingsV3Enabled });
 
   return (
@@ -86,6 +93,7 @@ function BookingsContent({ status, permissions, bookingsV3Enabled, bookingAuditE
           permissions={permissions}
           bookingsV3Enabled={bookingsV3Enabled}
           bookingAuditEnabled={bookingAuditEnabled}
+          isSystemAdmin={isSystemAdmin}
         />
       )}
       {bookingsV3Enabled && view === "calendar" && (

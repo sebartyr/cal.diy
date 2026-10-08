@@ -178,13 +178,13 @@ export function BookingActionsDropdown({
     return "upcoming";
   };
 
-
   const userEmail = booking.loggedInUser.userEmail;
   const userSeat = booking.seatsReferences.find((seat) => !!userEmail && seat.attendee?.email === userEmail);
   const isAttendee = !!userSeat;
 
-  // Check if the logged-in user is the host/owner of the booking
-  const isHost = booking.loggedInUser.userId === booking.user?.id;
+  // Check if the logged-in user is the host/owner of the booking. A system admin cancels on the
+  // host's behalf, so the server applies the host's cancellation rules to them.
+  const isHost = booking.loggedInUser.userId === booking.user?.id || !!booking.loggedInUser.isSystemAdmin;
 
   const isCalVideoLocation =
     !booking.location ||
@@ -276,12 +276,12 @@ export function BookingActionsDropdown({
       action.id === "reschedule_request"
         ? () => setIsOpenRescheduleDialog(true)
         : action.id === "change_location"
-            ? () => setIsOpenLocationDialog(true)
-            : action.id === "add_members"
-              ? () => setIsOpenAddGuestsDialog(true)
-              : action.id === "reassign"
-                ? () => setIsOpenReassignDialog(true)
-                : undefined,
+          ? () => setIsOpenLocationDialog(true)
+          : action.id === "add_members"
+            ? () => setIsOpenAddGuestsDialog(true)
+            : action.id === "reassign"
+              ? () => setIsOpenReassignDialog(true)
+              : undefined,
   })) as ActionType[];
 
   const baseAfterEventActions = getAfterEventActions(actionContext);

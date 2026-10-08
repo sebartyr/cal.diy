@@ -1,4 +1,5 @@
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
+import { isActingSystemAdmin } from "@calcom/features/auth/lib/isActingSystemAdmin";
 import { FeaturesRepository } from "@calcom/features/flags/features.repository";
 import { prisma } from "@calcom/prisma";
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
@@ -41,6 +42,8 @@ const Page = async ({ params }: PageProps) => {
 
   // No teams in cal.diy, so canReadOthersBookings is always false.
   const canReadOthersBookings = false;
+  // getServerSession caps the role by the database one; impersonated sessions never get admin scopes.
+  const isSystemAdmin = isActingSystemAdmin({ role: session.user.role, session });
 
   const [bookingAuditEnabled, bookingsV3Enabled] = await Promise.all([
     featuresRepository.checkIfUserHasFeature(userId, "booking-audit"),
@@ -59,6 +62,7 @@ const Page = async ({ params }: PageProps) => {
         status={parsed.data.status}
         userId={userId}
         permissions={{ canReadOthersBookings }}
+        isSystemAdmin={isSystemAdmin}
         bookingsV3Enabled={bookingsV3Enabled}
         bookingAuditEnabled={bookingAuditEnabled}
       />
