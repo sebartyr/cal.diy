@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   deduplicateCredentialsBasedOnSelectedCalendars,
   deleteEvent,
+  getBusyCalendarTimes,
   getCalendarCredentials,
   processEvent,
+  updateEvent,
 } from "./CalendarManager";
 
 vi.mock("@calcom/prisma", () => ({
@@ -28,6 +30,7 @@ vi.mock("@calcom/app-store/locations", () => ({
 
 vi.mock("@calcom/lib/CalEventParser", () => ({
   getRichDescription: vi.fn(() => "Test description"),
+  getUid: vi.fn((uid?: string | null) => uid ?? "generated-uid"),
 }));
 
 vi.mock("@calcom/app-store/delegationCredential", () => ({
@@ -605,6 +608,85 @@ describe("CalendarManager tests", () => {
       });
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe("fn: getBusyCalendarTimes", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("reports a failure instead of a free calendar when getAvailability rejects", async () => {
+      vi.mocked(getCalendar).mockResolvedValue({
+        getAvailability: vi.fn().mockRejectedValue(new Error("CalDAV REPORT failed: 500")),
+      } as unknown as Awaited<ReturnType<typeof getCalendar>>);
+      const credential = buildCredential({
+        type: "ics-feed_calendar",
+        appId: "ics-feed",
+        id: 1,
+        delegatedToId: null,
+        user: { email: "test@example.com" },
+      });
+
+      const result = await getBusyCalendarTimes(
+        [{ ...credential, encryptedKey: null }],
+        "2024-01-01T00:00:00Z",
+        "2024-01-02T00:00:00Z",
+        [
+          {
+            userId: 10000,
+            integration: "ics-feed_calendar",
+            externalId: "https://calendar.example.com/feed.ics",
+            credentialId: 1,
+          },
+        ]
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.data).toEqual([expect.objectContaining({ source: "error-placeholder" })]);
+    });
+  });
+
+  describe("calendar write failures", () => {
+    const caldavCredential = () => ({
+      ...buildCredential({
+        type: "caldav_calendar",
+        appId: "caldav-calendar",
+        id: 1,
+        delegatedToId: null,
+        user: { email: "test@example.com" },
+      }),
+      encryptedKey: null,
+    });
+    const redirectedWrite = new Error("Error updating event: CalDAV server answered 302 Found");
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("reports an update the calendar rejected as unsuccessful", async () => {
+      vi.mocked(getCalendar).mockResolvedValue({
+        updateEvent: vi.fn().mockRejectedValue(redirectedWrite),
+      } as unknown as Awaited<ReturnType<typeof getCalendar>>);
+
+      const result = await updateEvent(caldavCredential(), buildCalendarEvent(), "booking-uid", null);
+
+      expect(result.success).toBe(false);
+      expect(result.updatedEvent).toBeUndefined();
+    });
+
+    it("propagates a delete the calendar rejected", async () => {
+      vi.mocked(getCalendar).mockResolvedValue({
+        deleteEvent: vi.fn().mockRejectedValue(redirectedWrite),
+      } as unknown as Awaited<ReturnType<typeof getCalendar>>);
+
+      await expect(
+        deleteEvent({
+          credential: caldavCredential(),
+          bookingRefUid: "booking-uid",
+          event: buildCalendarEvent(),
+        })
+      ).rejects.toBe(redirectedWrite);
     });
   });
 });
