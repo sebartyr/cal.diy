@@ -1,7 +1,20 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
+import {
+  isLegacyCiphertext,
+  symmetricDecryptStrictV2,
+  symmetricDecryptV2,
+  symmetricEncryptV2,
+} from "./crypto-clever";
 
-import { isLegacyCiphertext, symmetricDecryptV2, symmetricEncryptV2 } from "./crypto-clever";
+// Hand-build a legacy ciphertext exactly like the previous implementation did.
+function legacyEncrypt(text: string, key: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key, "latin1"), iv);
+  let ciphered = cipher.update(text, "utf8", "hex");
+  ciphered += cipher.final("hex");
+  return `${iv.toString("hex")}:${ciphered}`;
+}
 
 describe("crypto-clever (SEC-100)", () => {
   const testKey = "12345678901234567890123456789012"; // 32 bytes
@@ -63,8 +76,7 @@ describe("crypto-clever (SEC-100)", () => {
       const [prefix, ...rest] = enc.split(":");
       const [iv, tag, ct] = rest;
       // Flip one bit in the tag hex.
-      const flippedTag =
-        (parseInt(tag.slice(0, 2), 16) ^ 1).toString(16).padStart(2, "0") + tag.slice(2);
+      const flippedTag = (parseInt(tag.slice(0, 2), 16) ^ 1).toString(16).padStart(2, "0") + tag.slice(2);
       const tampered = `${prefix}:${iv}:${flippedTag}:${ct}`;
       expect(() => symmetricDecryptV2(tampered, testKey)).toThrow();
     });
@@ -73,8 +85,7 @@ describe("crypto-clever (SEC-100)", () => {
       const enc = symmetricEncryptV2(testText, testKey);
       const [prefix, ...rest] = enc.split(":");
       const [iv, tag, ct] = rest;
-      const flippedCt =
-        (parseInt(ct.slice(0, 2), 16) ^ 1).toString(16).padStart(2, "0") + ct.slice(2);
+      const flippedCt = (parseInt(ct.slice(0, 2), 16) ^ 1).toString(16).padStart(2, "0") + ct.slice(2);
       const tampered = `${prefix}:${iv}:${tag}:${flippedCt}`;
       expect(() => symmetricDecryptV2(tampered, testKey)).toThrow();
     });
@@ -86,15 +97,6 @@ describe("crypto-clever (SEC-100)", () => {
   });
 
   describe("symmetricDecryptV2 — legacy CBC (backwards compat)", () => {
-    // Hand-build a legacy ciphertext exactly like the previous implementation did.
-    function legacyEncrypt(text: string, key: string): string {
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key, "latin1"), iv);
-      let ciphered = cipher.update(text, "utf8", "hex");
-      ciphered += cipher.final("hex");
-      return `${iv.toString("hex")}:${ciphered}`;
-    }
-
     it("decrypts a legacy payload produced before the migration", () => {
       const legacy = legacyEncrypt(testText, testKey);
       expect(legacy.startsWith("v2:")).toBe(false);
@@ -109,6 +111,35 @@ describe("crypto-clever (SEC-100)", () => {
     it("throws on malformed legacy payload", () => {
       expect(() => symmetricDecryptV2("invalid", testKey)).toThrow();
       expect(() => symmetricDecryptV2(":", testKey)).toThrow();
+    });
+  });
+
+  describe("symmetricDecryptStrictV2 — untrusted input", () => {
+    it("decrypts what symmetricEncryptV2 produces", () => {
+      expect(symmetricDecryptStrictV2(symmetricEncryptV2(testText, testKey), testKey)).toBe(testText);
+    });
+
+    it("refuses a valid legacy CBC payload (no padding oracle on untrusted input)", () => {
+      const legacy = legacyEncrypt(testText, testKey);
+      expect(symmetricDecryptV2(legacy, testKey)).toBe(testText);
+      expect(() => symmetricDecryptStrictV2(legacy, testKey)).toThrow(/only v2/);
+    });
+
+    it("refuses empty and non-v2 strings", () => {
+      expect(() => symmetricDecryptStrictV2("", testKey)).toThrow(/only v2/);
+      expect(() => symmetricDecryptStrictV2("00:00", testKey)).toThrow(/only v2/);
+    });
+
+    it("throws on a tampered v2 payload", () => {
+      const enc = symmetricEncryptV2(testText, testKey);
+      const flippedLastByte = (Number.parseInt(enc.slice(-2), 16) ^ 1).toString(16).padStart(2, "0");
+      const tampered = `${enc.slice(0, -2)}${flippedLastByte}`;
+      expect(() => symmetricDecryptStrictV2(tampered, testKey)).toThrow();
+    });
+
+    it("throws on wrong key", () => {
+      const enc = symmetricEncryptV2(testText, testKey);
+      expect(() => symmetricDecryptStrictV2(enc, "12345678901234567890123456789013")).toThrow();
     });
   });
 
