@@ -141,6 +141,18 @@ export const adminUserSelect = {
   createdDate: true,
 } satisfies Prisma.UserSelect;
 
+const authIdentitySelect = {
+  id: true,
+  uuid: true,
+  username: true,
+  name: true,
+  email: true,
+  role: true,
+  locked: true,
+  locale: true,
+  twoFactorEnabled: true,
+} satisfies Prisma.UserSelect;
+
 export class UserRepository {
   constructor(private prismaClient: PrismaClient) {}
 
@@ -1095,6 +1107,24 @@ export class UserRepository {
         timeZone: true,
         defaultScheduleId: true,
       },
+    });
+  }
+
+  async findAuthIdentityById({ id }: { id: number }) {
+    return this.prismaClient.user.findUnique({
+      where: { id },
+      select: authIdentitySelect,
+    });
+  }
+
+  async findAuthIdentityByUsernameOrEmail({ usernameOrEmail }: { usernameOrEmail: string }) {
+    const where: Prisma.UserWhereInput = usernameOrEmail.includes("@")
+      ? { email: { equals: usernameOrEmail, mode: "insensitive" } }
+      : { username: usernameOrEmail };
+    return this.prismaClient.user.findFirst({
+      where,
+      select: authIdentitySelect,
+      orderBy: { id: "asc" },
     });
   }
 

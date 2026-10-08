@@ -508,6 +508,8 @@ model User {
   agents                         Agent[]
   oAuthClients                   OAuthClient[]
   holidaySettings                UserHolidaySettings?
+  impersonatedUsers              Impersonations[]              @relation("impersonated_user")
+  impersonatedBy                 Impersonations[]              @relation("impersonated_by_user")
 
   autoOptInFeatures Boolean @default(false)
 
@@ -1168,6 +1170,18 @@ model Webhook {
   @@unique([userId, subscriberUrl], name: "courseIdentifier")
   @@unique([platformOAuthClientId, subscriberUrl], name: "oauthclientwebhook")
   @@index([active])
+}
+
+model Impersonations {
+  id                 Int      @id @default(autoincrement())
+  createdAt          DateTime @default(now())
+  impersonatedUser   User     @relation("impersonated_user", fields: [impersonatedUserId], references: [id], onDelete: Cascade)
+  impersonatedBy     User     @relation("impersonated_by_user", fields: [impersonatedById], references: [id], onDelete: Cascade)
+  impersonatedUserId Int
+  impersonatedById   Int
+
+  @@index([impersonatedUserId])
+  @@index([impersonatedById])
 }
 
 model ApiKey {

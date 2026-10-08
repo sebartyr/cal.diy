@@ -3,6 +3,7 @@ import { EVENT_TYPE_DI_TOKENS } from "@calcom/features/eventtypes/di/tokens";
 import { FEATURE_OPT_IN_DI_TOKENS } from "@calcom/features/feature-opt-in/di/tokens";
 import { FLAGS_DI_TOKENS } from "@calcom/features/flags/di/tokens";
 import { HASHED_LINK_DI_TOKENS } from "@calcom/features/hashedLink/di/tokens";
+import { IMPERSONATION_DI_TOKENS } from "@calcom/features/impersonation/di/tokens";
 import { OAUTH_DI_TOKENS } from "@calcom/features/oauth/di/tokens";
 import { TRANSLATION_DI_TOKENS } from "@calcom/features/translation/di/tokens";
 import { USERS_DI_TOKENS } from "@calcom/features/users/di/tokens";
@@ -73,6 +74,7 @@ export const DI_TOKENS = {
   // Booking service tokens
   ...BOOKING_DI_TOKENS,
   ...HASHED_LINK_DI_TOKENS,
+  ...IMPERSONATION_DI_TOKENS,
   ...OAUTH_DI_TOKENS,
   ...WATCHLIST_DI_TOKENS,
   ...TRANSLATION_DI_TOKENS,

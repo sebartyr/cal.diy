@@ -65,6 +65,8 @@ declare module "next-auth/jwt" {
       uuid: string;
       role: PrismaUser["role"];
     };
+    /** Epoch seconds after which an impersonated session is rejected */
+    impersonationExpiresAt?: number;
     belongsToActiveTeam?: boolean;
     org?: {
       id: number;

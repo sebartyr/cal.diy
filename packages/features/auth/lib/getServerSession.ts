@@ -1,4 +1,8 @@
 import { getEffectiveSessionRole } from "@calcom/features/auth/lib/sessionRole";
+import {
+  isActiveImpersonator,
+  isImpersonationExpired,
+} from "@calcom/features/impersonation/lib/impersonationSession";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { getUserAvatarUrl } from "@calcom/lib/getAvatarUrl";
 import logger from "@calcom/lib/logger";
@@ -41,7 +45,7 @@ const CACHE = new LRUCache<string, Session>({ max: 1000, ttl: SESSION_CACHE_TTL_
 export function invalidateServerSessionCacheForUser(userId: number): void {
   const staleKeys: string[] = [];
   CACHE.forEach((session, key) => {
-    if (session.user.id === userId) staleKeys.push(key);
+    if (session.user.id === userId || session.user.impersonatedBy?.id === userId) staleKeys.push(key);
   });
   for (const key of staleKeys) CACHE.delete(key);
 }
@@ -72,6 +76,12 @@ export async function getServerSession(options: {
 
   if (!token || !token.email || !token.sub) {
     log.debug("Couldn't get token");
+    return null;
+  }
+
+  // Checked before the cache lookup: a cached impersonated session must not outlive its deadline.
+  if (isImpersonationExpired(token)) {
+    log.debug("Impersonation session expired");
     return null;
   }
 
@@ -155,18 +165,29 @@ export async function getServerSession(options: {
         id: true,
         uuid: true,
         role: true,
+        locked: true,
       },
     });
-    if (impersonatedByUser) {
-      session.user.impersonatedBy = {
-        id: impersonatedByUser?.id,
-        uuid: impersonatedByUser.uuid,
-        role: impersonatedByUser.role,
-      };
+    // A deleted, locked or demoted author revokes the impersonation. Returning to the author's own
+    // account goes through the impersonation provider, which reads the token directly, so it keeps
+    // working after this refusal.
+    if (!impersonatedByUser || !isActiveImpersonator(impersonatedByUser)) {
+      log.warn("Impersonation author is no longer an active admin", {
+        impersonatedById: token.impersonatedBy.id,
+      });
+      return null;
     }
+    session.user.impersonatedBy = {
+      id: impersonatedByUser.id,
+      uuid: impersonatedByUser.uuid,
+      role: impersonatedByUser.role,
+    };
   }
 
-  CACHE.set(JSON.stringify(token), session);
+  // Impersonated sessions are never cached so the author's admin status is re-checked on every call.
+  if (!session.user.impersonatedBy) {
+    CACHE.set(JSON.stringify(token), session);
+  }
 
   log.debug("Returned session", safeStringify(session));
   return session;
