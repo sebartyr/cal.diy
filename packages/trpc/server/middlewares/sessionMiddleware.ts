@@ -1,3 +1,4 @@
+import process from "node:process";
 import { recordAdminAction, recordAdminDenial } from "@calcom/features/audit-log/adminAuditLog";
 import { getUserSession } from "@calcom/features/auth/lib/userFromSessionUtils";
 import logger from "@calcom/lib/logger";
@@ -24,6 +25,25 @@ export const isAuthed = middleware(async ({ ctx, next }) => {
   });
 });
 
+const IMPERSONATION_BLOCKED_MESSAGE = "This action is not allowed while impersonating a user.";
+
+// Account-takeover sensitive procedures (credentials, 2FA, API keys, linked identities, account
+// deletion...) and admin procedures must be performed by the account owner, never by an admin
+// acting through an impersonated session.
+export const isNotImpersonatingMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) => {
+  const impersonatedBy = ctx.session.user.impersonatedBy;
+  if (impersonatedBy) {
+    recordAdminDenial({
+      actorUserId: impersonatedBy.id,
+      path,
+      reason: "sensitive procedure blocked during impersonation",
+      context: { impersonatedUserId: ctx.user.id },
+    });
+    throw new TRPCError({ code: "FORBIDDEN", message: IMPERSONATION_BLOCKED_MESSAGE });
+  }
+  return next();
+});
+
 // SPRINT3-041: opt-in flag enforcing 2FA on admin routes. We don't flip this
 // on by default to give existing admins time to enroll; ops sets it via env
 // once every admin has TOTP configured. RGPD §9 / common audit requirement.
@@ -31,6 +51,16 @@ const REQUIRE_2FA_FOR_ADMIN = process.env.REQUIRE_2FA_FOR_ADMIN === "true";
 
 export const isAdminMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) => {
   const { user } = ctx;
+  const impersonatedBy = ctx.session.user.impersonatedBy;
+  if (impersonatedBy) {
+    recordAdminDenial({
+      actorUserId: impersonatedBy.id,
+      path,
+      reason: "admin route blocked during impersonation",
+      context: { impersonatedUserId: user.id },
+    });
+    throw new TRPCError({ code: "FORBIDDEN", message: IMPERSONATION_BLOCKED_MESSAGE });
+  }
   if (user?.role !== "ADMIN") {
     // SEC-305-FORK (Sprint 3): record attempted access to an admin-only path
     // even when it gets rejected, so the trail surfaces probing.

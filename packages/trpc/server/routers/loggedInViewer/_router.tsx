@@ -1,4 +1,4 @@
-import authedProcedure from "../../procedures/authedProcedure";
+import authedProcedure, { authedNonImpersonatedProcedure } from "../../procedures/authedProcedure";
 import { router } from "../../trpc";
 import { ZAddNotificationsSubscriptionInputSchema } from "./addNotificationsSubscription.schema";
 import { ZAddSecondaryEmailInputSchema } from "./addSecondaryEmail.schema";
@@ -25,7 +25,7 @@ export const loggedInViewerRouter = router({
     return stripeCustomerHandler({ ctx });
   }),
 
-  unlinkConnectedAccount: authedProcedure.mutation(async (opts) => {
+  unlinkConnectedAccount: authedNonImpersonatedProcedure.mutation(async (opts) => {
     const unlinkConnectedAccountHandler = await import("./unlinkConnectedAccount.handler").then(
       (mod) => mod.default
     );
@@ -42,11 +42,13 @@ export const loggedInViewerRouter = router({
     const { Handler } = await import("./connectAndJoin.handler");
     return Handler({ ctx, input });
   }),
-  addSecondaryEmail: authedProcedure.input(ZAddSecondaryEmailInputSchema).mutation(async ({ ctx, input }) => {
-    const { addSecondaryEmailHandler } = await import("./addSecondaryEmail.handler");
-    return addSecondaryEmailHandler({ ctx, input });
-  }),
-  addNotificationsSubscription: authedProcedure
+  addSecondaryEmail: authedNonImpersonatedProcedure
+    .input(ZAddSecondaryEmailInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { addSecondaryEmailHandler } = await import("./addSecondaryEmail.handler");
+      return addSecondaryEmailHandler({ ctx, input });
+    }),
+  addNotificationsSubscription: authedNonImpersonatedProcedure
     .input(ZAddNotificationsSubscriptionInputSchema)
     .mutation(async ({ ctx, input }) => {
       const { addNotificationsSubscriptionHandler } = await import("./addNotificationsSubscription.handler");

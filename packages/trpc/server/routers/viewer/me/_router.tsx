@@ -1,4 +1,5 @@
-import authedProcedure from "../../../procedures/authedProcedure";
+import { TRPCError } from "@trpc/server";
+import authedProcedure, { authedNonImpersonatedProcedure } from "../../../procedures/authedProcedure";
 import { router } from "../../../trpc";
 import { ZDeleteMeInputSchema } from "./deleteMe.schema";
 import { get } from "./procedures/get";
@@ -9,11 +10,11 @@ export const meRouter = router({
     const handler = (await import("./bookingUnconfirmedCount.handler")).bookingUnconfirmedCountHandler;
     return handler({ ctx });
   }),
-  deleteMe: authedProcedure.input(ZDeleteMeInputSchema).mutation(async ({ ctx, input }) => {
+  deleteMe: authedNonImpersonatedProcedure.input(ZDeleteMeInputSchema).mutation(async ({ ctx, input }) => {
     const handler = (await import("./deleteMe.handler")).deleteMeHandler;
     return handler({ ctx, input });
   }),
-  deleteMeWithoutPassword: authedProcedure.mutation(async ({ ctx }) => {
+  deleteMeWithoutPassword: authedNonImpersonatedProcedure.mutation(async ({ ctx }) => {
     const handler = (await import("./deleteMeWithoutPassword.handler")).deleteMeWithoutPasswordHandler;
     return handler({ ctx });
   }),
@@ -35,6 +36,15 @@ export const meRouter = router({
     return handler({ ctx });
   }),
   updateProfile: authedProcedure.input(ZUpdateProfileInputSchema).mutation(async ({ ctx, input }) => {
+    const isChangingEmail =
+      (input.email !== undefined && input.email.toLowerCase() !== ctx.user.email.toLowerCase()) ||
+      (input.secondaryEmails?.length ?? 0) > 0;
+    if (ctx.session.user.impersonatedBy && isChangingEmail) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Email addresses cannot be changed while impersonating a user.",
+      });
+    }
     const handler = (await import("./updateProfile.handler")).updateProfileHandler;
     return handler({ ctx, input });
   }),
