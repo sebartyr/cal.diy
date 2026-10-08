@@ -9,6 +9,7 @@ import EventManager from "@calcom/features/bookings/lib/EventManager";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
 import { processNoShowFeeOnCancellation } from "@calcom/features/bookings/lib/payment/processNoShowFeeOnCancellation";
 import { processPaymentRefund } from "@calcom/features/bookings/lib/payment/processPaymentRefund";
+import { getBookingAccessService } from "@calcom/features/di/containers/BookingAccessService";
 import {
   type EventTypeBrandingData,
   getEventTypeService,
@@ -70,6 +71,13 @@ export type CancelBookingInput = {
   bookingData: z.infer<typeof bookingCancelInput>;
   actionSource?: string;
   actor?: unknown;
+  /**
+   * The caller is an acting system admin, derived from its authenticated session
+   * (`isActingSystemAdmin`); never from the request body.
+   */
+  isSystemAdmin?: boolean;
+  /** Entry point recorded in the admin trail when a system admin cancels. */
+  auditPath?: string;
 } & PlatformParams;
 
 type Dependencies = {
@@ -157,9 +165,25 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
   const isCancellationUserHost =
     bookingToDelete.userId === userId || bookingToDelete.user.email === cancelledBy;
 
+  // A system admin cancelling someone else's booking acts for its host: the host's reason rules
+  // apply, and seated bookings can be cancelled as a whole.
+  const isSystemAdminCancellation =
+    !isCancellationUserHost &&
+    !!userId &&
+    userId > 0 &&
+    !!input.isSystemAdmin &&
+    (await getBookingAccessService().doesSystemAdminHaveAccessToBooking({
+      userId,
+      isSystemAdmin: true,
+      bookingId: bookingToDelete.id,
+      bookingUid: bookingToDelete.uid,
+      path: input.auditPath ?? "handleCancelBooking",
+      action: "cancel",
+    }));
+
   const isReasonRequired = isCancellationReasonRequired(
     bookingToDelete.eventType?.requiresCancellationReason,
-    isCancellationUserHost
+    isCancellationUserHost || isSystemAdminCancellation
   );
 
   if (
@@ -189,7 +213,7 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
 
     const userIsOwnerOfEventType = bookingToDelete.eventType.owner?.id === userId;
 
-    if (!userIsHost && !userIsOwnerOfEventType) {
+    if (!userIsHost && !userIsOwnerOfEventType && !isSystemAdminCancellation) {
       throw new HttpError({
         statusCode: 401,
         message: "User not a host of this event",
@@ -423,7 +447,11 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
       } catch (error) {
         log.error(`Error processing payment refund for booking ${bookingToDelete.uid}:`, error);
       }
-    } else if (bookingToDelete.payment.some((payment) => payment.paymentOption === "HOLD")) {
+    } else if (
+      // Like the organizer and team admins, a system admin cancelling must not charge the attendee.
+      !isSystemAdminCancellation &&
+      bookingToDelete.payment.some((payment) => payment.paymentOption === "HOLD")
+    ) {
       try {
         await processNoShowFeeOnCancellation({
           booking: bookingToDelete,
