@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { lookupMock } = vi.hoisted(() => ({ lookupMock: vi.fn() }));
+vi.mock("node:dns/promises", () => ({ default: { lookup: lookupMock } }));
 
 import { WebhookVersion } from "./interface/IWebhookRepository";
 import sendPayload from "./sendPayload";
@@ -8,6 +11,7 @@ describe("sendPayload", () => {
 
   beforeEach(() => {
     vi.stubGlobal("fetch", mockFetch);
+    lookupMock.mockResolvedValue([{ address: "93.184.215.14", family: 4 }]);
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
@@ -16,6 +20,7 @@ describe("sendPayload", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     vi.resetAllMocks();
   });
 
@@ -120,10 +125,38 @@ describe("sendPayload", () => {
       description: "",
     } as unknown as Parameters<typeof sendPayload>[4];
 
-    // Note: under IS_SELF_HOSTED=true (the default cal.diy build), private/
-    // loopback IPs are intentionally allowed so internal webhooks work.
-    // The cloud-metadata block is unconditional — it's the most-abused SSRF
-    // target on cloud-hosted deployments.
+    const webhookTo = (subscriberUrl: string) => ({
+      subscriberUrl,
+      appId: null,
+      payloadTemplate: null,
+      version: WebhookVersion.V_2021_10_20,
+    });
+
+    const send = (subscriberUrl: string) =>
+      sendPayload("k", "BOOKING_CREATED", new Date().toISOString(), webhookTo(subscriberUrl), baseEvt);
+
+    it.each([
+      ["http://127.0.0.1:8080/hook", "loopback"],
+      ["http://[::ffff:a9fe:a9fe]/latest/meta-data/", "IPv4-mapped metadata"],
+      ["http://10.0.0.5/hook", "private network"],
+    ])("refuses to post to %s (%s)", async (url) => {
+      expect(await send(url)).toEqual({ ok: false, status: 0 });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("refuses a hostname that resolves to an internal address", async () => {
+      lookupMock.mockResolvedValue([{ address: "169.254.169.254", family: 4 }]);
+      expect(await send("https://rebind.example.com/hook")).toEqual({ ok: false, status: 0 });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("posts to a private network host listed in SSRF_ALLOWED_PRIVATE_HOSTS", async () => {
+      vi.stubEnv("SSRF_ALLOWED_PRIVATE_HOSTS", "hooks.corp.example");
+      lookupMock.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
+      expect(await send("https://hooks.corp.example/hook")).toEqual({ ok: true, status: 200 });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     it("refuses to fetch a cloud-metadata URL (always blocked)", async () => {
       const webhook = {
         subscriberUrl: "http://169.254.169.254/latest/meta-data/",
