@@ -13,11 +13,18 @@ import { DropdownActions, Table } from "@calcom/ui/components/table";
 import { showToast } from "@calcom/ui/components/toast";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const { Cell, ColumnTitle, Header, Row } = Table;
 
 const FETCH_LIMIT = 25;
+
+type RoleChangeTarget = {
+  id: number;
+  label: string;
+  role: "USER" | "ADMIN";
+};
 
 export function UsersTable() {
   const { t } = useLocale();
@@ -27,7 +34,11 @@ export function UsersTable() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const router = useRouter();
 
+  const session = useSession();
+  const currentUserId = session.data?.user.id;
+
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
+  const [roleChangeTarget, setRoleChangeTarget] = useState<RoleChangeTarget | null>(null);
 
   const deleteMutation = trpc.viewer.users.delete.useMutation({
     onSuccess: async () => {
@@ -85,6 +96,21 @@ export function UsersTable() {
     onSuccess: ({ locked }) => {
       showToast(locked ? t("user_locked") : t("user_unlocked"), "success");
       utils.viewer.admin.listPaginated.invalidate();
+    },
+  });
+
+  const setUserRole = trpc.viewer.admin.setUserRole.useMutation({
+    onSuccess: ({ to, changed }) => {
+      if (changed) {
+        showToast(to === "ADMIN" ? t("user_promoted_to_admin") : t("user_admin_role_removed"), "success");
+      }
+      utils.viewer.admin.listPaginated.invalidate();
+    },
+    onError: (err) => {
+      showToast(err.message || t("error_updating_user_role"), "error");
+    },
+    onSettled: () => {
+      setRoleChangeTarget(null);
     },
   });
 
@@ -187,6 +213,21 @@ export function UsersTable() {
                           onClick: () => lockUserAccount.mutate({ userId: user.id, locked: !user.locked }),
                           icon: "lock" as const,
                         },
+                        ...(user.id === currentUserId
+                          ? []
+                          : [
+                              {
+                                id: "change-role",
+                                label: user.role === "ADMIN" ? t("remove_admin_role") : t("promote_to_admin"),
+                                onClick: () =>
+                                  setRoleChangeTarget({
+                                    id: user.id,
+                                    label: user.username || user.email,
+                                    role: user.role === "ADMIN" ? "USER" : "ADMIN",
+                                  }),
+                                icon: user.role === "ADMIN" ? ("user-x" as const) : ("shield-check" as const),
+                              },
+                            ]),
                         {
                           id: "remove-2fa",
                           label: t("remove_2fa"),
@@ -217,6 +258,15 @@ export function UsersTable() {
             deleteMutation.mutate({ userId: userToDelete });
           }}
         />
+        <ChangeUserRoleDialog
+          target={roleChangeTarget}
+          isPending={setUserRole.isPending}
+          onClose={() => setRoleChangeTarget(null)}
+          onConfirm={() => {
+            if (!roleChangeTarget) return;
+            setUserRole.mutate({ userId: roleChangeTarget.id, role: roleChangeTarget.role });
+          }}
+        />
       </div>
     </div>
   );
@@ -241,6 +291,42 @@ function DeleteUserDialog({
         variety="danger"
         onConfirm={onConfirm}>
         <p>{t("delete_user_confirmation")}</p>
+      </ConfirmationDialogContent>
+    </Dialog>
+  );
+}
+
+function ChangeUserRoleDialog({
+  target,
+  isPending,
+  onConfirm,
+  onClose,
+}: {
+  target: RoleChangeTarget | null;
+  isPending: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useLocale();
+  const isPromotion = target?.role === "ADMIN";
+  return (
+    <Dialog open={!!target} onOpenChange={(open) => (open ? undefined : onClose())}>
+      <ConfirmationDialogContent
+        title={isPromotion ? t("promote_to_admin") : t("remove_admin_role")}
+        confirmBtnText={isPromotion ? t("promote_to_admin") : t("remove_admin_role")}
+        cancelBtnText={t("cancel")}
+        isPending={isPending}
+        variety={isPromotion ? "warning" : "danger"}
+        onConfirm={(e) => {
+          // Keep the dialog open until the mutation settles so the pending state is visible.
+          e.preventDefault();
+          onConfirm();
+        }}>
+        <p>
+          {isPromotion
+            ? t("promote_to_admin_confirmation", { user: target?.label })
+            : t("remove_admin_role_confirmation", { user: target?.label })}
+        </p>
       </ConfirmationDialogContent>
     </Dialog>
   );

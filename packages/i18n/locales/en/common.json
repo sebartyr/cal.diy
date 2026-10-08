@@ -4773,5 +4773,14 @@
   "user_updated_successfully": "User updated successfully.",
   "error_updating_user": "There was an error updating this user.",
   "please_reschedule": "Please reschedule.",
+  "promote_to_admin": "Promote to admin",
+  "remove_admin_role": "Remove admin role",
+  "promote_to_admin_confirmation": "{{user}} will get full access to the instance administration (users, settings, apps). The admin menu will show up for them after their next sign-in.",
+  "remove_admin_role_confirmation": "{{user}} will lose access to the instance administration immediately.",
+  "user_promoted_to_admin": "User has been promoted to admin.",
+  "user_admin_role_removed": "Admin role has been removed.",
+  "error_updating_user_role": "There was an error updating this user's role.",
+  "admin_user_role_change_hint": "Use the “Promote to admin” / “Remove admin role” action in the users list to change it.",
+  "admin_user_identity_provider_hint": "Managed by the sign-in flow; it cannot be edited here.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }
