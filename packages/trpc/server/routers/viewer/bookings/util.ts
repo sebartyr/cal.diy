@@ -104,7 +104,7 @@ export const bookingsProcedure = authedProcedure
 
     const isSystemAdminAction = await getBookingAccessService().doesSystemAdminHaveAccessToBooking({
       userId: loggedInUser.id,
-      isSystemAdmin: isActingSystemAdmin({ role: loggedInUser.role, session: ctx.session }),
+      isSystemAdmin: isActingSystemAdmin({ user: loggedInUser, session: ctx.session }),
       bookingId,
       path,
       action: path.split(".").pop() ?? path,
