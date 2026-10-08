@@ -6,6 +6,93 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.7.0] — 2026-10-08
+
+Security release: findings of a full audit of the fork (#16–#36, #44) and new
+instance-admin features (#37–#43).
+
+### Before deploying
+
+- `CRON_API_KEY` must not be empty, a placeholder or the public value from
+  `.env.example`: the app now refuses to boot in production otherwise.
+  `CRON_SECRET` must be set if a scheduler calls `/api/tasks/cron`,
+  `/api/tasks/cleanup`, `/api/cron/calendar-subscriptions*` or
+  `/api/cron/selected-calendars`; those routes now reject every request when
+  it is unset (#22, #26).
+- `CAL_VIDEO_RECORDING_TOKEN_SECRET` must be set for Cal Video recording
+  download links; the hard-coded fallback secret is gone (#27).
+- Outgoing requests (webhooks, CalDAV, Exchange, ICS feeds, logos) to private
+  networks are now blocked. List internal servers in
+  `SSRF_ALLOWED_PRIVATE_HOSTS` (hostnames, IPs or CIDRs, comma-separated).
+  Loopback, link-local and cloud metadata addresses are always blocked, and a
+  DNS resolution failure blocks the request (#34).
+- Analytics apps only load scripts from vendor-hosted origins. Self-hosted
+  Umami, Plausible, Matomo, PostHog or Databuddy need
+  `NEXT_PUBLIC_ANALYTICS_ALLOWED_SCRIPT_ORIGINS`; Google Tag Manager needs
+  `NEXT_PUBLIC_ANALYTICS_ALLOW_GTM=true`. Both are inlined at build time (#19).
+- Migration `20261008120000_recreate_impersonations_log` recreates the
+  `Impersonations` table (#41).
+
+### Added
+
+- Instance admins can promote and demote users from the admin users table
+  (`viewer.admin.setUserRole`). Changing your own role, demoting the last
+  admin or changing a locked user is refused, and every change is audited.
+  Demotions apply immediately server-side; a promotion only grants admin
+  access after the user signs in again, so the admin password/2FA policy
+  runs. Role and identity provider are no longer editable through the
+  generic user form (#38–#40).
+- Instance admins can impersonate non-admin users from
+  `/settings/admin/impersonation` or the admin users table. Sessions last one
+  hour, are logged in `Impersonations` and the admin audit log, end when the
+  author is demoted or locked, and show a banner with "Stop impersonating".
+  Password, 2FA, email, API key, account deletion, identity linking, app
+  installs and admin procedures are blocked while impersonating (#41–#43).
+
+### Security
+
+- Team access control: the PBAC stubs that always granted access are replaced
+  by a membership check (accepted ADMIN/OWNER) everywhere (bookings, webhooks,
+  watchlist, viewer queries, event types). Any signed-in user could previously
+  confirm, reject, report or read team bookings, attach a webhook to another
+  team, or read team webhook secrets. Team admins see their teams' bookings
+  again; pending invitations never widen access (#16, #17, #30–#33).
+- Teams: an admin can no longer invite someone as owner, team credentials can
+  only be deleted by team admins, and private teams hide member emails and
+  pending invitations from plain members (#18).
+- Stored XSS through analytics app values and `javascript:` success redirect
+  URLs (#19).
+- `/api/link` only accepts authenticated (GCM) tokens and answers a uniform
+  error, closing a padding oracle that allowed forging booking accept/reject
+  links. Approval links emailed before v7.0.0 stop working (#20).
+- tRPC rejects cross-site mutations (non-JSON content type or foreign
+  origin); private app pages can no longer be framed by other sites (#21).
+- Cron routes and shared secrets (cron key, credential sync, Daily webhook
+  signature, recording tokens) are compared in constant time and fail closed
+  when the secret is unset (#22, #26, #27).
+- OAuth callbacks of every app-store integration require a signed,
+  session-bound `state`, and the nonce exemption list is gone (#23, #28, #29).
+- SSRF: Exchange URLs are validated and every EWS request re-checked;
+  CalDAV discovery validates each URL returned by the server; tsdav 2.4
+  routes every request (redirects included) through the SSRF policy (#24,
+  #34–#36).
+- Event types can only use the creator's own schedules; login logs no longer
+  contain email addresses (#25).
+- Admin user pages and `viewer.users.*` no longer send 2FA secrets and backup
+  codes to the browser; `cancelledBy` is derived from the session instead of
+  the request body (#37).
+
+### Changed
+
+- tsdav 2.0.3 → 2.4.0. A CalDAV calendar that cannot be read now fails
+  availability (slots blocked) instead of looking free, and an event
+  create/update/delete that the server did not perform raises an error (#36).
+
+### Fixed
+
+- Booking-scenario tests resolve RFC 2606 webhook hosts, which the new DNS
+  check otherwise blocked (#44).
+
 ## [7.6.0] — 2026-10-05
 
 ### Added
