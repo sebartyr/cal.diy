@@ -178,6 +178,20 @@ export const getBookingRedirectExtraParams = (booking: SuccessRedirectBookingTyp
   return queryCompatibleParams;
 };
 
+// Event types saved before the server enforced http(s) may still hold e.g. a `javascript:` URL,
+// so the protocol is re-checked right before navigating.
+export function getSafeSuccessRedirectUrl(successRedirectUrl: string | null | undefined): URL | null {
+  if (!successRedirectUrl) return null;
+  let url: URL;
+  try {
+    url = new URL(successRedirectUrl);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  return url;
+}
+
 export const useBookingSuccessRedirect = () => {
   const router = useRouter();
   const searchParams = useCompatSearchParams();
@@ -199,8 +213,8 @@ export const useBookingSuccessRedirect = () => {
       "cal.rerouting": searchParams.get("cal.rerouting"),
     };
 
-    if (successRedirectUrl) {
-      const url = new URL(successRedirectUrl);
+    const url = getSafeSuccessRedirectUrl(successRedirectUrl);
+    if (url) {
       // Using parent ensures, Embed iframe would redirect outside of the iframe.
       if (!forwardParamsSuccessRedirect) {
         navigateInTopWindow(url.toString());
