@@ -1,3 +1,17 @@
+import process from "node:process";
+import { symmetricDecrypt } from "@calcom/lib/crypto";
+// Probably don't need
+// import { CALENDAR_INTEGRATIONS_TYPES } from "@calcom/lib/integrations/calendar/constants/generals";
+import logger from "@calcom/lib/logger";
+import type {
+  Calendar,
+  CalendarEvent,
+  EventBusyDate,
+  GetAvailabilityParams,
+  IntegrationCalendar,
+  NewCalendarEventType,
+} from "@calcom/types/Calendar";
+import type { CredentialPayload } from "@calcom/types/Credential";
 import {
   Appointment,
   Attendee,
@@ -19,20 +33,7 @@ import {
   WebCredentials,
   WellKnownFolderName,
 } from "ews-javascript-api";
-
-import { symmetricDecrypt } from "@calcom/lib/crypto";
-// Probably don't need
-// import { CALENDAR_INTEGRATIONS_TYPES } from "@calcom/lib/integrations/calendar/constants/generals";
-import logger from "@calcom/lib/logger";
-import type {
-  Calendar,
-  CalendarEvent,
-  EventBusyDate,
-  GetAvailabilityParams,
-  IntegrationCalendar,
-  NewCalendarEventType,
-} from "@calcom/types/Calendar";
-import type { CredentialPayload } from "@calcom/types/Credential";
+import { SSRFGuardedXhrApi } from "../../_utils/SSRFGuardedXhrApi";
 
 class ExchangeCalendarService implements Calendar {
   private url = "";
@@ -166,7 +167,7 @@ class ExchangeCalendarService implements Calendar {
             calendarFolderId,
             new CalendarView(DateTime.Parse(dateFrom), DateTime.Parse(dateTo))
           )
-          .then(function (params) {
+          .then((params) => {
             const ret: EventBusyDate[] = [];
 
             for (let k = 0; k < params.Items.length; k++) {
@@ -234,6 +235,7 @@ class ExchangeCalendarService implements Calendar {
     const exch1 = new ExchangeService(this.exchangeVersion);
     exch1.Credentials = new WebCredentials(this.credentials.username, this.credentials.password);
     exch1.Url = new Uri(this.url);
+    exch1.XHRApi = new SSRFGuardedXhrApi(exch1.XHRApi, { integration: this.integrationName });
     return exch1;
   }
 }
