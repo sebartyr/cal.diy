@@ -46,7 +46,14 @@ vi.mock("@calcom/lib/logger", () => ({
   default: { getSubLogger: () => ({ error: vi.fn(), info: vi.fn() }) },
 }));
 
-vi.mock("../permissions", () => ({ requireMember: vi.fn(async () => ({ role: "ADMIN" })) }));
+const requireMember = vi.fn(async () => ({ role: MembershipRole.ADMIN as MembershipRole }));
+
+vi.mock("../permissions", () => ({
+  get requireMember() {
+    return requireMember;
+  },
+  ROLE_RANK: { OWNER: 3, ADMIN: 2, MEMBER: 1 },
+}));
 
 async function loadHandler() {
   const mod = await import("../inviteMember.handler");
@@ -92,5 +99,52 @@ describe("inviteMember — invite link (BUG-103-FORK)", () => {
     });
     expect(res).toEqual({ ok: true });
     expect(sendTeamInviteEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("inviteMember — role escalation", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it("rejects an ADMIN inviting someone as OWNER", async () => {
+    const handler = await loadHandler();
+    await expect(
+      handler({
+        ctx: baseCtx,
+        input: { teamId: 5, email: "alt@example.com", role: MembershipRole.OWNER },
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(userFindUnique).not.toHaveBeenCalled();
+    expect(txMock).not.toHaveBeenCalled();
+  });
+
+  it("lets an ADMIN invite another ADMIN", async () => {
+    userFindUnique.mockResolvedValueOnce({ id: 42, name: "Bob", email: "bob@example.com" });
+    membershipFindUnique.mockResolvedValueOnce(null);
+    txMock.mockResolvedValueOnce([]);
+    teamFindUnique.mockResolvedValueOnce(null);
+
+    const handler = await loadHandler();
+    const res = await handler({
+      ctx: baseCtx,
+      input: { teamId: 5, email: "bob@example.com", role: MembershipRole.ADMIN },
+    });
+    expect(res).toEqual({ ok: true });
+    expect(txMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets an OWNER invite another OWNER", async () => {
+    requireMember.mockResolvedValueOnce({ role: MembershipRole.OWNER });
+    userFindUnique.mockResolvedValueOnce({ id: 42, name: "Bob", email: "bob@example.com" });
+    membershipFindUnique.mockResolvedValueOnce(null);
+    txMock.mockResolvedValueOnce([]);
+    teamFindUnique.mockResolvedValueOnce(null);
+
+    const handler = await loadHandler();
+    const res = await handler({
+      ctx: baseCtx,
+      input: { teamId: 5, email: "bob@example.com", role: MembershipRole.OWNER },
+    });
+    expect(res).toEqual({ ok: true });
+    expect(txMock).toHaveBeenCalledTimes(1);
   });
 });
