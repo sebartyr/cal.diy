@@ -1,4 +1,6 @@
 import dayjs from "@calcom/dayjs";
+import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
+import { isActingSystemAdmin } from "@calcom/features/auth/lib/isActingSystemAdmin";
 import getAllUserBookings from "@calcom/features/bookings/lib/getAllUserBookings";
 import { isTextFilterValue } from "@calcom/features/data-table/lib/utils";
 import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
@@ -23,6 +25,7 @@ type GetOptions = {
   ctx: {
     user: NonNullable<TrpcSessionUser>;
     prisma: PrismaClient;
+    session?: { user?: { impersonatedBy?: { id: number } | null } | null } | null;
   };
   input: TGetInputSchema;
 };
@@ -63,6 +66,7 @@ export const getHandler = async ({ ctx, input }: GetOptions) => {
     skip,
     filters: input.filters,
     sort: input.sort,
+    isSystemAdmin: isActingSystemAdmin({ role: user.role, session: ctx.session }),
   });
 
   // Generate next cursor for infinite query support
@@ -93,6 +97,7 @@ export async function getBookings({
   filters,
   take,
   skip,
+  isSystemAdmin = false,
 }: {
   user: { id: number; email: string; orgId?: number | null };
   filters: TGetInputSchema["filters"];
@@ -107,6 +112,8 @@ export async function getBookings({
   };
   take: number;
   skip: number;
+  /** Caller is an acting instance administrator (see `isActingSystemAdmin`). */
+  isSystemAdmin?: boolean;
 }) {
   const fallbackRoles: MembershipRole[] = [MembershipRole.ADMIN, MembershipRole.OWNER];
 
@@ -139,24 +146,78 @@ export async function getBookings({
 
   const bookingQueries: { query: BookingsUnionQuery; tables: (keyof DB)[] }[] = [];
 
-  // If userIds filter is provided
+  const scope = filters?.scope ?? "mine";
+  if (scope === "all" && !isSystemAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only system administrators can list every booking",
+    });
+  }
+
+  let isUserIdsFilterOutsideScope = false;
   if (!!filters?.userIds && filters.userIds.length > 0) {
-    const areUserIdsWithinUserOrgOrTeam = filters.userIds.every((userId) =>
-      allAccessibleUserIds.includes(userId)
-    );
+    const accessibleUserIds = new Set(allAccessibleUserIds);
+    const areUserIdsWithinUserOrgOrTeam = filters.userIds.every((userId) => accessibleUserIds.has(userId));
 
     const isCurrentUser = filters.userIds.length === 1 && user.id === filters.userIds[0];
 
     //  Scope depends on `user.orgId`:
     // - Throw an error if trying to filter by usersIds that are not within your ORG
     // - Throw an error if trying to filter by usersIds that are not within your TEAM
+    // System admins may look at anyone's bookings; that is recorded in the admin audit trail.
     if (!areUserIdsWithinUserOrgOrTeam && !isCurrentUser) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "You do not have permissions to fetch bookings for specified userIds",
-      });
+      if (!isSystemAdmin) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permissions to fetch bookings for specified userIds",
+        });
+      }
+      isUserIdsFilterOutsideScope = true;
     }
+  }
 
+  // The team filter keeps its regular meaning for system admins: bookings made for the team's event
+  // types, including the children of its managed event types (see getEventTypeIdsFromTeamIdsFilter).
+  // Members' personal bookings are not included. For everyone else the filter only narrows their own
+  // scope, so a system admin looking at a team they don't administer starts from every booking.
+  const hasTeamIdsOutsideScope =
+    !!filters?.teamIds?.length &&
+    filters.teamIds.some((teamId) => !teamIdsWithBookingPermission.includes(teamId));
+  const listsEveryBooking =
+    isSystemAdmin && !needsUserIdsValidation && (scope === "all" || hasTeamIdsOutsideScope);
+  const isAdminView = listsEveryBooking || isUserIdsFilterOutsideScope;
+
+  if (isAdminView) {
+    recordAdminAction({
+      actorUserId: user.id,
+      actorEmail: user.email,
+      path: "viewer.bookings.get",
+      outcome: "granted",
+      context: {
+        scope,
+        userIds: filters?.userIds,
+        teamIds: filters?.teamIds,
+      },
+    });
+  }
+
+  if (listsEveryBooking && filters?.teamIds?.length && !eventTypeIdsFromTeamIdsFilter?.length) {
+    // Without event types the team filter below is skipped, which would list the whole instance.
+    return { bookings: [], recurringInfo: [], totalCount: 0 };
+  }
+
+  if (listsEveryBooking) {
+    bookingQueries.push({
+      query: kysely
+        .selectFrom("Booking")
+        .select("Booking.id")
+        .select("Booking.startTime")
+        .select("Booking.endTime")
+        .select("Booking.createdAt")
+        .select("Booking.updatedAt"),
+      tables: ["Booking"],
+    });
+  } else if (!!filters?.userIds && filters.userIds.length > 0) {
     // 1. Booking created by one of the filtered users
     bookingQueries.push({
       query: kysely
@@ -413,9 +474,13 @@ export async function getBookings({
 
   const orderBy = getOrderBy(bookingListingByStatus, sort);
 
-  const getBookingsUnionCompiled = kysely
-    .selectFrom(queryUnion.as("union_subquery"))
-    .distinct()
+  // Each scope query can return the same booking, and attendee joins duplicate rows. Listing every
+  // booking uses a single query on Booking, where a DISTINCT would make PostgreSQL sort the whole
+  // table before applying the page limit.
+  const unionSubquery = kysely.selectFrom(queryUnion.as("union_subquery"));
+  const needsDistinct = !listsEveryBooking || !!filters?.attendeeName || !!filters?.attendeeEmail;
+
+  const getBookingsUnionCompiled = (needsDistinct ? unionSubquery.distinct() : unionSubquery)
     .selectAll("union_subquery")
     .$if(Boolean(filters?.afterUpdatedDate), (eb) =>
       eb.where("union_subquery.updatedAt", ">=", dayjs.utc(filters.afterUpdatedDate).toDate())
@@ -647,6 +712,27 @@ export async function getBookings({
         .execute()
     : [];
 
+  // In an admin view the bookings belong to other users, so the recurring series are looked up from
+  // the page itself rather than from the caller's own bookings.
+  const recurringInfoWhere: Prisma.BookingWhereInput = isAdminView
+    ? {
+        recurringEventId: {
+          in: Array.from(
+            new Set(
+              plainBookings
+                .map((booking) => booking.recurringEventId)
+                .filter((id): id is string => id !== null)
+            )
+          ),
+        },
+      }
+    : {
+        recurringEventId: {
+          not: { equals: null },
+        },
+        userId: user.id,
+      };
+
   const [
     recurringInfoBasic,
     recurringInfoExtended,
@@ -660,24 +746,14 @@ export async function getBookings({
       _count: {
         recurringEventId: true,
       },
-      where: {
-        recurringEventId: {
-          not: { equals: null },
-        },
-        userId: user.id,
-      },
+      where: recurringInfoWhere,
     }),
     prisma.booking.groupBy({
       by: ["recurringEventId", "status", "startTime"],
       _min: {
         startTime: true,
       },
-      where: {
-        recurringEventId: {
-          not: { equals: null },
-        },
-        userId: user.id,
-      },
+      where: recurringInfoWhere,
     }),
   ]);
 
@@ -743,8 +819,10 @@ export async function getBookings({
 
   const bookings = await Promise.all(
     plainBookings.map(async (booking) => {
-      // If seats are enabled, the event is not set to show attendees, and the current user is not the host, filter out attendees who are not the current user
+      // If seats are enabled, the event is not set to show attendees, and the current user is not the host, filter out attendees who are not the current user.
+      // A system admin acting on someone else's booking needs every attendee, as its host would.
       if (
+        !isAdminView &&
         booking.seatsReferences.length &&
         !booking.eventType?.seatsShowAttendees &&
         !checkIfUserIsHost(user.id, booking)
