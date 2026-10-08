@@ -165,9 +165,8 @@ const checkIfUserShouldBelongToOrg = async (idP: IdentityProvider, email: string
 export async function authorizeCredentials(
   credentials: Record<"email" | "password" | "totpCode" | "backupCode" | "totpToken", string> | undefined
 ): Promise<User | null> {
-  log.warn("CredentialsProvider:authorize:entry", {
+  log.debug("CredentialsProvider:authorize:entry", {
     hasCredentials: !!credentials,
-    email: credentials?.email,
     hasPassword: !!credentials?.password,
     hasTotpCode: !!credentials?.totpCode,
     hasTotpToken: !!credentials?.totpToken,
@@ -190,7 +189,7 @@ export async function authorizeCredentials(
     });
     throw err;
   }
-  log.warn("CredentialsProvider:authorize:user-lookup-result", {
+  log.debug("CredentialsProvider:authorize:user-lookup-result", {
     found: !!user,
     userId: user?.id,
     idP: user?.identityProvider,
@@ -200,9 +199,7 @@ export async function authorizeCredentials(
   });
   // Don't leak information about it being username or password that is invalid
   if (!user) {
-    log.warn("CredentialsProvider:authorize:reject:user-not-found", {
-      email: credentials.email,
-    });
+    log.debug("CredentialsProvider:authorize:reject:user-not-found");
     throw new Error(ErrorCode.IncorrectEmailPassword);
   }
 
@@ -242,10 +239,10 @@ export async function authorizeCredentials(
   const isOAuthContinuation = !!credentials.totpToken;
 
   if (isOAuthContinuation) {
-    log.warn("CredentialsProvider:oauth-2fa-attempt", {
+    log.debug("CredentialsProvider:oauth-2fa-attempt", {
+      userId: user.id,
       hasTotpCode: !!credentials.totpCode,
       idP: user.identityProvider,
-      userEmail: user.email,
     });
     if (!credentials.totpCode || user.identityProvider === IdentityProvider.CAL) {
       log.warn("CredentialsProvider:oauth-2fa-rejected:precheck", {
@@ -264,10 +261,7 @@ export async function authorizeCredentials(
       throw new Error(ErrorCode.IncorrectEmailPassword);
     }
     if (jwtEmail.toLowerCase() !== user.email.toLowerCase()) {
-      log.warn("CredentialsProvider:oauth-2fa-rejected:email-mismatch", {
-        jwtEmail,
-        userEmail: user.email,
-      });
+      log.warn("CredentialsProvider:oauth-2fa-rejected:email-mismatch", { userId: user.id });
       throw new Error(ErrorCode.IncorrectEmailPassword);
     }
   } else {
@@ -1024,7 +1018,7 @@ export const getOptions = ({
         if (!isEmailVerified && idP !== IdentityProvider.AZUREAD) {
           log.error(
             "Attention: SAML/Google/OIDC User email is not verified in the IdP",
-            safeStringify({ user })
+            safeStringify({ idP, userId: user.id, emailDomain: user.email?.split("@")[1] })
           );
           return "/auth/error?error=unverified-email";
         }

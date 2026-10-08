@@ -72,14 +72,16 @@ vi.mock("@calcom/lib/constants", async (importOriginal) => {
   };
 });
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
 vi.mock("@calcom/lib/logger", () => ({
   default: {
-    getSubLogger: vi.fn(() => ({
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-    })),
+    getSubLogger: vi.fn(() => mockLogger),
   },
 }));
 
@@ -460,6 +462,56 @@ describe("CredentialsProvider authorize", () => {
           totpCode: "123456",
         } as any)
       ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
+    });
+  });
+
+  describe("Login attempt logging", () => {
+    const loggedPayloads = () =>
+      [mockLogger.debug, mockLogger.info, mockLogger.warn, mockLogger.error].flatMap((fn) =>
+        fn.mock.calls.map((args) => JSON.stringify(args))
+      );
+
+    it("does not log the submitted email when no user matches it", async () => {
+      mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(null);
+
+      await expect(
+        authorizeCredentials({ email: "unknown@example.com", password: "password123" } as any)
+      ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
+
+      expect(loggedPayloads().some((payload) => payload.includes("unknown@example.com"))).toBe(false);
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+
+    it("logs routine credential checks at debug level only", async () => {
+      vi.mocked(verifyPassword).mockResolvedValue(true);
+      mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(createMockUser());
+
+      await authorizeCredentials({ email: "test@example.com", password: "password123" } as any);
+
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+      expect(loggedPayloads().some((payload) => payload.includes("test@example.com"))).toBe(false);
+    });
+
+    it("does not log either email on an OAuth 2FA email mismatch", async () => {
+      mockVerifyTotpLoginJwt.mockResolvedValue({ email: "other@example.com" });
+      mockFindByEmailAndIncludeProfilesAndPassword.mockResolvedValue(
+        createMockUser({ password: null, identityProvider: IdentityProvider.GOOGLE, twoFactorEnabled: true })
+      );
+
+      await expect(
+        authorizeCredentials({
+          email: "test@example.com",
+          password: "",
+          totpCode: "123456",
+          totpToken: "valid-jwt-for-other-email",
+        } as any)
+      ).rejects.toThrow(ErrorCode.IncorrectEmailPassword);
+
+      const payloads = loggedPayloads();
+      expect(payloads.some((payload) => payload.includes("@example.com"))).toBe(false);
+      expect(mockLogger.warn).toHaveBeenCalledWith("CredentialsProvider:oauth-2fa-rejected:email-mismatch", {
+        userId: 1,
+      });
     });
   });
 
