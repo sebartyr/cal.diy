@@ -1,6 +1,7 @@
 import dayjs from "@calcom/dayjs";
 import getAllUserBookings from "@calcom/features/bookings/lib/getAllUserBookings";
 import { isTextFilterValue } from "@calcom/features/data-table/lib/utils";
+import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import type { DB } from "@calcom/kysely";
 import kysely from "@calcom/kysely";
 import { parseEventTypeColor } from "@calcom/lib/isEventTypeColor";
@@ -17,13 +18,6 @@ import type { Kysely, SelectQueryBuilder } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import type { TrpcSessionUser } from "../../../types";
 import type { TGetInputSchema } from "./get.schema";
-
-class PermissionCheckService {
-  constructor(_prisma?: unknown) {}
-  async checkPermission(..._args: unknown[]) { return true; }
-  async hasPermission(..._args: unknown[]) { return true; }
-  async getTeamIdsWithPermission(..._args: unknown[]): Promise<number[]> { return []; }
-}
 
 type GetOptions = {
   ctx: {
@@ -114,14 +108,14 @@ export async function getBookings({
   take: number;
   skip: number;
 }) {
-  const permissionCheckService = new PermissionCheckService();
   const fallbackRoles: MembershipRole[] = [MembershipRole.ADMIN, MembershipRole.OWNER];
 
-  const teamIdsWithBookingPermission = await permissionCheckService.getTeamIdsWithPermission({
+  // Org admins hold their role on the organization team itself, so the org id is
+  // already part of this list and their scope covers every org member's bookings.
+  const teamIdsWithBookingPermission = await getTeamRolePermissionService().getTeamIdsWithPermission({
     userId: user.id,
     permission: "booking.read",
     fallbackRoles,
-    orgId: user.orgId ?? undefined,
   });
 
   // Only fetch user IDs from teams if we need to validate userIds filter
@@ -267,6 +261,7 @@ export async function getBookings({
               .select("users.email")
               .innerJoin("Membership", "Membership.userId", "users.id")
               .where("Membership.teamId", "in", teamIdsWithBookingPermission)
+              .where("Membership.accepted", "=", true)
           ),
         tables: ["Booking", "Attendee"],
       });
@@ -291,6 +286,7 @@ export async function getBookings({
               .select("users.email")
               .innerJoin("Membership", "Membership.userId", "users.id")
               .where("Membership.teamId", "in", teamIdsWithBookingPermission)
+              .where("Membership.accepted", "=", true)
           ),
         tables: ["Booking", "Attendee", "BookingSeat"],
       });
@@ -335,6 +331,7 @@ export async function getBookings({
               .selectFrom("Membership")
               .select("Membership.userId")
               .where("Membership.teamId", "in", teamIdsWithBookingPermission)
+              .where("Membership.accepted", "=", true)
           ),
         tables: ["Booking"],
       });
@@ -989,6 +986,9 @@ async function getUserIdsFromTeamIds(prisma: PrismaClient, teamIds: number[]): P
           teamId: {
             in: teamIds,
           },
+          // A pending invite is created without the invitee's consent, so it must not
+          // grant the inviting admin visibility over the invitee's bookings.
+          accepted: true,
         },
       },
     },
