@@ -9,7 +9,6 @@ const {
   mockFindMany,
   mockGetTeamIdsWithPermission,
   MockUserRepository,
-  MockPermissionCheckService,
 } = vi.hoisted(() => {
   const mockFindAllProfilesForUserIncludingMovedUser = vi.fn();
   const mockEnrichUserWithTheProfile = vi.fn();
@@ -21,10 +20,6 @@ const {
     enrichUserWithTheProfile = (...args: unknown[]) => mockEnrichUserWithTheProfile(...args);
   }
 
-  class MockPermissionCheckService {
-    getTeamIdsWithPermission = (...args: unknown[]) => mockGetTeamIdsWithPermission(...args);
-  }
-
   return {
     mockFindAllProfilesForUserIncludingMovedUser,
     mockEnrichUserWithTheProfile,
@@ -32,7 +27,6 @@ const {
     mockFindMany,
     mockGetTeamIdsWithPermission,
     MockUserRepository,
-    MockPermissionCheckService,
   };
 });
 
@@ -48,8 +42,8 @@ vi.mock("@calcom/features/users/repositories/UserRepository", () => ({
   UserRepository: MockUserRepository,
 }));
 
-vi.mock("@calcom/features/pbac/services/permission-check.service", () => ({
-  PermissionCheckService: MockPermissionCheckService,
+vi.mock("@calcom/features/membership/di/TeamRolePermissionService.container", () => ({
+  getTeamRolePermissionService: () => ({ getTeamIdsWithPermission: mockGetTeamIdsWithPermission }),
 }));
 
 vi.mock("@calcom/lib/getAvatarUrl", () => ({
@@ -228,5 +222,21 @@ describe("getHandler - identity provider email lookup", () => {
     const result = await getHandler({ ctx, input: {} });
 
     expect(result.identityProviderEmail).toBe("");
+  });
+
+  it("sets canUpdateTeams only when the user is ADMIN or OWNER of at least one team", async () => {
+    mockGetTeamIdsWithPermission.mockResolvedValueOnce([]);
+    const withoutTeams = await getHandler({ ctx: createCtx(), input: {} });
+    expect(withoutTeams.canUpdateTeams).toBe(false);
+
+    mockGetTeamIdsWithPermission.mockResolvedValueOnce([42]);
+    const withAdminTeam = await getHandler({ ctx: createCtx(), input: {} });
+    expect(withAdminTeam.canUpdateTeams).toBe(true);
+
+    expect(mockGetTeamIdsWithPermission).toHaveBeenCalledWith({
+      userId: baseUser.id,
+      permission: "team.update",
+      fallbackRoles: ["ADMIN", "OWNER"],
+    });
   });
 });

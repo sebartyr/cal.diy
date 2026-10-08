@@ -129,6 +129,26 @@ export class MembershipRepository {
     return !!membership;
   }
 
+  async listAcceptedTeamIdsWithRoles({
+    userId,
+    roles,
+  }: {
+    userId: number;
+    roles: MembershipRole[];
+  }): Promise<number[]> {
+    const memberships = await this.prismaClient.membership.findMany({
+      where: {
+        userId,
+        accepted: true,
+        role: { in: roles },
+      },
+      select: {
+        teamId: true,
+      },
+    });
+    return memberships.map((membership) => membership.teamId);
+  }
+
   async listAcceptedTeamMemberIds({ teamId }: { teamId: number }): Promise<number[]> {
     const memberships =
       (await this.prismaClient.membership.findMany({

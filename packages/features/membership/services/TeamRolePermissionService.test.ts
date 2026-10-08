@@ -4,11 +4,41 @@ import { TeamRolePermissionService } from "./TeamRolePermissionService";
 
 describe("TeamRolePermissionService", () => {
   const hasAcceptedMembershipWithRoles = vi.fn();
+  const listAcceptedTeamIdsWithRoles = vi.fn();
   let service: TeamRolePermissionService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new TeamRolePermissionService({ hasAcceptedMembershipWithRoles });
+    service = new TeamRolePermissionService({ hasAcceptedMembershipWithRoles, listAcceptedTeamIdsWithRoles });
+  });
+
+  describe("getTeamIdsWithPermission", () => {
+    it("returns the teams where the user holds one of the fallback roles", async () => {
+      listAcceptedTeamIdsWithRoles.mockResolvedValue([10, 20]);
+
+      const result = await service.getTeamIdsWithPermission({
+        userId: 1,
+        permission: "booking.read",
+        fallbackRoles: [MembershipRole.ADMIN, MembershipRole.OWNER],
+      });
+
+      expect(result).toEqual([10, 20]);
+      expect(listAcceptedTeamIdsWithRoles).toHaveBeenCalledWith({
+        userId: 1,
+        roles: [MembershipRole.ADMIN, MembershipRole.OWNER],
+      });
+    });
+
+    it("returns an empty list without querying when no fallback role is allowed", async () => {
+      const result = await service.getTeamIdsWithPermission({
+        userId: 1,
+        permission: "booking.read",
+        fallbackRoles: [],
+      });
+
+      expect(result).toEqual([]);
+      expect(listAcceptedTeamIdsWithRoles).not.toHaveBeenCalled();
+    });
   });
 
   it("returns true when the user has an accepted membership with one of the fallback roles", async () => {
