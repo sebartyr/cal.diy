@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isAuthorizedCronBearer, isAuthorizedCronRequest, safeCompareSecret } from "./cron-auth";
+import {
+  isAuthorizedCronApiKey,
+  isAuthorizedCronBearer,
+  isAuthorizedCronRequest,
+  safeCompareSecret,
+} from "./cron-auth";
 
 describe("safeCompareSecret", () => {
   it("matches identical secrets", () => {
@@ -83,5 +88,27 @@ describe("isAuthorizedCronBearer", () => {
     expect(isAuthorizedCronBearer("Bearer undefined")).toBe(false);
     vi.stubEnv("CRON_SECRET", "");
     expect(isAuthorizedCronBearer("Bearer ")).toBe(false);
+  });
+});
+
+describe("isAuthorizedCronApiKey", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("accepts the CRON_API_KEY only", () => {
+    vi.stubEnv("CRON_API_KEY", "api-key");
+    vi.stubEnv("CRON_SECRET", "cron-secret");
+    expect(isAuthorizedCronApiKey("api-key")).toBe(true);
+    expect(isAuthorizedCronApiKey("Bearer cron-secret")).toBe(false);
+    expect(isAuthorizedCronApiKey("api-key2")).toBe(false);
+  });
+
+  it("fails closed when CRON_API_KEY is unset or empty", () => {
+    vi.stubEnv("CRON_API_KEY", undefined);
+    expect(isAuthorizedCronApiKey("undefined")).toBe(false);
+    expect(isAuthorizedCronApiKey(null)).toBe(false);
+    vi.stubEnv("CRON_API_KEY", "");
+    expect(isAuthorizedCronApiKey("")).toBe(false);
   });
 });

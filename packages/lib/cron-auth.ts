@@ -35,3 +35,11 @@ export function isAuthorizedCronBearer(authorizationHeader: string | null | unde
   if (!cronSecret) return false;
   return safeCompareSecret(authorizationHeader, `Bearer ${cronSecret}`);
 }
+
+/**
+ * For routes that only ever accepted the raw CRON_API_KEY (from the
+ * Authorization header or the `apiKey` query param), not Bearer CRON_SECRET.
+ */
+export function isAuthorizedCronApiKey(provided: string | null | undefined): boolean {
+  return safeCompareSecret(provided, process.env.CRON_API_KEY);
+}
