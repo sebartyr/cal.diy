@@ -1,3 +1,4 @@
+import { isImpersonationExpired } from "@calcom/features/impersonation/lib/impersonationSession";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { getUserAvatarUrl } from "@calcom/lib/getAvatarUrl";
 import logger from "@calcom/lib/logger";
@@ -71,6 +72,12 @@ export async function getServerSession(options: {
 
   if (!token || !token.email || !token.sub) {
     log.debug("Couldn't get token");
+    return null;
+  }
+
+  // Checked before the cache lookup: a cached impersonated session must not outlive its deadline.
+  if (isImpersonationExpired(token)) {
+    log.debug("Impersonation session expired");
     return null;
   }
 
@@ -155,13 +162,17 @@ export async function getServerSession(options: {
         role: true,
       },
     });
-    if (impersonatedByUser) {
-      session.user.impersonatedBy = {
-        id: impersonatedByUser?.id,
-        uuid: impersonatedByUser.uuid,
-        role: impersonatedByUser.role,
-      };
+    // Without the impersonator the session would silently become a regular session of the
+    // target user, so it is rejected instead.
+    if (!impersonatedByUser) {
+      log.warn("Impersonating user no longer exists", { impersonatedById: token.impersonatedBy.id });
+      return null;
     }
+    session.user.impersonatedBy = {
+      id: impersonatedByUser.id,
+      uuid: impersonatedByUser.uuid,
+      role: impersonatedByUser.role,
+    };
   }
 
   CACHE.set(JSON.stringify(token), session);

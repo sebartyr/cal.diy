@@ -23,6 +23,12 @@ import {
 } from "@calcom/features/auth/lib/outlook";
 import { CredentialRepository } from "@calcom/features/credentials/repositories/CredentialRepository";
 import { buildCredentialCreateData } from "@calcom/features/credentials/services/CredentialDataService";
+import { ImpersonationProvider } from "@calcom/features/impersonation/lib/ImpersonationProvider";
+import {
+  capMaxAgeForImpersonation,
+  computeImpersonationExpiresAt,
+  isImpersonationExpired,
+} from "@calcom/features/impersonation/lib/impersonationSession";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { isPasswordValid } from "@calcom/lib/auth/isPasswordValid";
@@ -427,7 +433,7 @@ export const CalComCredentialsProvider = CredentialsProvider({
   authorize: authorizeCredentials,
 });
 
-const providers: Provider[] = [CalComCredentialsProvider];
+const providers: Provider[] = [CalComCredentialsProvider, ImpersonationProvider];
 type SamlIdpUser = {
   id: number;
   userId: number;
@@ -560,6 +566,9 @@ export const getOptions = ({
           }
         }
       }
+      // The session route re-encodes the token on every refresh with a fresh maxAge, so the
+      // impersonation deadline has to be re-applied here to keep the JWT `exp` absolute.
+      maxAge = capMaxAgeForImpersonation(token, maxAge);
       return encode({ secret, token, maxAge });
     },
   },
@@ -586,6 +595,11 @@ export const getOptions = ({
       account,
     }) {
       log.debug("callbacks:jwt", safeStringify({ token, user, account, trigger, session }));
+      // Throwing makes NextAuth's session route clear the session cookies, which logs the
+      // impersonating admin out instead of silently downgrading to a plain session.
+      if (isImpersonationExpired(token)) {
+        throw new Error("Impersonation session expired");
+      }
       // The data available in 'session' depends on what data was supplied in update method call of session
       if (trigger === "update") {
         return {
@@ -719,6 +733,7 @@ export const getOptions = ({
           email: user.email,
           role: user.role,
           impersonatedBy: user.impersonatedBy,
+          impersonationExpiresAt: user.impersonatedBy ? computeImpersonationExpiresAt() : undefined,
           belongsToActiveTeam: user?.belongsToActiveTeam,
           org: user?.org,
           locale: user?.locale,

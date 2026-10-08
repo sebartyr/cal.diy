@@ -159,6 +159,60 @@ describe("getServerSession", () => {
       }
     });
   });
+
+  describe("Impersonation", () => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    it("returns null for an expired impersonated token without querying the database", async () => {
+      setupGetTokenMock({
+        ...createMockToken({ sub: "201" }),
+        impersonatedBy: { id: 1, uuid: "admin-uuid", role: "ADMIN" },
+        impersonationExpiresAt: nowSeconds - 1,
+      });
+
+      const result = await getServerSession({ req: createMockRequest() });
+
+      expect(result).toBeNull();
+      expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("returns null for an impersonated token without a deadline", async () => {
+      setupGetTokenMock({
+        ...createMockToken({ sub: "202" }),
+        impersonatedBy: { id: 1, uuid: "admin-uuid", role: "ADMIN" },
+      });
+
+      expect(await getServerSession({ req: createMockRequest() })).toBeNull();
+    });
+
+    it("returns null when the impersonating admin no longer exists", async () => {
+      setupGetTokenMock({
+        ...createMockToken({ sub: "203" }),
+        impersonatedBy: { id: 1, uuid: "admin-uuid", role: "ADMIN" },
+        impersonationExpiresAt: nowSeconds + 600,
+      });
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce(createMockUser({ id: 203 }))
+        .mockResolvedValueOnce(null);
+
+      expect(await getServerSession({ req: createMockRequest() })).toBeNull();
+    });
+
+    it("exposes the impersonator reloaded from the database", async () => {
+      setupGetTokenMock({
+        ...createMockToken({ sub: "204" }),
+        impersonatedBy: { id: 1, uuid: "stale-uuid", role: "ADMIN" },
+        impersonationExpiresAt: nowSeconds + 600,
+      });
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce(createMockUser({ id: 204 }))
+        .mockResolvedValueOnce(createMockUser({ id: 1, uuid: "admin-uuid", role: "ADMIN" }));
+
+      const result = await getServerSession({ req: createMockRequest() });
+
+      expect(result?.user.impersonatedBy).toEqual({ id: 1, uuid: "admin-uuid", role: "ADMIN" });
+    });
+  });
 });
 
 describe("invalidateServerSessionCacheForUser", () => {
