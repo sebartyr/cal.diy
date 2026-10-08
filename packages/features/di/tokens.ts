@@ -57,6 +57,8 @@ export const DI_TOKENS = {
   PROFILE_REPOSITORY_MODULE: Symbol("ProfileRepositoryModule"),
   MEMBERSHIP_SERVICE: Symbol("MembershipService"),
   MEMBERSHIP_SERVICE_MODULE: Symbol("MembershipServiceModule"),
+  TEAM_ROLE_PERMISSION_SERVICE: Symbol("TeamRolePermissionService"),
+  TEAM_ROLE_PERMISSION_SERVICE_MODULE: Symbol("TeamRolePermissionServiceModule"),
   ASSIGNMENT_REASON_REPOSITORY: Symbol("AssignmentReasonRepository"),
   ASSIGNMENT_REASON_REPOSITORY_MODULE: Symbol("AssignmentReasonRepositoryModule"),
   CREDENTIAL_REPOSITORY: Symbol("CredentialRepository"),

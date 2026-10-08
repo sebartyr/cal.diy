@@ -106,6 +106,29 @@ export class MembershipRepository {
     return !!membership;
   }
 
+  async hasAcceptedMembershipWithRoles({
+    userId,
+    teamId,
+    roles,
+  }: {
+    userId: number;
+    teamId: number;
+    roles: MembershipRole[];
+  }): Promise<boolean> {
+    const membership = await this.prismaClient.membership.findFirst({
+      where: {
+        userId,
+        teamId,
+        accepted: true,
+        role: { in: roles },
+      },
+      select: {
+        id: true,
+      },
+    });
+    return !!membership;
+  }
+
   async listAcceptedTeamMemberIds({ teamId }: { teamId: number }): Promise<number[]> {
     const memberships =
       (await this.prismaClient.membership.findMany({
