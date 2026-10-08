@@ -1,7 +1,10 @@
 import dns from "node:dns/promises";
-import ipaddr from "ipaddr.js";
+import process from "node:process";
 import { IS_SELF_HOSTED } from "@calcom/lib/constants";
+import { ErrorCode } from "@calcom/lib/errorCodes";
+import { ErrorWithCode } from "@calcom/lib/errors";
 import logger from "@calcom/lib/logger";
+import ipaddr from "ipaddr.js";
 
 const log: ReturnType<typeof logger.getSubLogger> = logger.getSubLogger({ prefix: ["ssrf-protection"] });
 
@@ -203,6 +206,61 @@ export function validateUrlForSSRFSync(urlString: string): SSRFValidationResult 
   }
 
   return { isValid: true };
+}
+
+const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
+const DEFAULT_MAX_REDIRECTS = 5;
+
+/**
+ * Validates a user-controlled URL for SSRF and throws a generic error when blocked.
+ * The specific reason is only logged, so callers never echo internal details to the client.
+ */
+export async function assertUrlIsSafeForSSRF(url: string, context?: Record<string, unknown>): Promise<void> {
+  let isHttp = false;
+  try {
+    const { protocol } = new URL(url);
+    isHttp = protocol === "http:" || protocol === "https:";
+  } catch {
+    isHttp = false;
+  }
+  // validateUrlForSSRF accepts data:image and relative avatar paths, which are never valid remote targets here
+  const validation = isHttp
+    ? await validateUrlForSSRF(url)
+    : { isValid: false, error: ERRORS.INVALID_PROTOCOL };
+  if (validation.isValid) return;
+
+  logBlockedSSRFAttempt(url, validation.error ?? "unknown", context);
+  throw new ErrorWithCode(ErrorCode.BadRequest, "URL is not allowed");
+}
+
+/**
+ * fetch() for user-controlled URLs. Native fetch follows redirects without re-checking the target,
+ * so a public URL could 302 to an internal address. Redirects are followed manually and every hop
+ * (including the first) is re-validated, which also re-resolves DNS on each call.
+ * Note: a residual TOCTOU window remains between our DNS lookup and the one done by fetch itself.
+ */
+export async function fetchWithSSRFProtection(
+  url: string,
+  init: RequestInit = {},
+  options: { maxRedirects?: number } = {}
+): Promise<Response> {
+  const maxRedirects = options.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
+  let currentUrl = url;
+
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    await assertUrlIsSafeForSSRF(currentUrl, { hop });
+
+    const response = await fetch(currentUrl, { ...init, redirect: "manual" });
+    if (!REDIRECT_STATUSES.has(response.status)) return response;
+
+    const location = response.headers.get("location");
+    if (!location) return response;
+
+    await response.body?.cancel();
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new ErrorWithCode(ErrorCode.BadRequest, `Too many redirects (max ${maxRedirects})`);
 }
 
 // Check if URL belongs to the same origin as the webapp (trusted internal URL)

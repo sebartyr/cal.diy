@@ -7,6 +7,8 @@ vi.mock("@calcom/lib/constants", () => ({
 }));
 
 import {
+  assertUrlIsSafeForSSRF,
+  fetchWithSSRFProtection,
   isBlockedHostname,
   isPrivateIP,
   isTrustedInternalUrl,
@@ -162,6 +164,94 @@ describe("HTTP webhook exceptions", () => {
     vi.stubEnv("NEXT_PUBLIC_IS_E2E", "1");
     expect(validateUrlForSSRFSync("http://evil.com/webhook").isValid).toBe(false);
     expect(validateUrlForSSRFSync("http://192.168.1.1/webhook").isValid).toBe(false);
+  });
+});
+
+describe("assertUrlIsSafeForSSRF", () => {
+  it("accepts public HTTPS URLs", async () => {
+    await expect(assertUrlIsSafeForSSRF("https://8.8.8.8/calendar.ics")).resolves.toBeUndefined();
+  });
+
+  it.each([
+    "https://169.254.169.254/latest/meta-data/",
+    "https://10.0.0.5/ews/exchange.asmx",
+    "http://8.8.8.8/insecure",
+    "data:image/png;base64,iVBORw0KGgo=",
+    "/api/avatar/foo.png",
+    "file:///etc/passwd",
+  ])("rejects %s with a generic message", async (url) => {
+    await expect(assertUrlIsSafeForSSRF(url)).rejects.toThrow("URL is not allowed");
+  });
+});
+
+describe("fetchWithSSRFProtection", () => {
+  const fetchMock = vi.fn();
+
+  const redirectTo = (location: string, status = 302) =>
+    new Response(null, { status, headers: { location } });
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("disables automatic redirects and returns non-redirect responses", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("BEGIN:VCALENDAR", { status: 200 }));
+
+    const response = await fetchWithSSRFProtection("https://8.8.8.8/feed.ics");
+
+    expect(await response.text()).toBe("BEGIN:VCALENDAR");
+    expect(fetchMock).toHaveBeenCalledWith("https://8.8.8.8/feed.ics", { redirect: "manual" });
+  });
+
+  it("never fetches a URL that fails validation", async () => {
+    await expect(fetchWithSSRFProtection("https://169.254.169.254/latest")).rejects.toThrow(
+      "URL is not allowed"
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("follows safe redirects, resolving relative locations", async () => {
+    fetchMock
+      .mockResolvedValueOnce(redirectTo("/moved/feed.ics", 301))
+      .mockResolvedValueOnce(new Response("ok", { status: 200 }));
+
+    const response = await fetchWithSSRFProtection("https://8.8.8.8/feed.ics");
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenLastCalledWith("https://8.8.8.8/moved/feed.ics", { redirect: "manual" });
+  });
+
+  it.each([
+    "https://169.254.169.254/latest/meta-data/",
+    "https://192.168.1.10/internal",
+    "http://8.8.4.4/downgrade",
+  ])("blocks a redirect to %s", async (location) => {
+    fetchMock.mockResolvedValueOnce(redirectTo(location));
+
+    await expect(fetchWithSSRFProtection("https://8.8.8.8/feed.ics")).rejects.toThrow("URL is not allowed");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops after the maximum number of redirects", async () => {
+    fetchMock.mockImplementation(async () => redirectTo("https://8.8.8.8/loop"));
+
+    await expect(
+      fetchWithSSRFProtection("https://8.8.8.8/feed.ics", {}, { maxRedirects: 2 })
+    ).rejects.toThrow("Too many redirects");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns a redirect response without a location header as-is", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 302 }));
+
+    const response = await fetchWithSSRFProtection("https://8.8.8.8/feed.ics");
+
+    expect(response.status).toBe(302);
   });
 });
 
