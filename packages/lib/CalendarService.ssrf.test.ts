@@ -88,6 +88,8 @@ type Scenario = {
   calendarHref: string;
   otherCalendarHref?: string;
   omitExpandedCalendarData?: boolean;
+  /** Overrides the answer to the REPORTs sent to the calendar */
+  calendarReport?: (body: string) => Response;
   redirect?: Redirect;
 };
 
@@ -114,6 +116,12 @@ const ICS = [
 const multistatus = (responses: string) =>
   `<?xml version="1.0" encoding="utf-8"?><d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">${responses}</d:multistatus>`;
 
+const xmlResponse = (responses: string) =>
+  new Response(multistatus(responses), {
+    status: 207,
+    headers: { "content-type": "application/xml; charset=utf-8" },
+  });
+
 const propstat = (href: string, prop: string) =>
   `<d:response><d:href>${href}</d:href><d:propstat><d:prop>${prop}</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
 
@@ -131,6 +139,11 @@ const eventEntry = (withData = true) =>
     `${CALENDAR_PATH}${EVENT_UID}.ics`,
     `<d:getetag>"etag-1"</d:getetag>${withData ? `<c:calendar-data><![CDATA[${ICS}]]></c:calendar-data>` : ""}`
   );
+
+const SIBLING_HREF = `${CALENDAR_PATH}sibling.ics`;
+
+// Listed by the expanded query without calendar-data, as servers do for objects they cannot expand
+const siblingWithoutData = propstat(SIBLING_HREF, `<d:getetag>"etag-2"</d:getetag>`);
 
 const createMockEvent = (): CalendarServiceEvent => ({
   type: "caldav",
@@ -165,11 +178,7 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
     if (redirect && isRedirected) {
       return new Response(null, { status: redirect.status, headers: { location: redirect.location } });
     }
-    const xml = (responses: string) =>
-      new Response(multistatus(responses), {
-        status: 207,
-        headers: { "content-type": "application/xml; charset=utf-8" },
-      });
+    const xml = xmlResponse;
 
     if (path === "/.well-known/caldav") {
       return scenario.wellKnownLocation
@@ -200,6 +209,7 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
       );
     }
     if (method === "REPORT" && path === CALENDAR_PATH) {
+      if (scenario.calendarReport) return scenario.calendarReport(body);
       if (body.includes("calendar-multiget")) return xml(eventEntry());
       const expanded = body.includes("expand");
       return xml(eventEntry(expanded && !scenario.omitExpandedCalendarData));
@@ -322,13 +332,13 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
       expect(error).toEqual(notAllowed);
     });
 
-    it("is blocked on the availability REPORT, which skips the calendar", async () => {
+    it("is blocked on the availability REPORT, which fails availability", async () => {
       scenario = { ...SAFE_SCENARIO, redirect: { method: "REPORT", status, location: METADATA_URL } };
 
-      const busy = await getAvailability();
+      const error = await errorOf(getAvailability());
 
       expect(metadataRequests()).toEqual([]);
-      expect(busy).toEqual([]);
+      expect(error).toEqual(notAllowed);
     });
 
     it("is blocked on the REPORT looking up an event by uid", async () => {
@@ -422,5 +432,103 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
     const busy = await getAvailability();
 
     expect(busy).toEqual([{ start: "2023-01-01T10:00:00.000Z", end: "2023-01-01T11:00:00.000Z" }]);
+  });
+
+  describe("availability with objects the server does not return in full", () => {
+    const BUSY = [{ start: "2023-01-01T10:00:00.000Z", end: "2023-01-01T11:00:00.000Z" }];
+    const multigetBodies = () =>
+      network.requests
+        .filter((request) => request.method === "REPORT" && request.body?.includes("calendar-multiget"))
+        .map((request) => request.body ?? "");
+
+    it("keeps the busy event when an expanded sibling without data is gone at the multiget", async () => {
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: (body) =>
+          body.includes("calendar-multiget")
+            ? xmlResponse(notFound(SIBLING_HREF))
+            : xmlResponse(eventEntry() + siblingWithoutData),
+      };
+
+      const busy = await getAvailability();
+
+      expect(busy).toEqual(BUSY);
+      const [multiget, ...others] = multigetBodies();
+      expect(others).toEqual([]);
+      expect(multiget).toContain(SIBLING_HREF);
+      expect(multiget).not.toContain(`${EVENT_UID}.ics`);
+    });
+
+    it("keeps the busy event fetched by the multiget next to a sibling that is gone", async () => {
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: (body) =>
+          body.includes("calendar-multiget")
+            ? xmlResponse(eventEntry() + notFound(SIBLING_HREF))
+            : xmlResponse(eventEntry(false) + siblingWithoutData),
+      };
+
+      const busy = await getAvailability();
+
+      expect(busy).toEqual(BUSY);
+    });
+
+    it("fails availability when the multiget cannot return an object that still exists", async () => {
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: (body) =>
+          body.includes("calendar-multiget")
+            ? xmlResponse(
+                `<d:response><d:href>${SIBLING_HREF}</d:href><d:status>HTTP/1.1 500 Internal Server Error</d:status></d:response>`
+              )
+            : xmlResponse(eventEntry() + siblingWithoutData),
+      };
+
+      const error = await errorOf(getAvailability());
+
+      expect(error).toEqual(expect.objectContaining({ message: expect.stringContaining("500") }));
+    });
+
+    it("fails availability when the multiget leaves an object out", async () => {
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: (body) =>
+          body.includes("calendar-multiget")
+            ? xmlResponse("")
+            : xmlResponse(eventEntry() + siblingWithoutData),
+      };
+
+      const error = await errorOf(getAvailability());
+
+      expect(error).toEqual(expect.objectContaining({ message: expect.stringContaining("0 of 1") }));
+    });
+
+    it("falls back to an unexpanded query when the server rejects the expanded one", async () => {
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: (body) =>
+          body.includes("expand") ? new Response(null, { status: 501 }) : xmlResponse(eventEntry()),
+      };
+
+      const busy = await getAvailability();
+
+      expect(busy).toEqual(BUSY);
+    });
+
+    it("fails availability instead of reporting a free calendar when the calendar cannot be queried", async () => {
+      scenario = { ...SAFE_SCENARIO, calendarReport: () => new Response("oops", { status: 500 }) };
+
+      const error = await errorOf(getAvailability());
+
+      expect(error).toEqual(expect.objectContaining({ message: expect.stringContaining("500") }));
+    });
+
+    it("reports an empty calendar as free", async () => {
+      scenario = { ...SAFE_SCENARIO, calendarReport: () => xmlResponse("") };
+
+      const busy = await getAvailability();
+
+      expect(busy).toEqual([]);
+    });
   });
 });

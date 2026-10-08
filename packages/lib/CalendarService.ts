@@ -20,12 +20,11 @@ import type { CredentialPayload } from "@calcom/types/Credential";
 import ICAL from "ical.js";
 import type { Attendee, DateArray, DurationObject } from "ics";
 import { createEvent } from "ics";
-import type { DAVAccount, DAVObject } from "tsdav";
+import type { DAVAccount, DAVObject, DAVResponse } from "tsdav";
 import {
   createCalendarObject,
   davRequest,
   deleteCalendarObject,
-  fetchCalendarObjects,
   fetchHomeUrl,
   fetchPrincipalUrl,
   getBasicAuthHeaders,
@@ -384,6 +383,25 @@ const injectVTimezone = (
   result = result.replace(/^BEGIN:VEVENT/m, `${vtimezone}\r\nBEGIN:VEVENT`);
 
   return result;
+};
+
+const CALDAV_XMLNS = { "xmlns:d": "DAV:", "xmlns:c": "urn:ietf:params:xml:ns:caldav" };
+
+/** RFC 4791 time-range/expand format: UTC, basic format, no fractional seconds. */
+const toCalDAVDateTime = (date: string): string =>
+  `${new Date(date).toISOString().slice(0, 19).replace(/[-:.]/g, "")}Z`;
+
+const getCalendarData = (response: DAVResponse): unknown =>
+  response.props?.calendarData?._cdata ?? response.props?.calendarData;
+
+const getEtag = (response: DAVResponse): string =>
+  typeof response.props?.getetag === "string" ? response.props.getetag : "";
+
+/** Null unless the response is a 2xx carrying calendar-data. */
+const toDAVObject = (response: DAVResponse, url: string): DAVObject | null => {
+  const data = getCalendarData(response);
+  if (!response.ok || typeof data !== "string" || !data) return null;
+  return { url, etag: getEtag(response), data };
 };
 
 const mapAttendees = (attendees: AttendeeInCalendarEvent[] | TeamMember[]): Attendee[] =>
@@ -866,89 +884,162 @@ export default abstract class BaseCalendarService implements Calendar {
   }
 
   /**
-   * The fetchObjectsWithOptionalExpand function is responsible for fetching calendar objects
-   * from an array of selectedCalendars. It attempts to fetch objects with the expand option
-   * alone such that it works if a calendar supports it. tsdav rejects the whole calendar when an
-   * expanded object comes back without calendar-data, in which case the calendar is fetched again
-   * without the expand option. Calendars that still fail are skipped.
-   * The result is a flattened array of calendar objects with the structure { url: ..., etag: ..., data: ...}.
+   * Fetches the objects of every selected calendar that overlap the time range, as
+   * { url, etag, data }. Objects are asked expanded first; those that come back without
+   * calendar-data are fetched again, unexpanded, with a calendar-multiget.
    *
-   * @param {Object} options - The options object containing the following properties:
-   *   @param {IntegrationCalendar[]} options.selectedCalendars - An array of IntegrationCalendar objects to fetch data from.
-   *   @param {string} options.startISOString - The start date of the date range to fetch events from, in ISO 8601 format.
-   *   @param {string} options.dateTo - The end date of the date range to fetch events from.
-   *   @param {Object} options.headers - Headers to be included in the API requests.
-   * @returns {Promise<Array>} - A promise that resolves to a flattened array of calendar objects with the structure { url: ..., etag: ..., data: ...}.
+   * Every valid object is kept, but an unreadable calendar rejects instead of being skipped:
+   * getBusyCalendarTimes turns the rejection into a busy placeholder, whereas skipping the calendar
+   * would present it as free and let its events be double-booked.
    */
-
   async fetchObjectsWithOptionalExpand({
     selectedCalendars,
     startISOString,
     dateTo,
-    headers,
+    headers = this.headers,
   }: FetchObjectsWithOptionalExpandOptionsType): Promise<DAVObject[]> {
+    const timeRange = {
+      start: toCalDAVDateTime(startISOString),
+      end: toCalDAVDateTime(dateTo),
+    };
     const filteredCalendars = selectedCalendars.filter((sc) => sc.externalId);
-    const fetchPromises = filteredCalendars.map(async (sc) => {
-      await this.assertSafeUrl(sc.externalId);
-      const fetchObjects = (expand: boolean) =>
-        fetchCalendarObjects({
-          urlFilter: (url) => this.isValidFormat(url),
-          calendar: {
-            url: sc.externalId,
-          },
-          headers,
-          fetch: this.fetch,
-          expand,
-          timeRange: {
-            start: startISOString,
-            end: new Date(dateTo).toISOString(),
-          },
-        });
-
-      try {
-        return await fetchObjects(true);
-      } catch (error) {
-        // A blocked URL would be blocked again
-        if (error instanceof ErrorWithCode) throw error;
-        return fetchObjects(false);
-      }
-    });
-    const resolvedPromises = await Promise.allSettled(fetchPromises);
-    const fulfilledPromises = resolvedPromises.filter(
-      (promise): promise is PromiseFulfilledResult<DAVObject[]> => promise.status === "fulfilled"
+    const objectsByCalendar = await Promise.all(
+      filteredCalendars.map((sc) => this.fetchCalendarObjectsInRange(sc.externalId, timeRange, headers))
     );
-    return fulfilledPromises.flatMap((promise) => promise.value);
+    return objectsByCalendar.flat();
+  }
+
+  private async fetchCalendarObjectsInRange(
+    calendarUrl: string,
+    timeRange: { start: string; end: string },
+    headers: Record<string, string>
+  ): Promise<DAVObject[]> {
+    await this.assertSafeUrl(calendarUrl);
+    const query = (expand: boolean) =>
+      this.calendarReport(calendarUrl, headers, {
+        "c:calendar-query": {
+          _attributes: CALDAV_XMLNS,
+          "d:prop": {
+            "d:getetag": {},
+            "c:calendar-data": expand ? { "c:expand": { _attributes: timeRange } } : {},
+          },
+          "c:filter": {
+            "c:comp-filter": {
+              _attributes: { name: "VCALENDAR" },
+              "c:comp-filter": {
+                _attributes: { name: "VEVENT" },
+                "c:time-range": { _attributes: timeRange },
+              },
+            },
+          },
+        },
+      });
+
+    let responses: DAVResponse[];
+    try {
+      responses = await query(true);
+    } catch (error) {
+      // A blocked URL would be blocked again
+      if (error instanceof ErrorWithCode) throw error;
+      // Some servers refuse the expand element itself
+      responses = await query(false);
+    }
+
+    const objects: DAVObject[] = [];
+    const urlsWithoutData: string[] = [];
+    for (const response of responses) {
+      const url = this.getObjectUrl(response, calendarUrl);
+      if (!url) continue;
+      const object = toDAVObject(response, url);
+      if (object) objects.push(object);
+      else urlsWithoutData.push(url);
+    }
+    if (urlsWithoutData.length === 0) return objects;
+
+    const fetched = await this.calendarMultiGet(calendarUrl, urlsWithoutData, headers);
+    for (const response of fetched) {
+      // Deleted between the query and the multiget, so it no longer occupies the slot
+      if (response.status === 404) continue;
+      const url = this.getObjectUrl(response, calendarUrl);
+      const object = url ? toDAVObject(response, url) : null;
+      if (!object) {
+        throw new Error(
+          `CalDAV calendar-multiget on ${calendarUrl} returned ${response.status} ${response.statusText} without calendar-data`
+        );
+      }
+      objects.push(object);
+    }
+    if (fetched.length < urlsWithoutData.length) {
+      throw new Error(
+        `CalDAV calendar-multiget on ${calendarUrl} returned ${fetched.length} of ${urlsWithoutData.length} objects`
+      );
+    }
+    return objects;
+  }
+
+  /** Resolves a response href to an object URL, or null for the calendar itself and non-event objects. */
+  private getObjectUrl(response: DAVResponse, calendarUrl: string): string | null {
+    if (!response.href) return null;
+    const url = new URL(response.href, calendarUrl).href;
+    if (url.replace(/\/$/, "") === calendarUrl.replace(/\/$/, "")) return null;
+    return this.isValidFormat(url) ? url : null;
+  }
+
+  /**
+   * A raw calendar-multiget: since tsdav 2.4, fetchCalendarObjects and calendarMultiGet reject the
+   * whole calendar as soon as one object is missing (404) or comes back without data, where tsdav
+   * 2.0.3 returned the others. Responses are returned one per object, unfiltered.
+   */
+  private calendarMultiGet(
+    calendarUrl: string,
+    objectUrls: string[],
+    headers: Record<string, string> = this.headers
+  ): Promise<DAVResponse[]> {
+    return this.calendarReport(calendarUrl, headers, {
+      "c:calendar-multiget": {
+        _attributes: CALDAV_XMLNS,
+        "d:prop": { "d:getetag": {}, "c:calendar-data": {} },
+        "d:href": objectUrls.map((url) => new URL(url).pathname),
+      },
+    });
+  }
+
+  /**
+   * Sends a REPORT and returns one response per object. Rejects when the request as a whole failed
+   * (HTTP status, body that is not a multistatus), which davRequest reports as a single
+   * pseudo-response instead of throwing.
+   */
+  private async calendarReport(
+    calendarUrl: string,
+    headers: Record<string, string>,
+    body: Record<string, unknown>
+  ): Promise<DAVResponse[]> {
+    const responses = await davRequest({
+      url: calendarUrl,
+      init: { method: "REPORT", headers: { ...headers, depth: "1" }, namespace: "c", body },
+      fetch: this.fetch,
+    });
+    const failed = responses.find((response) => !response.raw?.multistatus);
+    if (failed) {
+      throw new Error(`CalDAV REPORT on ${calendarUrl} failed: ${failed.status} ${failed.statusText}`);
+    }
+    // An empty multistatus comes back as a single response without href
+    return responses.filter((response) => response.href);
   }
 
   private async getEvents(calId: string, objectUrls: string[]) {
     try {
       await this.assertSafeUrl(calId);
-      // A raw calendar-multiget: since tsdav 2.4, fetchCalendarObjects and calendarMultiGet reject the
-      // whole calendar on the 404 returned for an object it does not hold, and getEventsByUID looks
-      // the uid up in every calendar
-      const responses = await davRequest({
-        url: calId,
-        init: {
-          method: "REPORT",
-          headers: { ...this.headers, depth: "1" },
-          namespace: "c",
-          body: {
-            "calendar-multiget": {
-              _attributes: { "xmlns:d": "DAV:", "xmlns:c": "urn:ietf:params:xml:ns:caldav" },
-              "d:prop": { "d:getetag": {}, "c:calendar-data": {} },
-              "d:href": objectUrls.map((url) => new URL(url).pathname),
-            },
-          },
-        },
-        fetch: this.fetch,
-      });
+      // getEventsByUID looks the uid up in every calendar, so a 404 is the expected answer of the
+      // calendars that do not hold it
+      const responses = await this.calendarMultiGet(calId, objectUrls);
       const objects = responses
         .filter((response) => response.ok)
         .map((response) => ({
           url: new URL(response.href ?? "", calId).href,
           // An empty etag is dropped from If-Match by tsdav, as a missing one would be
-          etag: typeof response.props?.getetag === "string" ? response.props.getetag : "",
-          data: response.props?.calendarData?._cdata ?? response.props?.calendarData,
+          etag: getEtag(response),
+          data: getCalendarData(response),
         }));
 
       const events = objects

@@ -1,11 +1,5 @@
 import { createEvent as createIcsEvent } from "ics";
-import {
-  createCalendarObject,
-  fetchCalendarObjects,
-  propfind,
-  serviceDiscovery,
-  updateCalendarObject,
-} from "tsdav";
+import { createCalendarObject, davRequest, propfind, serviceDiscovery, updateCalendarObject } from "tsdav";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("ics", () => ({
@@ -18,7 +12,6 @@ vi.mock("tsdav", () => ({
   fetchHomeUrl: vi.fn(),
   propfind: vi.fn(),
   davRequest: vi.fn(),
-  fetchCalendarObjects: vi.fn(),
   createCalendarObject: vi.fn().mockResolvedValue({ ok: true }),
   updateCalendarObject: vi.fn().mockResolvedValue({ status: 200 }),
   deleteCalendarObject: vi.fn(),
@@ -827,25 +820,24 @@ describe("CalendarService - SSRF protection", () => {
     expect(propfind).not.toHaveBeenCalled();
   });
 
-  it("skips selected calendars pointing to internal URLs when fetching availability", async () => {
-    vi.mocked(fetchCalendarObjects).mockResolvedValue([]);
+  it("fails availability instead of reporting it free when a selected calendar points to an internal URL", async () => {
+    vi.mocked(davRequest).mockResolvedValue([
+      { href: undefined, ok: true, status: 207, statusText: "Multi-Status", raw: { multistatus: {} } },
+    ]);
     const service = new TestCalendarService();
 
-    const busy = await service.getAvailability({
-      dateFrom: "2023-01-01T00:00:00Z",
-      dateTo: "2023-01-02T00:00:00Z",
-      selectedCalendars: [
-        { externalId: "https://caldav.example.com/calendar/", integration: "caldav" },
-        { externalId: METADATA_URL, integration: "caldav" },
-      ],
-      mode: "slots",
-    });
-
-    expect(busy).toEqual([]);
-    expect(fetchCalendarObjects).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(fetchCalendarObjects).mock.calls[0][0].calendar.url).toBe(
-      "https://caldav.example.com/calendar/"
-    );
+    await expect(
+      service.getAvailability({
+        dateFrom: "2023-01-01T00:00:00Z",
+        dateTo: "2023-01-02T00:00:00Z",
+        selectedCalendars: [
+          { externalId: "https://caldav.example.com/calendar/", integration: "caldav" },
+          { externalId: METADATA_URL, integration: "caldav" },
+        ],
+        mode: "slots",
+      })
+    ).rejects.toThrow("URL is not allowed");
+    expect(vi.mocked(davRequest).mock.calls.map(([params]) => params.url)).not.toContain(METADATA_URL);
   });
 
   it("does not write events to a calendar URL pointing to an internal address", async () => {

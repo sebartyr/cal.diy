@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   deduplicateCredentialsBasedOnSelectedCalendars,
   deleteEvent,
+  getBusyCalendarTimes,
   getCalendarCredentials,
   processEvent,
 } from "./CalendarManager";
@@ -605,6 +606,42 @@ describe("CalendarManager tests", () => {
       });
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe("fn: getBusyCalendarTimes", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("reports a failure instead of a free calendar when getAvailability rejects", async () => {
+      vi.mocked(getCalendar).mockResolvedValue({
+        getAvailability: vi.fn().mockRejectedValue(new Error("CalDAV REPORT failed: 500")),
+      } as unknown as Awaited<ReturnType<typeof getCalendar>>);
+      const credential = buildCredential({
+        type: "ics-feed_calendar",
+        appId: "ics-feed",
+        id: 1,
+        delegatedToId: null,
+        user: { email: "test@example.com" },
+      });
+
+      const result = await getBusyCalendarTimes(
+        [{ ...credential, encryptedKey: null }],
+        "2024-01-01T00:00:00Z",
+        "2024-01-02T00:00:00Z",
+        [
+          {
+            userId: 10000,
+            integration: "ics-feed_calendar",
+            externalId: "https://calendar.example.com/feed.ics",
+            credentialId: 1,
+          },
+        ]
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.data).toEqual([expect.objectContaining({ source: "error-placeholder" })]);
     });
   });
 });
