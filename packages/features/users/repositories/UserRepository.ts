@@ -1650,13 +1650,16 @@ export class UserRepository {
     searchTerm,
     cursor,
     limit,
+    ids,
   }: {
     searchTerm?: string | null;
     cursor: number | null | undefined;
     limit?: number | null;
+    ids?: number[];
   }) {
     const bothLockedAndUnlockedWhere: Prisma.UserWhereInput = {
       OR: [{ locked: false }, { locked: true }],
+      ...(ids ? { id: { in: ids } } : {}),
     };
     const trimmedSearchTerm = searchTerm?.trim();
     const searchFilters: Prisma.UserWhereInput = trimmedSearchTerm

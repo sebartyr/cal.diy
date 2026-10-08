@@ -5,6 +5,7 @@ import { ZCreateCouponSchema } from "./createCoupon.schema";
 import { ZCreateSelfHostedLicenseSchema } from "./createSelfHostedLicenseKey.schema";
 import { ZAdminGetTeamsForFeatureSchema } from "./getTeamsForFeature.schema";
 import { ZListMembersSchema } from "./listPaginated.schema";
+import { ZAdminListTeamsSchema } from "./listTeams.schema";
 import { ZAdminLockUserAccountSchema } from "./lockUserAccount.schema";
 import { ZAdminRemoveTwoFactor } from "./removeTwoFactor.schema";
 import { ZAdminPasswordResetSchema } from "./sendPasswordReset.schema";
@@ -56,6 +57,10 @@ export const adminRouter = router({
     }),
   createCoupon: authedAdminProcedure.input(ZCreateCouponSchema).mutation(async (opts) => {
     const { default: handler } = await import("./createCoupon.handler");
+    return handler(opts);
+  }),
+  listTeams: authedAdminProcedure.input(ZAdminListTeamsSchema).query(async (opts) => {
+    const { default: handler } = await import("./listTeams.handler");
     return handler(opts);
   }),
   getTeamsForFeature: authedAdminProcedure.input(ZAdminGetTeamsForFeatureSchema).query(async (opts) => {
