@@ -70,8 +70,8 @@ export default defineConfig({
       },
       // Alias Node.js built-ins for jsdom environment
       { find: "crypto", replacement: "node:crypto" },
-      // API v1 path alias
-      { find: "~", replacement: path.resolve(__dirname, "apps/api/v1") },
+      // apps/api/v1 is not part of this fork: "~" is the apps/web modules alias (apps/web/tsconfig.json)
+      { find: "~", replacement: path.resolve(__dirname, "apps/web/modules") },
       // apps/web path aliases
       { find: "@lib", replacement: path.resolve(__dirname, "apps/web/lib") },
       { find: "@components", replacement: path.resolve(__dirname, "apps/web/components") },

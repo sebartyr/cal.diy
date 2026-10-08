@@ -8,12 +8,14 @@ import { useEventTypes } from "./useEventTypes";
 
 interface UseActiveFiltersValidatorOptions {
   canReadOthersBookings: boolean;
+  isSystemAdmin?: boolean;
 }
 
 export interface AccessibleResources {
-  userIds: number[];
+  // "all": a system admin may filter on any user or team of the instance.
+  userIds: number[] | "all";
   eventTypeIds: number[];
-  teamIds: number[];
+  teamIds: number[] | "all";
 }
 
 export function createActiveFiltersValidator(accessibleResources: AccessibleResources) {
@@ -22,7 +24,12 @@ export function createActiveFiltersValidator(accessibleResources: AccessibleReso
   return function validateActiveFilters(filters: ActiveFilters): ActiveFilters {
     return filters
       .map((filter): ActiveFilter | null => {
-        if (filter.f === "userId" && filter.v && filter.v.type === ColumnFilterType.MULTI_SELECT) {
+        if (
+          userIds !== "all" &&
+          filter.f === "userId" &&
+          filter.v &&
+          filter.v.type === ColumnFilterType.MULTI_SELECT
+        ) {
           const validIds = filter.v.data.filter((id) => userIds.includes(id as number));
           if (validIds.length === 0) {
             return null;
@@ -38,7 +45,12 @@ export function createActiveFiltersValidator(accessibleResources: AccessibleReso
           return { ...filter, v: { ...filter.v, data: validIds } };
         }
 
-        if (filter.f === "teamId" && filter.v && filter.v.type === ColumnFilterType.MULTI_SELECT) {
+        if (
+          teamIds !== "all" &&
+          filter.f === "teamId" &&
+          filter.v &&
+          filter.v.type === ColumnFilterType.MULTI_SELECT
+        ) {
           const validIds = filter.v.data.filter((id) => teamIds.includes(id as number));
           if (validIds.length === 0) {
             return null;
@@ -56,6 +68,7 @@ export type ActiveFiltersValidatorState = ActiveFiltersValidator | "loading" | u
 
 export function useActiveFiltersValidator({
   canReadOthersBookings,
+  isSystemAdmin = false,
 }: UseActiveFiltersValidatorOptions): ActiveFiltersValidatorState {
   const eventTypes = useEventTypes();
   const teams = undefined as { id: number; name: string }[] | undefined;
@@ -81,21 +94,21 @@ export function useActiveFiltersValidator({
   // validator "loading" forever: a selected segment, such as "My bookings", was never applied and
   // the list kept showing the unfiltered scope.
   const isDataLoaded = useMemo(() => {
-    if (!canReadOthersBookings) {
+    if (!canReadOthersBookings || isSystemAdmin) {
       return currentUser !== undefined && eventTypes !== undefined;
     }
     return members !== undefined && eventTypes !== undefined;
-  }, [canReadOthersBookings, currentUser, members, eventTypes]);
+  }, [canReadOthersBookings, isSystemAdmin, currentUser, members, eventTypes]);
 
   const validateActiveFilters = useCallback(
     (filters: ActiveFilters): ActiveFilters => {
       return createActiveFiltersValidator({
-        userIds: accessibleUserIds,
+        userIds: isSystemAdmin ? "all" : accessibleUserIds,
         eventTypeIds: accessibleEventTypeIds,
-        teamIds: accessibleTeamIds,
+        teamIds: isSystemAdmin ? "all" : accessibleTeamIds,
       })(filters);
     },
-    [accessibleUserIds, accessibleEventTypeIds, accessibleTeamIds]
+    [accessibleUserIds, accessibleEventTypeIds, accessibleTeamIds, isSystemAdmin]
   );
 
   if (!isDataLoaded) {

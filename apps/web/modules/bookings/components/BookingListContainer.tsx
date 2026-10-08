@@ -12,7 +12,6 @@ import { WipeMyCalActionButton } from "@calcom/web/components/apps/wipemycalothe
 import { getCoreRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useAdminBookingScope } from "~/bookings/hooks/useAdminBookingScope";
 import { useBookingFilters } from "~/bookings/hooks/useBookingFilters";
 import { useBookingListColumns } from "~/bookings/hooks/useBookingListColumns";
 import { useBookingListData } from "~/bookings/hooks/useBookingListData";
@@ -22,12 +21,13 @@ import { useListAutoSelector } from "~/bookings/hooks/useListAutoSelector";
 import { DataTableFilters, DataTableSegment } from "~/data-table/components";
 import { useDataTable } from "~/data-table/hooks/useDataTable";
 import { useDisplayedFilterCount } from "~/data-table/hooks/useDisplayedFilterCount";
+import { useAllBookingsScope, useSyncAllBookingsScopeWithSegment } from "../hooks/useAllBookingsScope";
+import { isAllBookingsSegment } from "../lib/constants";
 import {
   BookingDetailsSheetStoreProvider,
   useBookingDetailsSheetStore,
 } from "../store/bookingDetailsSheetStore";
 import type { BookingListingStatus, BookingsGetOutput, RowData } from "../types";
-import { AdminBookingScopeFilter } from "./AdminBookingScopeFilter";
 import { BookingDetailsSheet } from "./BookingDetailsSheet";
 import { BookingList } from "./BookingList";
 import { ViewToggleButton } from "./ViewToggleButton";
@@ -56,6 +56,30 @@ function FilterButton({ table, displayedFilterCount, setShowFilters }: FilterBut
       <Badge variant="gray" className="ml-1">
         {displayedFilterCount}
       </Badge>
+    </Button>
+  );
+}
+
+/**
+ * Shows that the instance-wide scope is still on once the "All bookings" segment has been
+ * deselected by a filter or page size change, and lets the admin drop it explicitly.
+ */
+function AllBookingsScopeBadge() {
+  const { t } = useLocale();
+  const { segmentId } = useDataTable();
+  const { listsAllBookings, clearAllBookingsScope } = useAllBookingsScope({ isSystemAdmin: true });
+
+  if (!listsAllBookings || isAllBookingsSegment(segmentId)) return null;
+
+  return (
+    <Button
+      color="secondary"
+      size="sm"
+      EndIcon="x"
+      data-testid="all-bookings-scope"
+      aria-label={`${t("all_bookings_filter_label")}: ${t("remove")}`}
+      onClick={clearAllBookingsScope}>
+      {t("all_bookings_filter_label")}
     </Button>
   );
 }
@@ -129,6 +153,7 @@ function BookingListInner({
 
   const getFacetedUniqueValues = useFacetedUniqueValues({
     canReadOthersBookings: permissions.canReadOthersBookings,
+    isSystemAdmin,
   });
 
   const displayedFilterCount = useDisplayedFilterCount();
@@ -189,7 +214,7 @@ function BookingListInner({
           setShowFilters={setShowFilters}
         />
 
-        {isSystemAdmin && <AdminBookingScopeFilter />}
+        {isSystemAdmin && <AllBookingsScopeBadge />}
 
         {/* Desktop: auto-pushed to right via flex-grow spacer, Mobile: continue on second row */}
         <div className="hidden grow md:block" />
@@ -242,9 +267,9 @@ export function BookingListContainer(props: BookingListContainerProps) {
   const { limit, offset, setPageIndex, isValidatorPending } = useDataTable();
   const { eventTypeIds, teamIds, userIds, dateRange, attendeeName, attendeeEmail, bookingUid } =
     useBookingFilters();
-  const { queryFilters: adminScopeFilters } = useAdminBookingScope({
-    isSystemAdmin: !!props.isSystemAdmin,
-  });
+  const isSystemAdmin = !!props.isSystemAdmin;
+  useSyncAllBookingsScopeWithSegment({ isSystemAdmin });
+  const { listsAllBookings } = useAllBookingsScope({ isSystemAdmin });
 
   // Build query input once - shared between query and prefetching
   const queryInput = useMemo(
@@ -263,8 +288,7 @@ export function BookingListContainer(props: BookingListContainerProps) {
           ? dayjs(dateRange?.startDate).startOf("day").toISOString()
           : undefined,
         beforeEndDate: dateRange?.endDate ? dayjs(dateRange?.endDate).endOf("day").toISOString() : undefined,
-        // The admin scope replaces the member/team filters it targets.
-        ...adminScopeFilters,
+        ...(listsAllBookings ? { scope: "all" as const } : {}),
       },
     }),
     [
@@ -278,7 +302,7 @@ export function BookingListContainer(props: BookingListContainerProps) {
       attendeeEmail,
       bookingUid,
       dateRange,
-      adminScopeFilters,
+      listsAllBookings,
     ]
   );
 

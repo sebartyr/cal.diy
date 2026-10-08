@@ -34,4 +34,26 @@ describe("useActiveFiltersValidator", () => {
     const validate = result.current as (filters: typeof myBookingsFilters) => typeof myBookingsFilters;
     expect(validate(myBookingsFilters)).toEqual(myBookingsFilters);
   });
+
+  it("lets a system admin keep any user or team in the filters", () => {
+    meQueryMock.mockReturnValue({ data: { id: 7 } });
+    const { result } = renderHook(() =>
+      useActiveFiltersValidator({ canReadOthersBookings: false, isSystemAdmin: true })
+    );
+
+    const filters = [
+      { f: "userId", v: { type: ColumnFilterType.MULTI_SELECT, data: [42] } },
+      { f: "teamId", v: { type: ColumnFilterType.MULTI_SELECT, data: [77] } },
+    ];
+    const validate = result.current as (value: typeof filters) => typeof filters;
+    expect(validate(filters)).toEqual(filters);
+  });
+
+  it("still drops other users from a non-admin's filters", () => {
+    meQueryMock.mockReturnValue({ data: { id: 7 } });
+    const { result } = renderHook(() => useActiveFiltersValidator({ canReadOthersBookings: false }));
+
+    const validate = result.current as (value: typeof myBookingsFilters) => typeof myBookingsFilters;
+    expect(validate([{ f: "userId", v: { type: ColumnFilterType.MULTI_SELECT, data: [42] } }])).toEqual([]);
+  });
 });

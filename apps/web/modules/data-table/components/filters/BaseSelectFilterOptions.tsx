@@ -5,6 +5,7 @@ import type {
   FacetedValue,
   FilterValueSchema,
 } from "@calcom/features/data-table/lib/types";
+import { useDebounce } from "@calcom/lib/hooks/useDebounce";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import type { FilterType } from "@calcom/types/data-table";
 import classNames from "@calcom/ui/classNames";
@@ -19,7 +20,11 @@ import {
   CommandSeparator,
 } from "@calcom/ui/components/command";
 import { CheckIcon } from "@coss/ui/icons";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import {
+  type UseRemoteFilterOptions,
+  useRemoteFilterOptionsLoader,
+} from "~/data-table/contexts/DataTableRemoteFilterOptionsContext";
 import { useDataTable, useFilterValue } from "~/data-table/hooks";
 
 type FilterableColumn = Extract<_FilterableColumn, { type: Extract<FilterType, "ms" | "ss"> }>;
@@ -82,7 +87,92 @@ function getSectionedOptions(options: FacetedValue[]) {
   return sectionedOptions;
 }
 
-export function BaseSelectFilterOptions<T extends Extract<FilterType, "ms" | "ss">>({
+export function BaseSelectFilterOptions<T extends Extract<FilterType, "ms" | "ss">>(
+  props: BaseSelectFilterOptionsProps<T>
+) {
+  const useRemoteOptions = useRemoteFilterOptionsLoader(props.column.id);
+  if (useRemoteOptions) {
+    return <RemoteSelectFilterOptions {...props} useRemoteOptions={useRemoteOptions} />;
+  }
+  return <LocalSelectFilterOptions {...props} />;
+}
+
+function OptionCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <div
+      className={classNames(
+        "border-subtle mr-2 flex h-4 w-4 items-center justify-center rounded-sm",
+        checked ? "bg-primary-default" : "border opacity-50"
+      )}>
+      {checked && <CheckIcon className="text-primary-foreground h-4 w-4" />}
+    </div>
+  );
+}
+
+function ClearFilterGroup({ columnId }: { columnId: string }) {
+  const { t } = useLocale();
+  const { removeFilter } = useDataTable();
+  return (
+    <CommandGroup>
+      <CommandItem
+        onSelect={() => {
+          removeFilter(columnId);
+        }}
+        className={classNames("w-full justify-center text-center", buttonClasses({ color: "secondary" }))}>
+        {t("clear")}
+      </CommandItem>
+    </CommandGroup>
+  );
+}
+
+/** Options searched and paginated on the server (see DataTableRemoteFilterOptionsProvider). */
+function RemoteSelectFilterOptions<T extends Extract<FilterType, "ms" | "ss">>({
+  column,
+  filterValueSchema,
+  isOptionSelected,
+  onOptionSelect,
+  testIdPrefix,
+  useRemoteOptions,
+}: BaseSelectFilterOptionsProps<T> & { useRemoteOptions: UseRemoteFilterOptions }) {
+  const { t } = useLocale();
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const { options, isLoading, hasMore, loadMore } = useRemoteOptions({ searchTerm: debouncedSearchTerm });
+  const filterValue = useFilterValue(column.id, filterValueSchema);
+
+  return (
+    <Command data-testid={`${testIdPrefix}-${column.id}`} shouldFilter={false}>
+      <CommandInput
+        placeholder={t("search")}
+        value={searchTerm}
+        onValueChange={setSearchTerm}
+        data-testid={`select-filter-options-search-${column.id}`}
+      />
+      <CommandList>
+        {!isLoading && <CommandEmpty>{t("no_options_available")}</CommandEmpty>}
+        {options.map((option) => {
+          const { label: optionLabel, value: optionValue } =
+            typeof option === "string" ? { label: option, value: option } : option;
+          return (
+            <CommandItem key={optionValue} onSelect={() => onOptionSelect(column, filterValue, optionValue)}>
+              <OptionCheckbox checked={isOptionSelected(filterValue, optionValue)} />
+              {optionLabel}
+            </CommandItem>
+          );
+        })}
+        {hasMore && (
+          <CommandItem onSelect={loadMore} className="justify-center text-subtle">
+            {isLoading ? t("loading") : t("load_more_results")}
+          </CommandItem>
+        )}
+      </CommandList>
+      <CommandSeparator />
+      <ClearFilterGroup columnId={column.id} />
+    </Command>
+  );
+}
+
+function LocalSelectFilterOptions<T extends Extract<FilterType, "ms" | "ss">>({
   column,
   filterValueSchema,
   isOptionSelected,
@@ -92,7 +182,6 @@ export function BaseSelectFilterOptions<T extends Extract<FilterType, "ms" | "ss
   const { t } = useLocale();
 
   const filterValue = useFilterValue(column.id, filterValueSchema);
-  const { removeFilter } = useDataTable();
 
   const options = useMemo(() => {
     const sectionedOptions = getSectionedOptions(column.options);
@@ -133,15 +222,7 @@ export function BaseSelectFilterOptions<T extends Extract<FilterType, "ms" | "ss
               <CommandItem
                 key={optionValue}
                 onSelect={() => onOptionSelect(column, filterValue, optionValue)}>
-                <div
-                  className={classNames(
-                    "border-subtle mr-2 flex h-4 w-4 items-center justify-center rounded-sm",
-                    isOptionSelected(filterValue, optionValue) ? "bg-primary-default" : "border opacity-50"
-                  )}>
-                  {isOptionSelected(filterValue, optionValue) && (
-                    <CheckIcon className="text-primary-foreground h-4 w-4" />
-                  )}
-                </div>
+                <OptionCheckbox checked={isOptionSelected(filterValue, optionValue)} />
                 {optionLabel}
               </CommandItem>
             </>
@@ -149,15 +230,7 @@ export function BaseSelectFilterOptions<T extends Extract<FilterType, "ms" | "ss
         })}
       </CommandList>
       <CommandSeparator />
-      <CommandGroup>
-        <CommandItem
-          onSelect={() => {
-            removeFilter(column.id);
-          }}
-          className={classNames("w-full justify-center text-center", buttonClasses({ color: "secondary" }))}>
-          {t("clear")}
-        </CommandItem>
-      </CommandGroup>
+      <ClearFilterGroup columnId={column.id} />
     </Command>
   );
 }
