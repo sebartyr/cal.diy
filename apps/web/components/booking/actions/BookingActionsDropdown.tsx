@@ -29,6 +29,7 @@ import { WrongAssignmentDialog } from "@components/dialog/WrongAssignmentDialog"
 import { useState } from "react";
 import type { z } from "zod";
 import { useBookingConfirmation } from "../hooks/useBookingConfirmation";
+import { isActingAsBookingHost } from "../loggedInUser";
 import type { BookingItemProps } from "../types";
 import { useBookingActionsStoreContext } from "./BookingActionsStoreProvider";
 import {
@@ -182,9 +183,7 @@ export function BookingActionsDropdown({
   const userSeat = booking.seatsReferences.find((seat) => !!userEmail && seat.attendee?.email === userEmail);
   const isAttendee = !!userSeat;
 
-  // Check if the logged-in user is the host/owner of the booking. A system admin cancels on the
-  // host's behalf, so the server applies the host's cancellation rules to them.
-  const isHost = booking.loggedInUser.userId === booking.user?.id || !!booking.loggedInUser.isSystemAdmin;
+  const isHost = isActingAsBookingHost(booking);
 
   const isCalVideoLocation =
     !booking.location ||

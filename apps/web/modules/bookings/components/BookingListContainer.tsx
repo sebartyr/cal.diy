@@ -231,6 +231,7 @@ function BookingListInner({
           userId={user?.id}
           userEmail={user?.email}
           bookingAuditEnabled={bookingAuditEnabled}
+          isSystemAdmin={isSystemAdmin}
         />
       )}
     </>

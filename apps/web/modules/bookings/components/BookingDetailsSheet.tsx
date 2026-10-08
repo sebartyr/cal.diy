@@ -39,6 +39,7 @@ import type { z } from "zod";
 import { AcceptBookingButton } from "../../../components/booking/AcceptBookingButton";
 import { BookingActionsDropdown } from "../../../components/booking/actions/BookingActionsDropdown";
 import { BookingActionsStoreProvider } from "../../../components/booking/actions/BookingActionsStoreProvider";
+import { buildBookingLoggedInUser } from "../../../components/booking/loggedInUser";
 import { RejectBookingButton } from "../../../components/booking/RejectBookingButton";
 import type { BookingListingStatus } from "../../../components/booking/types";
 import { usePaymentStatus } from "../hooks/usePaymentStatus";
@@ -58,6 +59,7 @@ interface BookingDetailsSheetProps {
   userId?: number;
   userEmail?: string;
   bookingAuditEnabled?: boolean;
+  isSystemAdmin?: boolean;
 }
 
 export function BookingDetailsSheet({
@@ -66,6 +68,7 @@ export function BookingDetailsSheet({
   userId,
   userEmail,
   bookingAuditEnabled = false,
+  isSystemAdmin = false,
 }: BookingDetailsSheetProps) {
   const booking = useBookingDetailsSheetStore((state) => state.getSelectedBooking());
   const selectedBookingUid = useBookingDetailsSheetStore((state) => state.selectedBookingUid);
@@ -92,6 +95,7 @@ export function BookingDetailsSheet({
         userId={userId}
         userEmail={userEmail}
         bookingAuditEnabled={bookingAuditEnabled}
+        isSystemAdmin={isSystemAdmin}
       />
     </BookingActionsStoreProvider>
   );
@@ -104,6 +108,7 @@ interface BookingDetailsSheetInnerProps {
   userId?: number;
   userEmail?: string;
   bookingAuditEnabled?: boolean;
+  isSystemAdmin?: boolean;
 }
 
 function useActiveSegment(bookingAuditEnabled: boolean) {
@@ -145,6 +150,7 @@ function BookingDetailsSheetInner({
   userId,
   userEmail,
   bookingAuditEnabled = false,
+  isSystemAdmin = false,
 }: BookingDetailsSheetInnerProps) {
   const { t } = useLocale();
   const [activeSegment, setActiveSegment] =
@@ -474,12 +480,13 @@ function BookingDetailsSheetInner({
                 listingStatus:
                   booking.status.toLowerCase() as BookingListingStatus,
                 recurringInfo: undefined,
-                loggedInUser: {
+                loggedInUser: buildBookingLoggedInUser({
                   userId,
                   userTimeZone,
                   userTimeFormat: userTimeFormat ?? null,
                   userEmail,
-                },
+                  isSystemAdmin,
+                }),
                 isToday: false,
               }}
               usePortal={false}

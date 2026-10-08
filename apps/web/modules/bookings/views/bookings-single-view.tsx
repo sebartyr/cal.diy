@@ -942,7 +942,7 @@ export default function Success(props: PageProps) {
                             seatReferenceUid={seatReferenceUid}
                             bookingCancelledEventProps={bookingCancelledEventProps}
                             currentUserEmail={currentUserEmail}
-                            isHost={isHost}
+                            isHost={isHost || props.isLoggedInUserSystemAdmin}
                             internalNotePresets={props.internalNotePresets}
                             renderContext="booking-single-view"
                           />

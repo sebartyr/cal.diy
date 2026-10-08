@@ -3,6 +3,7 @@ import { isSeparatorRow } from "@calcom/features/data-table/lib/separator";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import type useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
 import BookingListItem from "@calcom/web/components/booking/BookingListItem";
+import { buildBookingLoggedInUser } from "@calcom/web/components/booking/loggedInUser";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { BookingListingStatus, RowData } from "../types";
@@ -133,13 +134,13 @@ export function useBookingListColumns({
             <BookingListItem
               key={booking.id}
               isToday={isToday}
-              loggedInUser={{
+              loggedInUser={buildBookingLoggedInUser({
                 userId: user?.id,
                 userTimeZone: user?.timeZone,
                 userTimeFormat: user?.timeFormat,
                 userEmail: user?.email,
                 isSystemAdmin,
-              }}
+              })}
               listingStatus={status}
               recurringInfo={recurringInfo}
               {...(bookingsV3Enabled && { onClick: () => handleBookingClick(booking.uid) })}

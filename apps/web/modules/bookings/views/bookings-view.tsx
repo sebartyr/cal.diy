@@ -101,6 +101,7 @@ function BookingsContent({
           status={status}
           permissions={permissions}
           bookingsV3Enabled={bookingsV3Enabled}
+          isSystemAdmin={isSystemAdmin}
         />
       )}
     </div>
