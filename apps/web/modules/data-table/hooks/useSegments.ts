@@ -11,7 +11,10 @@ export const useSegments: UseSegments = ({ tableIdentifier, providedSegments, sy
   const rawSegments = providedSegments
     ? { segments: providedSegments, preferredSegmentId: null as SegmentIdentifier | null }
     : undefined;
-  const isSuccess = Boolean(providedSegments);
+  // Segments are local in this fork (system segments and provided ones, nothing to fetch), so they
+  // are ready immediately. Waiting for providedSegments meant a segment taken from the URL was never
+  // applied to the filters.
+  const isSuccess = true;
   const setPreference = (_args: { tableIdentifier: string; segmentId: SegmentIdentifier | null }) => {};
 
   const preferredSegmentId = useMemo(() => rawSegments?.preferredSegmentId || null, [rawSegments]);
@@ -56,7 +59,7 @@ export const useSegments: UseSegments = ({ tableIdentifier, providedSegments, sy
   return {
     segments,
     preferredSegmentId,
-    isSuccess: Boolean(providedSegments) || isSuccess,
+    isSuccess,
     setPreference,
     isSegmentEnabled: true,
   };

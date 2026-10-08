@@ -648,6 +648,104 @@ describe("system admin booking scopes", () => {
   });
 });
 
+describe("filtering on one's own bookings (My bookings segment)", () => {
+  const me = { id: 1, email: "me@example.com", orgId: null };
+  const administeredTeamId = 10;
+
+  const createCompilingKysely = () => {
+    const queries: CompiledQuery[] = [];
+    const db = new Kysely<DB>({
+      dialect: {
+        createAdapter: () => new PostgresAdapter(),
+        createDriver: () => new DummyDriver(),
+        createIntrospector: (k) => new PostgresIntrospector(k),
+        createQueryCompiler: () => new PostgresQueryCompiler(),
+      },
+      log: (event) => {
+        queries.push(event.query);
+      },
+    });
+    return { db, queries };
+  };
+
+  const listSql = (queries: CompiledQuery[]) =>
+    queries.find((q) => q.sql.includes("union_subquery") && q.sql.includes("limit"))?.sql ?? "";
+
+  let prisma: PrismaClient;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma = {
+      user: {
+        findMany: vi.fn((args: { where?: { id?: { in?: number[] } } }) =>
+          Promise.resolve((args?.where?.id?.in ?? []).map((id) => ({ id, email: `user${id}@example.com` })))
+        ),
+      },
+      eventType: { findMany: vi.fn().mockResolvedValue([]) },
+      booking: { findUnique: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
+      $queryRaw: vi.fn().mockResolvedValue([]),
+    } as unknown as PrismaClient;
+  });
+
+  const run = (
+    db: Kysely<DB>,
+    filters: Parameters<typeof getBookings>[0]["filters"],
+    isSystemAdmin: boolean
+  ) =>
+    getBookings({
+      user: me,
+      prisma,
+      kysely: db,
+      bookingListingByStatus: ["upcoming"],
+      filters,
+      take: 10,
+      skip: 0,
+      isSystemAdmin,
+    });
+
+  // A team booking between two other members only matches the team scopes (Membership-based
+  // attendee/organizer subqueries and the team event type subquery): none of them may be part of
+  // the query once userIds is given.
+  it.each([
+    ["a regular user", [], false],
+    ["a team admin", [administeredTeamId], false],
+    ["a system admin who is also a team admin", [administeredTeamId], true],
+  ] as const)("only returns the bookings of the filtered user for %s", async (_label, teamIds, isSystemAdmin) => {
+    mockGetTeamIdsWithPermission.mockResolvedValue([...teamIds]);
+    const { db, queries } = createCompilingKysely();
+
+    await run(db, { userIds: [me.id] }, isSystemAdmin);
+
+    const sql = listSql(queries);
+    expect(sql).toContain('"userId" in ($');
+    expect(sql).toContain('"Attendee"."email" in ($');
+    expect(sql).not.toContain('"Membership"');
+    expect(sql).not.toContain('"EventType"."teamId"');
+    expect(sql).not.toContain('"Booking"."userId" = $');
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("keeps the team scope without a userIds filter", async () => {
+    mockGetTeamIdsWithPermission.mockResolvedValue([administeredTeamId]);
+    const { db, queries } = createCompilingKysely();
+
+    await run(db, {}, false);
+
+    expect(listSql(queries)).toContain('"Membership"');
+  });
+
+  it("still lists every booking for a system admin with the all scope", async () => {
+    mockGetTeamIdsWithPermission.mockResolvedValue([administeredTeamId]);
+    const { db, queries } = createCompilingKysely();
+
+    await run(db, { scope: "all" }, true);
+
+    const sql = listSql(queries);
+    expect(sql).not.toContain('"Membership"');
+    expect(sql).not.toContain('"userId"');
+  });
+});
+
 describe("getHandler - system admin detection", () => {
   type HandlerUser = Parameters<typeof getHandler>[0]["ctx"]["user"];
 

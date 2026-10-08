@@ -77,12 +77,15 @@ export function useActiveFiltersValidator({
     return teams?.map((t) => t.id) ?? [];
   }, [teams]);
 
+  // Teams are never loaded in this fork (`teams` is always undefined), so waiting for them kept the
+  // validator "loading" forever: a selected segment, such as "My bookings", was never applied and
+  // the list kept showing the unfiltered scope.
   const isDataLoaded = useMemo(() => {
     if (!canReadOthersBookings) {
-      return currentUser !== undefined && eventTypes !== undefined && teams !== undefined;
+      return currentUser !== undefined && eventTypes !== undefined;
     }
-    return members !== undefined && eventTypes !== undefined && teams !== undefined;
-  }, [canReadOthersBookings, currentUser, members, eventTypes, teams]);
+    return members !== undefined && eventTypes !== undefined;
+  }, [canReadOthersBookings, currentUser, members, eventTypes]);
 
   const validateActiveFilters = useCallback(
     (filters: ActiveFilters): ActiveFilters => {
