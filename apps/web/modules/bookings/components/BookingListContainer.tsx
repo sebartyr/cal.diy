@@ -12,6 +12,7 @@ import { WipeMyCalActionButton } from "@calcom/web/components/apps/wipemycalothe
 import { getCoreRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useAdminBookingScope } from "~/bookings/hooks/useAdminBookingScope";
 import { useBookingFilters } from "~/bookings/hooks/useBookingFilters";
 import { useBookingListColumns } from "~/bookings/hooks/useBookingListColumns";
 import { useBookingListData } from "~/bookings/hooks/useBookingListData";
@@ -26,6 +27,7 @@ import {
   useBookingDetailsSheetStore,
 } from "../store/bookingDetailsSheetStore";
 import type { BookingListingStatus, BookingsGetOutput, RowData } from "../types";
+import { AdminBookingScopeFilter } from "./AdminBookingScopeFilter";
 import { BookingDetailsSheet } from "./BookingDetailsSheet";
 import { BookingList } from "./BookingList";
 import { ViewToggleButton } from "./ViewToggleButton";
@@ -65,6 +67,7 @@ interface BookingListContainerProps {
   };
   bookingsV3Enabled: boolean;
   bookingAuditEnabled: boolean;
+  isSystemAdmin?: boolean;
 }
 
 interface BookingListInnerProps extends BookingListContainerProps {
@@ -82,6 +85,7 @@ function BookingListInner({
   bookings,
   bookingsV3Enabled,
   bookingAuditEnabled,
+  isSystemAdmin = false,
   data,
   isPending,
   hasError,
@@ -114,6 +118,7 @@ function BookingListInner({
     canReadOthersBookings: permissions.canReadOthersBookings,
     bookingsV3Enabled,
     handleBookingClick,
+    isSystemAdmin,
   });
 
   const finalData = useBookingListData({
@@ -184,6 +189,8 @@ function BookingListInner({
           setShowFilters={setShowFilters}
         />
 
+        {isSystemAdmin && <AdminBookingScopeFilter />}
+
         {/* Desktop: auto-pushed to right via flex-grow spacer, Mobile: continue on second row */}
         <div className="hidden grow md:block" />
 
@@ -224,6 +231,7 @@ function BookingListInner({
           userId={user?.id}
           userEmail={user?.email}
           bookingAuditEnabled={bookingAuditEnabled}
+          isSystemAdmin={isSystemAdmin}
         />
       )}
     </>
@@ -234,6 +242,9 @@ export function BookingListContainer(props: BookingListContainerProps) {
   const { limit, offset, setPageIndex, isValidatorPending } = useDataTable();
   const { eventTypeIds, teamIds, userIds, dateRange, attendeeName, attendeeEmail, bookingUid } =
     useBookingFilters();
+  const { queryFilters: adminScopeFilters } = useAdminBookingScope({
+    isSystemAdmin: !!props.isSystemAdmin,
+  });
 
   // Build query input once - shared between query and prefetching
   const queryInput = useMemo(
@@ -252,6 +263,8 @@ export function BookingListContainer(props: BookingListContainerProps) {
           ? dayjs(dateRange?.startDate).startOf("day").toISOString()
           : undefined,
         beforeEndDate: dateRange?.endDate ? dayjs(dateRange?.endDate).endOf("day").toISOString() : undefined,
+        // The admin scope replaces the member/team filters it targets.
+        ...adminScopeFilters,
       },
     }),
     [
@@ -265,6 +278,7 @@ export function BookingListContainer(props: BookingListContainerProps) {
       attendeeEmail,
       bookingUid,
       dateRange,
+      adminScopeFilters,
     ]
   );
 

@@ -4647,5 +4647,12 @@
   "error_updating_user_role": "Une erreur est survenue lors de la modification du rôle de cet utilisateur.",
   "admin_user_role_change_hint": "Utilisez l'action « Promouvoir administrateur » / « Retirer le rôle d'administrateur » dans la liste des utilisateurs pour le modifier.",
   "admin_user_identity_provider_hint": "Géré par le processus de connexion ; il n'est pas modifiable ici.",
+  "admin_bookings_scope": "Portée des réservations",
+  "admin_bookings_scope_all": "Toutes les réservations",
+  "admin_bookings_scope_user": "Utilisateur…",
+  "admin_bookings_scope_team": "Équipe…",
+  "admin_bookings_search_users": "Rechercher par e-mail ou nom d'utilisateur",
+  "admin_bookings_search_teams": "Rechercher par nom ou slug d'équipe",
+  "booking_organizer_name": "Organisateur : {{name}}",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Ajoutez vos nouvelles chaînes ci-dessus ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

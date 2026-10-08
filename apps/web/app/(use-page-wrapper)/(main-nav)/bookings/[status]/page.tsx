@@ -1,5 +1,7 @@
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
+import { isSessionActingSystemAdmin } from "@calcom/features/auth/lib/isSessionActingSystemAdmin";
 import { FeaturesRepository } from "@calcom/features/flags/features.repository";
+import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { prisma } from "@calcom/prisma";
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
 import type { PageProps } from "app/_types";
@@ -41,6 +43,9 @@ const Page = async ({ params }: PageProps) => {
 
   // No teams in cal.diy, so canReadOthersBookings is always false.
   const canReadOthersBookings = false;
+  // Same admin policy as the server (effective role, not impersonating, unlocked, 2FA when required),
+  // so the scope selector is only offered when bookings.get will accept it.
+  const isSystemAdmin = await isSessionActingSystemAdmin(session, new UserRepository(prisma));
 
   const [bookingAuditEnabled, bookingsV3Enabled] = await Promise.all([
     featuresRepository.checkIfUserHasFeature(userId, "booking-audit"),
@@ -59,6 +64,7 @@ const Page = async ({ params }: PageProps) => {
         status={parsed.data.status}
         userId={userId}
         permissions={{ canReadOthersBookings }}
+        isSystemAdmin={isSystemAdmin}
         bookingsV3Enabled={bookingsV3Enabled}
         bookingAuditEnabled={bookingAuditEnabled}
       />

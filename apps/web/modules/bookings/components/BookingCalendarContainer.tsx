@@ -35,6 +35,7 @@ interface BookingCalendarContainerProps {
     canReadOthersBookings: boolean;
   };
   bookingsV3Enabled: boolean;
+  isSystemAdmin?: boolean;
 }
 
 interface BookingCalendarInnerProps extends BookingCalendarContainerProps {
@@ -56,6 +57,7 @@ function BookingCalendarInner({
   status,
   permissions,
   bookingsV3Enabled,
+  isSystemAdmin = false,
   data,
   allowedFilterIds,
   hasError,
@@ -161,6 +163,7 @@ function BookingCalendarInner({
         userTimeFormat={user?.timeFormat === null ? undefined : user?.timeFormat}
         userId={user?.id}
         userEmail={user?.email}
+        isSystemAdmin={isSystemAdmin}
       />
     </>
   );

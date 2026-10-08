@@ -29,6 +29,7 @@ import { WrongAssignmentDialog } from "@components/dialog/WrongAssignmentDialog"
 import { useState } from "react";
 import type { z } from "zod";
 import { useBookingConfirmation } from "../hooks/useBookingConfirmation";
+import { isActingAsBookingHost } from "../loggedInUser";
 import type { BookingItemProps } from "../types";
 import { useBookingActionsStoreContext } from "./BookingActionsStoreProvider";
 import {
@@ -178,13 +179,11 @@ export function BookingActionsDropdown({
     return "upcoming";
   };
 
-
   const userEmail = booking.loggedInUser.userEmail;
   const userSeat = booking.seatsReferences.find((seat) => !!userEmail && seat.attendee?.email === userEmail);
   const isAttendee = !!userSeat;
 
-  // Check if the logged-in user is the host/owner of the booking
-  const isHost = booking.loggedInUser.userId === booking.user?.id;
+  const isHost = isActingAsBookingHost(booking);
 
   const isCalVideoLocation =
     !booking.location ||
@@ -276,12 +275,12 @@ export function BookingActionsDropdown({
       action.id === "reschedule_request"
         ? () => setIsOpenRescheduleDialog(true)
         : action.id === "change_location"
-            ? () => setIsOpenLocationDialog(true)
-            : action.id === "add_members"
-              ? () => setIsOpenAddGuestsDialog(true)
-              : action.id === "reassign"
-                ? () => setIsOpenReassignDialog(true)
-                : undefined,
+          ? () => setIsOpenLocationDialog(true)
+          : action.id === "add_members"
+            ? () => setIsOpenAddGuestsDialog(true)
+            : action.id === "reassign"
+              ? () => setIsOpenReassignDialog(true)
+              : undefined,
   })) as ActionType[];
 
   const baseAfterEventActions = getAfterEventActions(actionContext);

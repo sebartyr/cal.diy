@@ -14,6 +14,8 @@ export type BookingItemProps = BookingItem & {
     userTimeZone: string | undefined;
     userTimeFormat: number | null | undefined;
     userEmail: string | undefined;
+    // Acting system admins may act on other users' bookings as if they were their host.
+    isSystemAdmin?: boolean;
   };
   isToday: boolean;
   onClick?: () => void;

@@ -1,10 +1,12 @@
 import { eventTypeMetaDataSchemaWithTypedApps } from "@calcom/app-store/zod-utils";
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
+import { isSessionActingSystemAdmin } from "@calcom/features/auth/lib/isSessionActingSystemAdmin";
 import getBookingInfo from "@calcom/features/bookings/lib/getBookingInfo";
 import { BookingRepository } from "@calcom/features/bookings/repositories/BookingRepository";
 import { getDefaultEvent } from "@calcom/features/eventtypes/lib/defaultEvents";
 import { getBrandingForEventType } from "@calcom/features/profile/lib/getBranding";
 import { shouldHideBrandingForEvent } from "@calcom/features/profile/lib/hideBranding";
+import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
 import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
 import { maybeGetBookingUidFromSeat } from "@calcom/lib/server/maybeGetBookingUidFromSeat";
@@ -180,6 +182,11 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   };
 
   const isLoggedInUserHost = checkIfUserIsHost(userId);
+  // A system admin cancelling someone else's booking gets the host rules on the server; the cancel
+  // form must ask for the same things. It grants nothing else on this page.
+  const isLoggedInUserSystemAdmin = isLoggedInUserHost
+    ? false
+    : await isSessionActingSystemAdmin(session, new UserRepository(prisma));
   const eventTeamId = eventType.team?.id ?? eventType.parent?.teamId;
   const isLoggedInUserTeamMember = false;
 
@@ -265,6 +272,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
       requiresLoginToUpdate,
       rescheduledToUid,
       isLoggedInUserHost,
+      isLoggedInUserSystemAdmin,
       canViewHiddenData,
       internalNotePresets: internalNotes,
     },
