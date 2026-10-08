@@ -1,8 +1,5 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
-
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { MembershipRole } from "@calcom/prisma/enums";
 import { trpc } from "@calcom/trpc/react";
@@ -11,6 +8,8 @@ import { Badge } from "@calcom/ui/components/badge";
 import { Button } from "@calcom/ui/components/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@calcom/ui/components/dialog";
 import { showToast } from "@calcom/ui/components/toast";
+import { useParams } from "next/navigation";
+import { useMemo, useState } from "react";
 
 const ROLES = [MembershipRole.OWNER, MembershipRole.ADMIN, MembershipRole.MEMBER];
 
@@ -20,10 +19,7 @@ export default function TeamMembersView() {
   const teamId = Number(params?.id);
 
   const { data: team } = trpc.viewer.teams.get.useQuery({ teamId }, { enabled: Number.isFinite(teamId) });
-  const members = trpc.viewer.teams.listMembers.useQuery(
-    { teamId },
-    { enabled: Number.isFinite(teamId) }
-  );
+  const members = trpc.viewer.teams.listMembers.useQuery({ teamId }, { enabled: Number.isFinite(teamId) });
   const bookingsBreakdown = trpc.viewer.teams.getActiveUserBreakdown.useQuery(
     { teamId },
     { enabled: Number.isFinite(teamId) }
@@ -82,7 +78,9 @@ export default function TeamMembersView() {
           <a className="text-subtle px-1 py-2 hover:text-emphasis" href={`/settings/teams/${teamId}/profile`}>
             {t("profile", { defaultValue: "Profil" })}
           </a>
-          <a className="border-emphasis -mb-px border-b-2 px-1 py-2" href={`/settings/teams/${teamId}/members`}>
+          <a
+            className="border-emphasis -mb-px border-b-2 px-1 py-2"
+            href={`/settings/teams/${teamId}/members`}>
             {t("members", { defaultValue: "Membres" })}
           </a>
         </nav>
@@ -110,14 +108,14 @@ export default function TeamMembersView() {
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar
                     size="sm"
-                    alt={m.user.name ?? m.user.email}
+                    alt={m.user.name ?? m.user.username ?? m.user.email ?? ""}
                     imageSrc={m.user.avatarUrl ?? null}
                   />
                   <div className="min-w-0">
                     <p className="text-emphasis truncate font-medium">
                       {m.user.name ?? m.user.username ?? m.user.email}
                     </p>
-                    <p className="text-subtle truncate text-xs">{m.user.email}</p>
+                    {m.user.email ? <p className="text-subtle truncate text-xs">{m.user.email}</p> : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -154,7 +152,11 @@ export default function TeamMembersView() {
                       color="destructive"
                       StartIcon="trash-2"
                       onClick={() => {
-                        if (window.confirm(t("confirm_remove_member", { defaultValue: "Retirer ce membre ?" }) as string)) {
+                        if (
+                          window.confirm(
+                            t("confirm_remove_member", { defaultValue: "Retirer ce membre ?" }) as string
+                          )
+                        ) {
                           remove.mutate({ teamId, userId: m.user.id });
                         }
                       }}>

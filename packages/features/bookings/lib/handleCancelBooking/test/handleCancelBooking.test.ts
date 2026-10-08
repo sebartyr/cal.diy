@@ -1,25 +1,22 @@
+import prismock from "@calcom/testing/lib/__mocks__/prisma";
 import {
   BookingLocations,
   createBookingScenario,
   getBooker,
+  getDate,
   getGoogleCalendarCredential,
   getOrganizer,
   getScenarioData,
   mockCalendarToHaveNoBusySlots,
   mockSuccessfulVideoMeetingCreation,
   TestData,
-  getDate,
 } from "@calcom/testing/lib/bookingScenario/bookingScenario";
-import {
-  expectBookingCancelledWebhookToHaveBeenFired,
-} from "@calcom/testing/lib/bookingScenario/expects";
-import { setupAndTeardown } from "@calcom/testing/lib/bookingScenario/setupAndTeardown";
-
-import { describe, expect, vi } from "vitest";
-
 import { processPaymentRefund } from "@calcom/features/bookings/lib/payment/processPaymentRefund";
 import { BookingStatus } from "@calcom/prisma/enums";
+import { expectBookingCancelledWebhookToHaveBeenFired } from "@calcom/testing/lib/bookingScenario/expects";
+import { setupAndTeardown } from "@calcom/testing/lib/bookingScenario/setupAndTeardown";
 import { test } from "@calcom/testing/lib/fixtures/fixtures";
+import { describe, expect, vi } from "vitest";
 
 vi.mock("@calcom/features/bookings/lib/payment/processPaymentRefund", () => ({
   processPaymentRefund: vi.fn(),
@@ -371,7 +368,11 @@ describe("Cancel Booking", () => {
     );
     mockSuccessfulVideoMeetingCreation({
       metadataLookupKey: "dailyvideo",
-      videoMeetingData: { id: "MOCK_ID", password: "MOCK_PASS", url: `http://mock-dailyvideo.example.com/meeting-1` },
+      videoMeetingData: {
+        id: "MOCK_ID",
+        password: "MOCK_PASS",
+        url: `http://mock-dailyvideo.example.com/meeting-1`,
+      },
     });
     mockCalendarToHaveNoBusySlots("googlecalendar", {
       create: { id: "MOCKED_GOOGLE_CALENDAR_EVENT_ID" },
@@ -2123,6 +2124,101 @@ describe("Cancel Booking", () => {
       });
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe("cancelledBy attribution", () => {
+    const setupBooking = async ({ id, uid }: { id: number; uid: string }) => {
+      const booker = getBooker({ email: "booker@example.com", name: "Booker" });
+      const organizer = getOrganizer({
+        name: "Organizer",
+        email: "organizer@example.com",
+        id: 101,
+        schedules: [TestData.schedules.IstWorkHours],
+        credentials: [getGoogleCalendarCredential()],
+        selectedCalendars: [TestData.selectedCalendars.google],
+      });
+      const { dateString: plus1DateString } = getDate({ dateIncrement: 1 });
+
+      await createBookingScenario(
+        getScenarioData({
+          eventTypes: [
+            {
+              id: 1,
+              slotInterval: 30,
+              length: 30,
+              requiresCancellationReason: "OPTIONAL_BOTH",
+              users: [{ id: 101 }],
+            },
+          ],
+          bookings: [
+            {
+              id,
+              uid,
+              eventTypeId: 1,
+              userId: 101,
+              attendees: [{ email: booker.email, timeZone: "Asia/Kolkata" }],
+              responses: {
+                email: booker.email,
+                name: booker.name,
+                location: { optionValue: "", value: BookingLocations.CalVideo },
+              },
+              status: BookingStatus.ACCEPTED,
+              startTime: `${plus1DateString}T05:00:00.000Z`,
+              endTime: `${plus1DateString}T05:30:00.000Z`,
+            },
+          ],
+          organizer,
+          apps: [TestData.apps["daily-video"]],
+        })
+      );
+
+      return { booker, organizer };
+    };
+
+    test("Should ignore a cancelledBy that is not part of the booking when there is no session", async () => {
+      const handleCancelBooking = (await import("@calcom/features/bookings/lib/handleCancelBooking")).default;
+      const id = 9001;
+      const uid = "cancelled-by-spoofed-anonymous";
+      await setupBooking({ id, uid });
+
+      await handleCancelBooking({
+        bookingData: { id, uid, cancelledBy: "attacker@evil.com" },
+        userId: -1,
+      });
+
+      const booking = await prismock.booking.findUnique({ where: { id }, select: { cancelledBy: true } });
+      expect(booking?.cancelledBy).toBeNull();
+    });
+
+    test("Should keep a cancelledBy that matches an attendee when there is no session", async () => {
+      const handleCancelBooking = (await import("@calcom/features/bookings/lib/handleCancelBooking")).default;
+      const id = 9002;
+      const uid = "cancelled-by-attendee-anonymous";
+      const { booker } = await setupBooking({ id, uid });
+
+      await handleCancelBooking({
+        bookingData: { id, uid, cancelledBy: booker.email },
+        userId: -1,
+      });
+
+      const booking = await prismock.booking.findUnique({ where: { id }, select: { cancelledBy: true } });
+      expect(booking?.cancelledBy).toBe(booker.email);
+    });
+
+    test("Should record the session user's email instead of the claimed cancelledBy", async () => {
+      const handleCancelBooking = (await import("@calcom/features/bookings/lib/handleCancelBooking")).default;
+      const id = 9003;
+      const uid = "cancelled-by-spoofed-authenticated";
+      const { booker, organizer } = await setupBooking({ id, uid });
+
+      await handleCancelBooking({
+        bookingData: { id, uid, cancelledBy: booker.email },
+        userId: organizer.id,
+      });
+
+      const booking = await prismock.booking.findUnique({ where: { id }, select: { cancelledBy: true } });
+      expect(booking?.cancelledBy).toBe(organizer.email);
     });
   });
 });

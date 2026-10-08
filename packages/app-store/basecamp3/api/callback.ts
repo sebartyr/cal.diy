@@ -1,15 +1,19 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import appConfig from "../config.json";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query;
+  const state = decodeOAuthState(req);
+
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
+
   const { client_id, client_secret, user_agent } = await getAppKeysFromSlug("basecamp3");
 
   const redirectUri = `${WEBAPP_URL}/api/integrations/basecamp3/callback`;
@@ -86,8 +90,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     },
   });
-
-  const state = decodeOAuthState(req, "basecamp3");
 
   res.redirect(getInstalledAppPath({ variant: appConfig.variant, slug: appConfig.slug }));
 }

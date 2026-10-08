@@ -1,12 +1,10 @@
 import { captureException } from "@sentry/nextjs";
-import type { NextApiRequest } from "next";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import type { AnyRouter } from "@trpc/server";
+import { TRPCError } from "@trpc/server";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ZodIssue } from "zod";
 import { ZodError } from "zod";
-
-import { TRPCError } from "@trpc/server";
-import type { AnyRouter } from "@trpc/server";
-
 import { createNextApiHandler } from "./createNextApiHandler";
 import { errorFormatter } from "./errorFormatter";
 import { onErrorHandler } from "./onErrorHandler";
@@ -19,6 +17,11 @@ vi.mock("./createContext", () => {
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
+}));
+
+const trpcAdapterHandler = vi.fn();
+vi.mock("@trpc/server/adapters/next", () => ({
+  createNextApiHandler: () => trpcAdapterHandler,
 }));
 
 describe("createNextApiHandler", () => {
@@ -173,6 +176,70 @@ describe("createNextApiHandler", () => {
 
       expect(consoleSpy).not.toHaveBeenCalled();
       expect(captureException).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("CSRF protection", () => {
+    const createRes = () => {
+      const res = { status: vi.fn(), json: vi.fn() };
+      res.status.mockReturnValue(res);
+      return res as unknown as NextApiResponse & {
+        status: ReturnType<typeof vi.fn>;
+        json: ReturnType<typeof vi.fn>;
+      };
+    };
+
+    it("rejects a cross-site text/plain mutation with 403 without reaching tRPC", async () => {
+      const handler = createNextApiHandler(mockRouter);
+      const res = createRes();
+      const req = {
+        method: "POST",
+        url: "/api/trpc/me/updateProfile",
+        headers: { "content-type": "text/plain", origin: "https://evil.example", host: "app.example.com" },
+      } as unknown as NextApiRequest;
+
+      await handler(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({ data: { code: "FORBIDDEN", httpStatus: 403 } }),
+        })
+      );
+      expect(trpcAdapterHandler).not.toHaveBeenCalled();
+    });
+
+    it("forwards same-origin JSON mutations to tRPC", async () => {
+      const handler = createNextApiHandler(mockRouter);
+      const res = createRes();
+      const req = {
+        method: "POST",
+        url: "/api/trpc/me/updateProfile",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://app.example.com",
+          host: "app.example.com",
+        },
+      } as unknown as NextApiRequest;
+
+      await handler(req, res);
+
+      expect(res.status).not.toHaveBeenCalled();
+      expect(trpcAdapterHandler).toHaveBeenCalledWith(req, res);
+    });
+
+    it("forwards queries regardless of origin", async () => {
+      const handler = createNextApiHandler(mockRouter, true);
+      const res = createRes();
+      const req = {
+        method: "GET",
+        url: "/api/trpc/public/session",
+        headers: { origin: "https://evil.example" },
+      } as unknown as NextApiRequest;
+
+      await handler(req, res);
+
+      expect(trpcAdapterHandler).toHaveBeenCalledWith(req, res);
     });
   });
 });

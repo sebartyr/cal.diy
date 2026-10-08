@@ -1,6 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from "next";
 import { stringify } from "node:querystring";
-
 import { renewSelectedCalendarCredentialId } from "@calcom/lib/connectedCalendar";
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
@@ -9,9 +7,10 @@ import { defaultHandler } from "@calcom/lib/server/defaultHandler";
 import { defaultResponder } from "@calcom/lib/server/defaultResponder";
 import prisma from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import config from "../config.json";
 import type { ZohoAuthCredentials } from "../types/ZohoCalendar";
@@ -41,6 +40,9 @@ async function getHandler(req: NextApiRequest, res: NextApiResponse) {
   if (!req.session?.user?.id) {
     return res.status(401).json({ message: "You must be logged in to do this" });
   }
+
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
 
   const appKeys = await getAppKeysFromSlug(config.slug);
   const { client_id, client_secret } = zohoKeysSchema.parse(appKeys);

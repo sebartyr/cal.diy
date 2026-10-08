@@ -1,20 +1,17 @@
-import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
 import { createHmac } from "node:crypto";
-import { headers } from "next/headers";
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-
-import { getRoomNameFromRecordingId, getBatchProcessorJobAccessLink } from "@calcom/app-store/dailyvideo/lib";
-import { BookingRepository } from "@calcom/features/bookings/repositories/BookingRepository";
+import process from "node:process";
+import { getBatchProcessorJobAccessLink, getRoomNameFromRecordingId } from "@calcom/app-store/dailyvideo/lib";
 import {
   sendDailyVideoRecordingEmails,
   sendDailyVideoTranscriptEmails,
 } from "@calcom/emails/daily-video-emails";
+import { BookingRepository } from "@calcom/features/bookings/repositories/BookingRepository";
 import {
   getAllTranscriptsAccessLinkFromMeetingId,
   submitBatchProcessorTranscriptionJob,
 } from "@calcom/features/conferencing/lib/videoClient";
 import { WEBAPP_URL } from "@calcom/lib/constants";
+import { safeCompareSecret } from "@calcom/lib/cron-auth";
 import { getTeamIdFromEventType } from "@calcom/lib/getTeamIdFromEventType";
 import { HttpError } from "@calcom/lib/http-error";
 import logger from "@calcom/lib/logger";
@@ -25,15 +22,19 @@ import { getBooking } from "@calcom/web/lib/daily-webhook/getBooking";
 import { getBookingReference } from "@calcom/web/lib/daily-webhook/getBookingReference";
 import { getCalendarEvent } from "@calcom/web/lib/daily-webhook/getCalendarEvent";
 import {
+  batchProcessorJobFinishedSchema,
   meetingEndedSchema,
   recordingReadySchema,
-  batchProcessorJobFinishedSchema,
   testRequestSchema,
 } from "@calcom/web/lib/daily-webhook/schema";
 import {
   triggerRecordingReadyWebhook,
   triggerTranscriptionGeneratedWebhook,
 } from "@calcom/web/lib/daily-webhook/triggerWebhooks";
+import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
+import { headers } from "next/headers";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 const log = logger.getSubLogger({ prefix: ["daily-video-webhook-handler"] });
 
@@ -45,10 +46,16 @@ const computeSignature = (hmacSecret: string, reqBody: any, webhookTimestampHead
   return computed_signature;
 };
 
-const getProxyDownloadLinkOfCalVideo = async (recordingId: string) => {
+const getProxyDownloadLinkOfCalVideo = async (recordingId: string): Promise<string | undefined> => {
   const token = generateVideoToken(recordingId);
-  const downloadLink = `${WEBAPP_URL}/api/video/recording?token=${token}`;
-  return downloadLink;
+  if (!token) {
+    log.warn(
+      "CAL_VIDEO_RECORDING_TOKEN_SECRET is not set: recording download links are disabled",
+      safeStringify({ recordingId })
+    );
+    return undefined;
+  }
+  return `${WEBAPP_URL}/api/video/recording?token=${token}`;
 };
 
 export async function postHandler(request: NextRequest) {
@@ -70,7 +77,7 @@ export async function postHandler(request: NextRequest) {
     const webhookTimestamp = headersList.get("x-webhook-timestamp");
     const computed_signature = computeSignature(hmacSecret, body, webhookTimestamp);
 
-    if (headersList.get("x-webhook-signature") !== computed_signature) {
+    if (!safeCompareSecret(headersList.get("x-webhook-signature"), computed_signature)) {
       return NextResponse.json({ message: "Signature does not match" }, { status: 403 });
     }
   }
@@ -134,10 +141,15 @@ export async function postHandler(request: NextRequest) {
           fn: submitBatchProcessorTranscriptionJob(recording_id),
           errorMsg: "submit transcription batch processor job",
         },
-        {
-          fn: sendDailyVideoRecordingEmails(evt, downloadLink),
-          errorMsg: "send recording emails",
-        },
+        // The recording email exists only to deliver the download link.
+        ...(downloadLink
+          ? [
+              {
+                fn: sendDailyVideoRecordingEmails(evt, downloadLink),
+                errorMsg: "send recording emails",
+              },
+            ]
+          : []),
       ];
 
       const results = await Promise.allSettled(tasks.map((t) => t.fn));

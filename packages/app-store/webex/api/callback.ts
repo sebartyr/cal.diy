@@ -1,10 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { WEBAPP_URL_FOR_OAUTH } from "@calcom/lib/constants";
 import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import createOAuthAppCredential from "../../_utils/oauth/createOAuthAppCredential";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import config from "../config.json";
@@ -12,8 +11,12 @@ import { getWebexAppKeys } from "../lib/getWebexAppKeys";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query;
+  const state = decodeOAuthState(req);
+
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
+
   const { client_id, client_secret } = await getWebexAppKeys();
-  const state = decodeOAuthState(req, "webex");
 
   /** @link https://developer.webex.com/docs/integrations#getting-an-access-token **/
 

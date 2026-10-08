@@ -1,10 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
 import { stringify } from "node:querystring";
-
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
+import { encodeOAuthState } from "../../_utils/oauth/encodeOAuthState";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {
@@ -31,6 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const params = {
       client_id: clientId,
       redirect_uri,
+      state: encodeOAuthState(req),
     };
     const query = stringify(params);
     const url = `${baseUrl}/oauth/approval?${query}`;

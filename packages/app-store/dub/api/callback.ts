@@ -1,11 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import { HttpError } from "@calcom/lib/http-error";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
 import getParsedAppKeysFromSlug from "../../_utils/getParsedAppKeysFromSlug";
+import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
 import createOAuthAppCredential from "../../_utils/oauth/createOAuthAppCredential";
 import { decodeOAuthState } from "../../_utils/oauth/decodeOAuthState";
 import { dubAppKeysSchema } from "../lib/utils";
@@ -13,7 +12,7 @@ import { dubAppKeysSchema } from "../lib/utils";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query;
 
-  const state = decodeOAuthState(req, "dub");
+  const state = decodeOAuthState(req);
 
   if (typeof code !== "string") {
     if (state?.onErrorReturnTo || state?.returnTo) {
@@ -30,6 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!req.session?.user?.id) {
     throw new HttpError({ statusCode: 401, message: "You must be logged in to do this" });
   }
+
+  // SEC-102: refuse to exchange the code unless the state carries a valid session-bound nonce.
+  if (!assertOAuthState(state, res)) return;
 
   const { client_id, redirect_uris, client_secret } = await getParsedAppKeysFromSlug("dub", dubAppKeysSchema);
 

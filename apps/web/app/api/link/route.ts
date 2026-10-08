@@ -1,6 +1,6 @@
 import process from "node:process";
 import { WEBAPP_URL } from "@calcom/lib/constants";
-import { symmetricDecrypt } from "@calcom/lib/crypto";
+import { symmetricDecryptStrictV2 } from "@calcom/lib/crypto-clever";
 import { distributedTracing } from "@calcom/lib/tracing/factory";
 import prisma from "@calcom/prisma";
 import { confirmHandler } from "@calcom/trpc/server/routers/viewer/bookings/confirm.handler";
@@ -30,23 +30,40 @@ const decryptedSchema = z.object({
   platformBookingUrl: z.string().optional(),
 });
 
+const INVALID_LINK_MESSAGE = "Invalid or expired link";
+
+// This endpoint is unauthenticated: every way a token can fail (bad query,
+// bad encoding, failed decryption, bad JSON, bad shape) must produce the same
+// response so the route cannot be used as a decryption oracle.
+function parseLinkRequest(searchParams: URLSearchParams) {
+  try {
+    const { action, token, reason } = querySchema.parse(Object.fromEntries(searchParams.entries()));
+    const decrypted = symmetricDecryptStrictV2(
+      decodeURIComponent(token),
+      process.env.CALENDSO_ENCRYPTION_KEY || ""
+    );
+    return { action, reason, ...decryptedSchema.parse(JSON.parse(decrypted)) };
+  } catch {
+    return null;
+  }
+}
+
 async function handler(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-
-  const { action, token, reason } = querySchema.parse(Object.fromEntries(searchParams.entries()));
-
-  const decryptedData = JSON.parse(
-    symmetricDecrypt(decodeURIComponent(token), process.env.CALENDSO_ENCRYPTION_KEY || "")
-  );
+  const parsed = parseLinkRequest(request.nextUrl.searchParams);
+  if (!parsed) {
+    return NextResponse.json({ message: INVALID_LINK_MESSAGE }, { status: 400 });
+  }
 
   const {
+    action,
+    reason,
     bookingUid,
     userId,
     platformClientId,
     platformRescheduleUrl,
     platformCancelUrl,
     platformBookingUrl,
-  } = decryptedSchema.parse(decryptedData);
+  } = parsed;
 
   const booking = await prisma.booking.findUniqueOrThrow({
     where: { uid: bookingUid },

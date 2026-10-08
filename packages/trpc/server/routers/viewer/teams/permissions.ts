@@ -1,8 +1,6 @@
-import { TRPCError } from "@trpc/server";
-
 import { prisma } from "@calcom/prisma";
 import { MembershipRole, UserPermissionRole } from "@calcom/prisma/enums";
-
+import { TRPCError } from "@trpc/server";
 import type { TrpcSessionUser } from "../../../types";
 
 /**
@@ -18,7 +16,7 @@ import type { TrpcSessionUser } from "../../../types";
  * that Cal.diy removed during MIT relicensing.
  */
 
-const ROLE_RANK: Record<MembershipRole, number> = {
+export const ROLE_RANK: Record<MembershipRole, number> = {
   [MembershipRole.OWNER]: 3,
   [MembershipRole.ADMIN]: 2,
   [MembershipRole.MEMBER]: 1,

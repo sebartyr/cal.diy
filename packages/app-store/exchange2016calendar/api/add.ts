@@ -1,12 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
+import process from "node:process";
 import { symmetricEncrypt } from "@calcom/lib/crypto";
 import logger from "@calcom/lib/logger";
 import { defaultHandler } from "@calcom/lib/server/defaultHandler";
 import { defaultResponder } from "@calcom/lib/server/defaultResponder";
+import { assertUrlIsSafeForSSRF } from "@calcom/lib/ssrfProtection";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
 import { BuildCalendarService } from "../lib";
 
@@ -42,6 +42,7 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   try {
+    await assertUrlIsSafeForSSRF(body.url, { appId: data.appId, userId: user.id });
     const dav = BuildCalendarService({
       id: 0,
       user: { email: user.email },

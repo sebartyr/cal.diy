@@ -2,6 +2,7 @@ import { getDefaultLocations } from "@calcom/app-store/_utils/getDefaultLocation
 import { DailyLocationType } from "@calcom/app-store/constants";
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
+import { ScheduleRepository } from "@calcom/features/schedules/repositories/ScheduleRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
 import { MembershipRole, SchedulingType } from "@calcom/prisma/enums";
@@ -48,6 +49,16 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
   } = input;
 
   const userId = ctx.user.id;
+
+  if (scheduleId) {
+    // Connecting another user's schedule would expose their availability through this event type's booking page
+    const scheduleRepo = new ScheduleRepository(ctx.prisma);
+    const schedule = await scheduleRepo.findScheduleByIdForOwnershipCheck({ scheduleId });
+    if (!schedule || schedule.userId !== userId) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this schedule" });
+    }
+  }
+
   const isManagedEventType = schedulingType === SchedulingType.MANAGED;
   const isOrgAdmin = !!ctx.user?.organization?.isOrgAdmin;
 

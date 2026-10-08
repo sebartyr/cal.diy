@@ -7,7 +7,7 @@ import { prisma } from "@calcom/prisma";
 import { MembershipRole } from "@calcom/prisma/enums";
 import { TRPCError } from "@trpc/server";
 import type { TrpcSessionUser } from "../../../types";
-import { requireMember } from "./permissions";
+import { ROLE_RANK, requireMember } from "./permissions";
 
 const log = logger.getSubLogger({ prefix: ["teams.inviteMember"] });
 
@@ -22,7 +22,16 @@ type Options = {
 };
 
 export async function inviteMemberHandler({ ctx, input }: Options) {
-  await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN, ctx.user);
+  const callerMembership = await requireMember(ctx.user.id, input.teamId, MembershipRole.ADMIN, ctx.user);
+
+  // Without this, an ADMIN could invite a second account of theirs as OWNER,
+  // accept it, and then remove the real owners.
+  if (ROLE_RANK[input.role] > ROLE_RANK[callerMembership.role]) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `A team ${callerMembership.role} cannot invite a member with role ${input.role}`,
+    });
+  }
 
   const invitee = await prisma.user.findUnique({
     where: { email: input.email.toLowerCase() },

@@ -1,13 +1,13 @@
+import process from "node:process";
+import { WEBAPP_URL } from "@calcom/lib/constants";
 import type { AnyRouter } from "@trpc/server";
 import { createNextApiHandler as _createNextApiHandler } from "@trpc/server/adapters/next";
-
+import type { NextApiHandler } from "next";
 import { createContext as createTrpcContext } from "./createContext";
+import { buildTrustedOrigins, getCsrfRejectionReason } from "./csrfGuard";
 import { onErrorHandler } from "./onErrorHandler";
 
-/**
- * Creates an API handler executed by Next.js.
- */
-export function createNextApiHandler(router: AnyRouter, isPublic = false, namespace = "") {
+function createTrpcHandler(router: AnyRouter, isPublic: boolean, namespace: string) {
   return _createNextApiHandler({
     router,
     /**
@@ -85,4 +85,30 @@ export function createNextApiHandler(router: AnyRouter, isPublic = false, namesp
       return defaultHeaders;
     },
   });
+}
+
+/**
+ * Creates an API handler executed by Next.js.
+ */
+export function createNextApiHandler(router: AnyRouter, isPublic = false, namespace = ""): NextApiHandler {
+  const trpcHandler = createTrpcHandler(router, isPublic, namespace);
+  const trustedOrigins = buildTrustedOrigins([WEBAPP_URL]);
+
+  return (req, res) => {
+    const rejectionReason = getCsrfRejectionReason({
+      method: req.method,
+      headers: req.headers,
+      trustedOrigins,
+    });
+    if (rejectionReason) {
+      res.status(403).json({
+        error: {
+          message: `Request rejected by CSRF protection: ${rejectionReason}`,
+          data: { code: "FORBIDDEN", httpStatus: 403 },
+        },
+      });
+      return;
+    }
+    return trpcHandler(req, res);
+  };
 }

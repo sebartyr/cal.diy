@@ -50,6 +50,26 @@ describe("checkProductionEnv", () => {
     if (!r.ok) expect(r.placeholders.some((p) => p.includes("CALENDSO_ENCRYPTION_KEY"))).toBe(true);
   });
 
+  it("passes when CRON_API_KEY is unset or a real secret", () => {
+    expect(checkProductionEnv({ ...fullProdEnv, CRON_API_KEY: undefined })).toEqual({ ok: true });
+    expect(checkProductionEnv({ ...fullProdEnv, CRON_API_KEY: "z".repeat(32) })).toEqual({ ok: true });
+  });
+
+  it("flags the CRON_API_KEY published in .env.example", () => {
+    const r = checkProductionEnv({ ...fullProdEnv, CRON_API_KEY: "0cc0e6c35519bba620c9360cfe3e68d0" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.placeholders).toContain("CRON_API_KEY(.env.example value)");
+  });
+
+  it("flags an empty or placeholder CRON_API_KEY", () => {
+    const empty = checkProductionEnv({ ...fullProdEnv, CRON_API_KEY: "" });
+    expect(empty.ok).toBe(false);
+    if (!empty.ok) expect(empty.placeholders).toContain("CRON_API_KEY(empty)");
+
+    const placeholder = checkProductionEnv({ ...fullProdEnv, CRON_API_KEY: "changeme" });
+    expect(placeholder.ok).toBe(false);
+  });
+
   it("aggregates multiple problems", () => {
     const r = checkProductionEnv({
       NODE_ENV: "production",
