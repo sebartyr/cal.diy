@@ -9,6 +9,7 @@ import { ZAdminLockUserAccountSchema } from "./lockUserAccount.schema";
 import { ZAdminRemoveTwoFactor } from "./removeTwoFactor.schema";
 import { ZAdminPasswordResetSchema } from "./sendPasswordReset.schema";
 import { ZSetSMSLockState } from "./setSMSLockState.schema";
+import { ZAdminSetUserRoleSchema } from "./setUserRole.schema";
 import { toggleFeatureFlag } from "./toggleFeatureFlag.procedure";
 import { ZAdminUnassignFeatureFromTeamSchema } from "./unassignFeatureFromTeam.schema";
 import { watchlistRouter } from "./watchlist/_router";
@@ -28,6 +29,10 @@ export const adminRouter = router({
   }),
   lockUserAccount: authedAdminProcedure.input(ZAdminLockUserAccountSchema).mutation(async (opts) => {
     const { default: handler } = await import("./lockUserAccount.handler");
+    return handler(opts);
+  }),
+  setUserRole: authedAdminProcedure.input(ZAdminSetUserRoleSchema).mutation(async (opts) => {
+    const { default: handler } = await import("./setUserRole.handler");
     return handler(opts);
   }),
   toggleFeatureFlag,

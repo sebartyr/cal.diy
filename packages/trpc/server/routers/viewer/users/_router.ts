@@ -1,6 +1,6 @@
 import { adminUserSelect } from "@calcom/features/users/repositories/UserRepository";
 import { WEBAPP_URL } from "@calcom/lib/constants";
-import { CreationSource, RedirectType } from "@calcom/prisma/enums";
+import { CreationSource, RedirectType, UserPermissionRole } from "@calcom/prisma/enums";
 import { UserSchema } from "@calcom/prisma/zod/modelSchema/UserSchema";
 import { authedAdminProcedure } from "@calcom/trpc/server/procedures/authedProcedure";
 import { router } from "@calcom/trpc/server/trpc";
@@ -13,6 +13,10 @@ export type UserAdminRouterOutputs = inferRouterOutputs<UserAdminRouter>;
 
 const userIdSchema = z.object({ userId: z.coerce.number() });
 
+// `role` is deliberately absent: it can only change through `viewer.admin.setUserRole`, which
+// enforces the self/last-admin/locked guards and the audit trail. `identityProvider` is absent
+// because it is owned by the sign-in flow (it is paired with `identityProviderId`, and a non-CAL
+// value skips the admin password/2FA policy and enables OAuth auto-linking by email).
 const userBodySchema = UserSchema.pick({
   name: true,
   email: true,
@@ -27,8 +31,6 @@ const userBodySchema = UserSchema.pick({
   // brandColor: true,
   // darkBrandColor: true,
   allowDynamicBooking: true,
-  identityProvider: true,
-  role: true,
   avatarUrl: true,
 });
 
@@ -67,7 +69,7 @@ export const userAdminRouter = router({
   add: authedAdminProcedure.input(userBodySchema).mutation(async ({ ctx, input }) => {
     const { prisma } = ctx;
     const user = await prisma.user.create({
-      data: { ...input, creationSource: CreationSource.WEBAPP },
+      data: { ...input, role: UserPermissionRole.USER, creationSource: CreationSource.WEBAPP },
       select: adminUserSelect,
     });
     return { user, message: `User with id: ${user.id} added successfully` };
