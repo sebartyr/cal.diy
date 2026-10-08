@@ -1,5 +1,5 @@
-import process from "node:process";
 import { recordAdminAction, recordAdminDenial } from "@calcom/features/audit-log/adminAuditLog";
+import { getSystemAdminDenialReason } from "@calcom/features/auth/lib/systemAdminPolicy";
 import type { ImpersonationRepository } from "@calcom/features/impersonation/repositories/ImpersonationRepository";
 import type { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { ErrorCode } from "@calcom/lib/errorCodes";
@@ -54,10 +54,11 @@ export class ImpersonationService {
     }
 
     const admin = await this.deps.userRepository.findAuthIdentityById({ id: actor.userId });
-    if (!admin || admin.locked || admin.role !== UserPermissionRole.ADMIN) {
+    const adminDenialReason = admin ? getSystemAdminDenialReason(admin) : "not_admin";
+    if (!admin || adminDenialReason === "not_admin" || adminDenialReason === "locked") {
       this.denyStart(actorUserId, "Only administrators can impersonate users.");
     }
-    if (process.env.REQUIRE_2FA_FOR_ADMIN === "true" && !admin.twoFactorEnabled) {
+    if (adminDenialReason === "two_factor_required") {
       this.denyStart(actorUserId, "Two-factor authentication is required for administrator accounts.");
     }
 

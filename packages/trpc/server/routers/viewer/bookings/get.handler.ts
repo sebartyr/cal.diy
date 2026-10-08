@@ -66,7 +66,7 @@ export const getHandler = async ({ ctx, input }: GetOptions) => {
     skip,
     filters: input.filters,
     sort: input.sort,
-    isSystemAdmin: isActingSystemAdmin({ role: user.role, session: ctx.session }),
+    isSystemAdmin: isActingSystemAdmin({ user, session: ctx.session }),
   });
 
   // Generate next cursor for infinite query support
