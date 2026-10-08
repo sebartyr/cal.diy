@@ -404,6 +404,14 @@ const toDAVObject = (response: DAVResponse, url: string): DAVObject | null => {
   return { url, etag: getEtag(response), data };
 };
 
+/**
+ * tsdav hands write responses back as they are, so every non-2xx has to be turned into an error.
+ * Besides 4xx/5xx, a 3xx means the SSRF-protected fetch refused to replay the write at the redirect
+ * target: nothing was written.
+ */
+const writeError = (action: string, response: Response): Error =>
+  new Error(`Error ${action} event: CalDAV server answered ${response.status} ${response.statusText}`.trim());
+
 const mapAttendees = (attendees: AttendeeInCalendarEvent[] | TeamMember[]): Attendee[] =>
   attendees.map(({ email, name }) => ({ name, email, partstat: "NEEDS-ACTION" }));
 
@@ -518,11 +526,8 @@ export default abstract class BaseCalendarService implements Calendar {
           })
       );
 
-      if (responses.some((r) => !r.ok)) {
-        throw new Error(
-          `Error creating event: ${(await Promise.all(responses.map((r) => r.text()))).join(", ")}`
-        );
-      }
+      const failed = responses.find((response) => !response.ok);
+      if (failed) throw writeError("creating", failed);
 
       return {
         uid,
@@ -594,31 +599,16 @@ export default abstract class BaseCalendarService implements Calendar {
           });
         })
       );
-      return responses.map((response, index) => {
-        const calendarEvent: CalendarEventType = eventsToUpdate[index];
-        if (response.status >= 200 && response.status < 300) {
-          return {
-            uid,
-            type: this.credentials.type,
-            id: typeof calendarEvent.uid === "string" ? calendarEvent.uid : "-1",
-            password: "",
-            url: calendarEvent.url,
-            additionalInfo:
-              typeof event.additionalInformation === "string" ? event.additionalInformation : {},
-          };
-        } else {
-          this.log.error("Error: Status Code", response.status);
-          return {
-            uid,
-            type: event.type,
-            id: typeof event.uid === "string" ? event.uid : "-1",
-            password: "",
-            url: typeof event.location === "string" ? event.location : "-1",
-            additionalInfo:
-              typeof event.additionalInformation === "string" ? event.additionalInformation : {},
-          };
-        }
-      });
+      const failed = responses.find((response) => !response.ok);
+      if (failed) throw writeError("updating", failed);
+      return eventsToUpdate.map((calendarEvent: CalendarEventType) => ({
+        uid,
+        type: this.credentials.type,
+        id: typeof calendarEvent.uid === "string" ? calendarEvent.uid : "-1",
+        password: "",
+        url: calendarEvent.url,
+        additionalInfo: typeof event.additionalInformation === "string" ? event.additionalInformation : {},
+      }));
     } catch (reason) {
       this.log.error(reason);
       throw reason;
@@ -630,7 +620,7 @@ export default abstract class BaseCalendarService implements Calendar {
       const events = await this.getEventsByUID(uid);
 
       const eventsToDelete = events.filter((event) => event.uid === uid);
-      await Promise.all(
+      const responses = await Promise.all(
         eventsToDelete.map(async (event) => {
           await this.assertSafeUrl(event.url);
           return deleteCalendarObject({
@@ -643,6 +633,12 @@ export default abstract class BaseCalendarService implements Calendar {
           });
         })
       );
+      // An event that is already gone is deleted as far as the caller is concerned; upstream ignored
+      // every DELETE status, so tolerating 404/410 keeps cancellations of such bookings working
+      const failed = responses.find(
+        (response) => !response.ok && response.status !== 404 && response.status !== 410
+      );
+      if (failed) throw writeError("deleting", failed);
     } catch (reason) {
       this.log.error(reason);
 

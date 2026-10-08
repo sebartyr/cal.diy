@@ -13,7 +13,7 @@ vi.mock("tsdav", () => ({
   propfind: vi.fn(),
   davRequest: vi.fn(),
   createCalendarObject: vi.fn().mockResolvedValue({ ok: true }),
-  updateCalendarObject: vi.fn().mockResolvedValue({ status: 200 }),
+  updateCalendarObject: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
   deleteCalendarObject: vi.fn(),
   getBasicAuthHeaders: vi.fn().mockReturnValue({}),
 }));

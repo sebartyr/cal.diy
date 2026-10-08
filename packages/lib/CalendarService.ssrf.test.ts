@@ -90,6 +90,8 @@ type Scenario = {
   omitExpandedCalendarData?: boolean;
   /** Overrides the answer to the REPORTs sent to the calendar */
   calendarReport?: (body: string) => Response;
+  /** Status returned to every request of that method on the calendar */
+  writeStatus?: { method: string; status: number };
   redirect?: Redirect;
 };
 
@@ -216,6 +218,9 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
     }
     if (method === "REPORT" && path === scenario.otherCalendarHref) {
       return xml(notFound(`${scenario.otherCalendarHref}${EVENT_UID}.ics`));
+    }
+    if (scenario.writeStatus?.method === method && path.startsWith(CALENDAR_PATH)) {
+      return new Response(null, { status: scenario.writeStatus.status });
     }
     if (method === "PUT" && path.startsWith(CALENDAR_PATH)) return new Response(null, { status: 201 });
     if (method === "DELETE" && path.startsWith(CALENDAR_PATH)) return new Response(null, { status: 204 });
@@ -361,17 +366,6 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
     expect(error).toEqual(notAllowed);
   });
 
-  it("does not replay an event PUT answered with a 302 and reports the write as failed", async () => {
-    scenario = { ...SAFE_SCENARIO, redirect: { method: "PUT", status: 302, location: METADATA_URL } };
-
-    const error = await errorOf(new CalDavCalendarService().createEvent(createMockEvent(), 1));
-
-    expect(metadataRequests()).toEqual([]);
-    expect(error).toEqual(
-      expect.objectContaining({ message: expect.stringContaining("Error creating event") })
-    );
-  });
-
   it("blocks a 307 redirect of an event DELETE to cloud metadata", async () => {
     scenario = { ...SAFE_SCENARIO, redirect: { method: "DELETE", status: 307, location: METADATA_URL } };
 
@@ -381,15 +375,59 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
     expect(error).toEqual(notAllowed);
   });
 
-  it("does not replay an event DELETE answered with a 302", async () => {
-    scenario = { ...SAFE_SCENARIO, redirect: { method: "DELETE", status: 302, location: METADATA_URL } };
+  describe.each([301, 302, 303])("event write answered with an HTTP %i", (status) => {
+    const writeFailed = (action: string) =>
+      expect.objectContaining({ message: `Error ${action} event: CalDAV server answered ${status}` });
+    const writes = () => requestLines().filter((line) => /^(PUT|DELETE) /.test(line));
+    const EVENT_URL = `https://caldav.example.com${CALENDAR_PATH}${EVENT_UID}.ics`;
 
-    await new CalDavCalendarService().deleteEvent(EVENT_UID);
+    it("rejects the create without replaying the PUT", async () => {
+      scenario = { ...SAFE_SCENARIO, redirect: { method: "PUT", status, location: METADATA_URL } };
 
-    expect(metadataRequests()).toEqual([]);
-    expect(requestLines().filter((line) => line.startsWith("DELETE"))).toEqual([
-      `DELETE https://caldav.example.com${CALENDAR_PATH}${EVENT_UID}.ics`,
-    ]);
+      const error = await errorOf(new CalDavCalendarService().createEvent(createMockEvent(), 1));
+
+      expect(metadataRequests()).toEqual([]);
+      expect(writes()).toEqual([`PUT ${EVENT_URL}`]);
+      expect(error).toEqual(writeFailed("creating"));
+    });
+
+    it("rejects the update without replaying the PUT", async () => {
+      scenario = { ...SAFE_SCENARIO, redirect: { method: "PUT", status, location: METADATA_URL } };
+
+      const error = await errorOf(new CalDavCalendarService().updateEvent(EVENT_UID, createMockEvent()));
+
+      expect(metadataRequests()).toEqual([]);
+      expect(writes()).toEqual([`PUT ${EVENT_URL}`]);
+      expect(error).toEqual(writeFailed("updating"));
+    });
+
+    it("rejects the delete without replaying the DELETE", async () => {
+      scenario = { ...SAFE_SCENARIO, redirect: { method: "DELETE", status, location: METADATA_URL } };
+
+      const error = await errorOf(new CalDavCalendarService().deleteEvent(EVENT_UID));
+
+      expect(metadataRequests()).toEqual([]);
+      expect(writes()).toEqual([`DELETE ${EVENT_URL}`]);
+      expect(error).toEqual(writeFailed("deleting"));
+    });
+  });
+
+  it("rejects an update the server refuses", async () => {
+    scenario = { ...SAFE_SCENARIO, writeStatus: { method: "PUT", status: 412 } };
+
+    const error = await errorOf(new CalDavCalendarService().updateEvent(EVENT_UID, createMockEvent()));
+
+    expect(error).toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining("Error updating event: CalDAV server answered 412"),
+      })
+    );
+  });
+
+  it.each([404, 410])("treats a DELETE answered with %i as an event already deleted", async (status) => {
+    scenario = { ...SAFE_SCENARIO, writeStatus: { method: "DELETE", status } };
+
+    await expect(new CalDavCalendarService().deleteEvent(EVENT_UID)).resolves.toBeUndefined();
   });
 
   it("follows a redirect to another public origin without sending the credentials there", async () => {

@@ -392,9 +392,11 @@ function canFollowRedirect(status: number, method: string): boolean {
  *
  * - 307/308 are followed with the same method, body and headers.
  * - 301/302 are followed unchanged for replayable methods (GET, HEAD, OPTIONS, PROPFIND, REPORT).
- *   For writes (PUT, DELETE, POST...) the redirect response is returned as-is, so the caller sees a
- *   failure: replaying a write at another URL or downgrading it to a GET that looks like a success
- *   are both unsafe, and servers that want the write repeated have 307/308 for that.
+ *   For writes (PUT, DELETE, POST...) the redirect response is returned as-is: replaying a write at
+ *   another URL or downgrading it to a GET that looks like a success are both unsafe, and servers
+ *   that want the write repeated have 307/308 for that. Nothing was written, so callers must treat
+ *   that non-2xx response as a failure, as they would a 4xx (it does not reject, so that
+ *   `redirect: "manual"` callers such as tsdav's serviceDiscovery keep reading their 3xx).
  * - 303 is followed for GET/HEAD only, and returned as-is otherwise for the same reason.
  * - Authorization, Proxy-Authorization and Cookie are dropped once a redirect leaves the origin.
  * - A caller passing `redirect: "manual"` gets the first response back after its URL is validated.
