@@ -1453,6 +1453,13 @@ export class UserRepository {
    * @param userId - The user ID
    * @returns User with username or null
    */
+  async findByIdWithEmail({ id }: { id: number }): Promise<{ email: string } | null> {
+    return this.prismaClient.user.findUnique({
+      where: { id },
+      select: { email: true },
+    });
+  }
+
   async findByIdWithUsername(userId: number): Promise<{ username: string | null } | null> {
     return this.prismaClient.user.findUnique({
       where: { id: userId },
