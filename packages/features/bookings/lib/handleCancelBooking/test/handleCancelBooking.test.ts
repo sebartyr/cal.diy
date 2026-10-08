@@ -17,7 +17,7 @@ import { BookingStatus } from "@calcom/prisma/enums";
 import { expectBookingCancelledWebhookToHaveBeenFired } from "@calcom/testing/lib/bookingScenario/expects";
 import { setupAndTeardown } from "@calcom/testing/lib/bookingScenario/setupAndTeardown";
 import { test } from "@calcom/testing/lib/fixtures/fixtures";
-import { beforeEach, describe, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 
 vi.mock("@calcom/features/bookings/lib/payment/processPaymentRefund", () => ({
   processPaymentRefund: vi.fn(),
@@ -2283,9 +2283,9 @@ describe("Cancel Booking", () => {
       );
     };
 
-    const createActor = (role: "ADMIN" | "USER") =>
+    const createActor = (role: "ADMIN" | "USER", twoFactorEnabled = false) =>
       prismock.user.create({
-        data: { id: adminId, email: adminEmail, username: "instance-admin", role },
+        data: { id: adminId, email: adminEmail, username: "instance-admin", role, twoFactorEnabled },
       });
 
     test("Should let a system admin cancel a seated booking as its host, with the host's reason rules", async () => {
@@ -2359,6 +2359,71 @@ describe("Cancel Booking", () => {
         })
       ).rejects.toThrow("User not a host of this event");
       expect(recordAdminAction).not.toHaveBeenCalled();
+    });
+
+    describe("with REQUIRE_2FA_FOR_ADMIN", () => {
+      beforeEach(() => {
+        vi.stubEnv("REQUIRE_2FA_FOR_ADMIN", "true");
+      });
+
+      afterEach(() => {
+        vi.unstubAllEnvs();
+      });
+
+      test("Should refuse the admin cancellation rules to an admin without 2FA", async () => {
+        const handleCancelBooking = (await import("@calcom/features/bookings/lib/handleCancelBooking"))
+          .default;
+        const id = 9104;
+        const uid = "system-admin-cancel-no-2fa";
+        await setupSeatedBooking({ id, uid });
+        await createActor("ADMIN", false);
+
+        await expect(
+          handleCancelBooking({
+            bookingData: { id, uid, cancellationReason: "Requested by support" },
+            userId: adminId,
+            isSystemAdmin: true,
+          })
+        ).rejects.toThrow("User not a host of this event");
+        expect(recordAdminAction).not.toHaveBeenCalled();
+      });
+
+      test("Should apply the admin cancellation rules to an admin with 2FA", async () => {
+        const handleCancelBooking = (await import("@calcom/features/bookings/lib/handleCancelBooking"))
+          .default;
+        const id = 9105;
+        const uid = "system-admin-cancel-with-2fa";
+        await setupSeatedBooking({ id, uid });
+        await createActor("ADMIN", true);
+
+        const result = await handleCancelBooking({
+          bookingData: { id, uid, cancellationReason: "Requested by support" },
+          userId: adminId,
+          isSystemAdmin: true,
+        });
+
+        expect(result.success).toBe(true);
+        expect(recordAdminAction).toHaveBeenCalled();
+      });
+
+      test("Should keep an admin without 2FA's rights on their own booking", async () => {
+        const handleCancelBooking = (await import("@calcom/features/bookings/lib/handleCancelBooking"))
+          .default;
+        const id = 9106;
+        const uid = "system-admin-cancel-own-no-2fa";
+        await setupSeatedBooking({ id, uid });
+        // The organizer of the seated booking (id 101) is an admin without 2FA here.
+        await prismock.user.update({ where: { id: 101 }, data: { role: "ADMIN", twoFactorEnabled: false } });
+
+        const result = await handleCancelBooking({
+          bookingData: { id, uid, cancellationReason: "Organizer cancels" },
+          userId: 101,
+          isSystemAdmin: false,
+        });
+
+        expect(result.success).toBe(true);
+        expect(recordAdminAction).not.toHaveBeenCalled();
+      });
     });
   });
 });

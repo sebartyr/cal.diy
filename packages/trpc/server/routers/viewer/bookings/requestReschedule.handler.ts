@@ -80,7 +80,7 @@ export const requestRescheduleHandler = async ({ ctx, input, source }: RequestRe
   if (!isBookingOrganizer) {
     const isSystemAdminAction = await getBookingAccessService().doesSystemAdminHaveAccessToBooking({
       userId: user.id,
-      isSystemAdmin: isActingSystemAdmin({ role: user.role, session: ctx.session }),
+      isSystemAdmin: isActingSystemAdmin({ user, session: ctx.session }),
       bookingUid,
       path: "viewer.bookings.requestReschedule",
       action: "requestReschedule",

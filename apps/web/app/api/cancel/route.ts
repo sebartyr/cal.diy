@@ -1,9 +1,11 @@
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
-import { isActingSystemAdmin } from "@calcom/features/auth/lib/isActingSystemAdmin";
+import { isSessionActingSystemAdmin } from "@calcom/features/auth/lib/isSessionActingSystemAdmin";
 import handleCancelBooking from "@calcom/features/bookings/lib/handleCancelBooking";
+import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { checkRateLimitAndThrowError } from "@calcom/lib/checkRateLimitAndThrowError";
 import getIP from "@calcom/lib/getIP";
 import { piiHasher } from "@calcom/lib/server/PiiHasher";
+import prisma from "@calcom/prisma";
 import { bookingCancelWithCsrfSchema } from "@calcom/prisma/zod-utils";
 import { validateCsrfToken } from "@calcom/web/lib/validateCsrfToken";
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
@@ -51,8 +53,9 @@ async function handler(req: NextRequest) {
   const result = await handleCancelBooking({
     bookingData: safeBookingData,
     userId: session?.user?.id || -1,
-    // session.user.role is already capped by the database role (getServerSession).
-    isSystemAdmin: isActingSystemAdmin({ role: session?.user?.role, session }),
+    // session.user.role is already capped by the database role (getServerSession); the account is
+    // loaded to apply the rest of the admin policy (lock, 2FA).
+    isSystemAdmin: await isSessionActingSystemAdmin(session, new UserRepository(prisma)),
     auditPath: "/api/cancel",
   });
 

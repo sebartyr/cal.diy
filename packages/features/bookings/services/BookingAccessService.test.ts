@@ -484,6 +484,32 @@ describe("BookingAccessService.doesSystemAdminHaveAccessToBooking", () => {
     expect(recordAdminAction).not.toHaveBeenCalled();
   });
 
+  it("applies REQUIRE_2FA_FOR_ADMIN to the database account, like the admin routes", async () => {
+    vi.stubEnv("REQUIRE_2FA_FOR_ADMIN", "true");
+    try {
+      userRepo.findAuthIdentityById.mockResolvedValue({
+        id: 1,
+        email: "admin@example.com",
+        role: "ADMIN",
+        locked: false,
+        twoFactorEnabled: false,
+      });
+      await expect(call({})).resolves.toBe(false);
+      expect(recordAdminAction).not.toHaveBeenCalled();
+
+      userRepo.findAuthIdentityById.mockResolvedValue({
+        id: 1,
+        email: "admin@example.com",
+        role: "ADMIN",
+        locked: false,
+        twoFactorEnabled: true,
+      });
+      await expect(call({})).resolves.toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("refuses a locked or missing account", async () => {
     userRepo.findAuthIdentityById.mockResolvedValue(null);
     await expect(call({})).resolves.toBe(false);
