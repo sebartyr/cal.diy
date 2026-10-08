@@ -1,3 +1,4 @@
+import { getEffectivePermissionRole } from "@calcom/features/auth/lib/sessionRole";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { WEBAPP_URL } from "@calcom/lib/constants";
@@ -75,6 +76,8 @@ async function getUserFromSession(ctx: SessionContext, session: Maybe<Session>) 
 
   return {
     ...user,
+    // tRPC permission checks read ctx.user.role: keep it at or below the role validated at login.
+    role: getEffectivePermissionRole(session.user.role, user.role),
     avatar: `${WEBAPP_URL}/${user.username}/avatar.png${organization.id ? `?orgId=${organization.id}` : ""}`,
     // TODO: OrgNewSchema - later -  We could consolidate the props in user.profile?.organization as organization is a profile thing now.
     organization,

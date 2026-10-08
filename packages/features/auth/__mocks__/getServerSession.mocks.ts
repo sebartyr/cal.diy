@@ -29,6 +29,7 @@ interface MockToken {
   profileId: number | null;
   upId: string;
   impersonatedBy?: { id: number };
+  role?: "USER" | "ADMIN" | "INACTIVE_ADMIN";
 }
 
 // Prisma mock instance

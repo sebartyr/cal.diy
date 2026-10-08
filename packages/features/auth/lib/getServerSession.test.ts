@@ -168,7 +168,9 @@ describe("invalidateServerSessionCacheForUser", () => {
   });
 
   it("forces the next call to re-read the user (and its role) from the database", async () => {
-    setupGetTokenMock(createMockToken({ sub: "42", upId: "usr-42", email: "cached@example.com" }));
+    setupGetTokenMock(
+      createMockToken({ sub: "42", upId: "usr-42", email: "cached@example.com", role: "ADMIN" })
+    );
     prismaMock.user.findUnique.mockResolvedValue(createMockUser({ id: 42, role: "ADMIN" }));
 
     const first = await getServerSession({ req: createMockRequest() });
@@ -194,5 +196,38 @@ describe("invalidateServerSessionCacheForUser", () => {
     await getServerSession({ req: createMockRequest() });
 
     expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("session role is capped by the role validated at login", () => {
+  let nextId = 500;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrismaMock();
+  });
+
+  it.each([
+    ["JWT USER + DB ADMIN (promotion without re-login)", "USER", "ADMIN", "USER"],
+    ["JWT INACTIVE_ADMIN + DB ADMIN", "INACTIVE_ADMIN", "ADMIN", "INACTIVE_ADMIN"],
+    ["JWT without role + DB ADMIN", undefined, "ADMIN", "USER"],
+    ["JWT ADMIN + DB ADMIN", "ADMIN", "ADMIN", "ADMIN"],
+    ["JWT ADMIN + DB USER (demotion)", "ADMIN", "USER", "USER"],
+  ] as const)("%s", async (_, tokenRole, dbRole, expectedRole) => {
+    // Distinct tokens per case so the in-memory session cache never short-circuits the DB read.
+    const id = nextId++;
+    setupGetTokenMock(
+      createMockToken({
+        sub: String(id),
+        upId: `usr-${id}`,
+        email: `role-${id}@example.com`,
+        role: tokenRole,
+      })
+    );
+    prismaMock.user.findUnique.mockResolvedValue(createMockUser({ id, role: dbRole }));
+
+    const session = await getServerSession({ req: createMockRequest() });
+
+    expect(session?.user.role).toBe(expectedRole);
   });
 });
