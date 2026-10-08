@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.7.1] — 2026-10-08
+
+### Added
+
+- Bookings page: system admins get a scope selector in the filter bar —
+  **My bookings** (default, unchanged), **All bookings**, **User…** or
+  **Team…**, with server-side search for users and teams. The scope lives in
+  the URL. The team filter shows bookings of the team's event types (managed
+  children included), as for team admins. Non-admins see no change (#45, #46,
+  #49).
+- System admins can confirm or reject, change the location of, request a
+  reschedule of and cancel any booking. Location changes and reschedule
+  requests use the organizer's calendar/video credentials and send the
+  standard emails as the organizer; cancellations follow the host rules
+  (mandatory reason, no no-show fee) and record the admin's email in
+  `cancelledBy`. Every action outside the admin's own scope goes to the admin
+  audit log (#47, #48).
+
+### Security
+
+- A single admin policy (`getSystemAdminDenialReason`) — role ADMIN, account
+  not locked, 2FA enabled when `REQUIRE_2FA_FOR_ADMIN=true`, not
+  impersonating — now gates the admin routes, impersonation and the new
+  bookings admin powers. An admin who does not meet it keeps the ordinary
+  rights on their own bookings (#45, #47–#49).
+
 ## [7.7.0] — 2026-10-08
 
 Security release: findings of a full audit of the fork (#16–#36, #44) and new
