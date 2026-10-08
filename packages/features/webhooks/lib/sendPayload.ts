@@ -44,7 +44,7 @@ export type BookingNoShowUpdatedPayload = {
 export type TranscriptionGeneratedPayload = {
   downloadLinks?: {
     transcription: TGetTranscriptAccessLink["transcription"];
-    recording: string;
+    recording?: string;
   };
 };
 

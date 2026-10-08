@@ -11,6 +11,7 @@ import process from "node:process";
 import { appStoreMetadata } from "@calcom/app-store/apps.metadata.generated";
 import { getBatchProcessorJobAccessLink, getRoomNameFromRecordingId } from "@calcom/app-store/dailyvideo/lib";
 import { WEBAPP_URL } from "@calcom/lib/constants";
+import { generateVideoToken } from "@calcom/lib/videoTokens";
 import prisma from "@calcom/prisma";
 import { BookingStatus, WebhookTriggerEvents } from "@calcom/prisma/enums";
 import { expectWebhookToHaveBeenCalledWith } from "@calcom/testing/lib/bookingScenario/expects";
@@ -70,7 +71,7 @@ vi.mock("@calcom/app-store/dailyvideo/lib", () => {
 
 vi.mock("@calcom/lib/videoTokens", () => {
   return {
-    generateVideoToken: vi.fn().mockReturnValue("MOCK_TOKEN"),
+    generateVideoToken: vi.fn(),
   };
 });
 
@@ -163,6 +164,111 @@ function createNextRequest(mockReq: ReturnType<typeof createMocks>["req"]): Next
   return nextRequest;
 }
 
+async function runBatchProcessorJobFinished() {
+  const organizer = getOrganizer({
+    name: "Organizer",
+    email: "organizer@example.com",
+    id: 101,
+    schedules: [TestData.schedules.IstWorkHours],
+  });
+
+  const bookingUid = "n5Wv3eHgconAED2j4gcVhP";
+  const iCalUID = `${bookingUid}@Cal.diy`;
+  const subscriberUrl = "http://my-webhook.example.com";
+
+  const { dateString: plus1DateString } = getDate({ dateIncrement: 1 });
+  const booker = getBooker({
+    email: "booker@example.com",
+    name: "Booker",
+  });
+
+  await createBookingScenario(
+    getScenarioData({
+      webhooks: [
+        {
+          userId: organizer.id,
+          eventTriggers: [WebhookTriggerEvents.RECORDING_TRANSCRIPTION_GENERATED],
+          subscriberUrl,
+          active: true,
+          eventTypeId: 1,
+          appId: null,
+        },
+      ],
+      eventTypes: [
+        {
+          id: 1,
+          slotInterval: 15,
+          length: 15,
+          users: [
+            {
+              id: 101,
+            },
+          ],
+        },
+      ],
+      bookings: [
+        {
+          uid: bookingUid,
+          eventTypeId: 1,
+          status: BookingStatus.ACCEPTED,
+          startTime: `${plus1DateString}T05:00:00.000Z`,
+          endTime: `${plus1DateString}T05:15:00.000Z`,
+          userId: organizer.id,
+          metadata: {
+            videoCallUrl: "https://existing-daily-video-call-url.example.com",
+          },
+          references: [
+            {
+              type: appStoreMetadata.dailyvideo.type,
+              uid: "MOCK_ID",
+              meetingId: "MOCK_ID",
+              meetingPassword: "MOCK_PASS",
+              meetingUrl: "http://mock-dailyvideo.example.com",
+              credentialId: null,
+            },
+          ],
+          attendees: [
+            getMockBookingAttendee({
+              id: 2,
+              name: booker.name,
+              email: booker.email,
+              locale: "en",
+              timeZone: "Asia/Kolkata",
+              noShow: false,
+            }),
+          ],
+          iCalUID,
+        },
+      ],
+      organizer,
+      apps: [TestData.apps["daily-video"]],
+    })
+  );
+
+  vi.mocked(getRoomNameFromRecordingId).mockResolvedValue("MOCK_ID");
+  vi.mocked(getBatchProcessorJobAccessLink).mockResolvedValue(TRANSCRIPTION_ACCESS_LINK);
+
+  const { req } = createMocks({
+    method: "POST",
+    body: BATCH_PROCESSOR_JOB_FINSISHED_PAYLOAD,
+    prisma,
+  });
+
+  const nextReq = createNextRequest(req);
+
+  // Handle the response differently
+  try {
+    const response = await postHandler(nextReq);
+    // For App Router, we just need to check if the response exists
+    expect(response).toBeDefined();
+  } catch (error) {
+    console.error("Handler error:", error);
+    throw error;
+  }
+
+  return { organizer, bookingUid, subscriberUrl };
+}
+
 describe("Handler: /api/recorded-daily-video", () => {
   beforeEach(() => {
     fetchMock.resetMocks();
@@ -176,106 +282,8 @@ describe("Handler: /api/recorded-daily-video", () => {
   test(
     `Batch Processor Job finished triggers RECORDING_TRANSCRIPTION_GENERATED webhooks`,
     async () => {
-      const organizer = getOrganizer({
-        name: "Organizer",
-        email: "organizer@example.com",
-        id: 101,
-        schedules: [TestData.schedules.IstWorkHours],
-      });
-
-      const bookingUid = "n5Wv3eHgconAED2j4gcVhP";
-      const iCalUID = `${bookingUid}@Cal.diy`;
-      const subscriberUrl = "http://my-webhook.example.com";
-
-      const { dateString: plus1DateString } = getDate({ dateIncrement: 1 });
-      const booker = getBooker({
-        email: "booker@example.com",
-        name: "Booker",
-      });
-
-      await createBookingScenario(
-        getScenarioData({
-          webhooks: [
-            {
-              userId: organizer.id,
-              eventTriggers: [WebhookTriggerEvents.RECORDING_TRANSCRIPTION_GENERATED],
-              subscriberUrl,
-              active: true,
-              eventTypeId: 1,
-              appId: null,
-            },
-          ],
-          eventTypes: [
-            {
-              id: 1,
-              slotInterval: 15,
-              length: 15,
-              users: [
-                {
-                  id: 101,
-                },
-              ],
-            },
-          ],
-          bookings: [
-            {
-              uid: bookingUid,
-              eventTypeId: 1,
-              status: BookingStatus.ACCEPTED,
-              startTime: `${plus1DateString}T05:00:00.000Z`,
-              endTime: `${plus1DateString}T05:15:00.000Z`,
-              userId: organizer.id,
-              metadata: {
-                videoCallUrl: "https://existing-daily-video-call-url.example.com",
-              },
-              references: [
-                {
-                  type: appStoreMetadata.dailyvideo.type,
-                  uid: "MOCK_ID",
-                  meetingId: "MOCK_ID",
-                  meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com",
-                  credentialId: null,
-                },
-              ],
-              attendees: [
-                getMockBookingAttendee({
-                  id: 2,
-                  name: booker.name,
-                  email: booker.email,
-                  locale: "en",
-                  timeZone: "Asia/Kolkata",
-                  noShow: false,
-                }),
-              ],
-              iCalUID,
-            },
-          ],
-          organizer,
-          apps: [TestData.apps["daily-video"]],
-        })
-      );
-
-      vi.mocked(getRoomNameFromRecordingId).mockResolvedValue("MOCK_ID");
-      vi.mocked(getBatchProcessorJobAccessLink).mockResolvedValue(TRANSCRIPTION_ACCESS_LINK);
-
-      const { req } = createMocks({
-        method: "POST",
-        body: BATCH_PROCESSOR_JOB_FINSISHED_PAYLOAD,
-        prisma,
-      });
-
-      const nextReq = createNextRequest(req);
-
-      // Handle the response differently
-      try {
-        const response = await postHandler(nextReq);
-        // For App Router, we just need to check if the response exists
-        expect(response).toBeDefined();
-      } catch (error) {
-        console.error("Handler error:", error);
-        throw error;
-      }
+      vi.mocked(generateVideoToken).mockReturnValue("MOCK_TOKEN");
+      const { organizer, bookingUid, subscriberUrl } = await runBatchProcessorJobFinished();
 
       await expectWebhookToHaveBeenCalledWith(subscriberUrl, {
         triggerEvent: WebhookTriggerEvents.RECORDING_TRANSCRIPTION_GENERATED,
@@ -292,6 +300,25 @@ describe("Handler: /api/recorded-daily-video", () => {
             timeZone: organizer.timeZone,
             language: { locale: "en" },
             utcOffset: 330,
+          },
+        },
+      });
+    },
+    timeout
+  );
+
+  test(
+    `Without a recording token secret, RECORDING_TRANSCRIPTION_GENERATED is still sent without a recording link`,
+    async () => {
+      vi.mocked(generateVideoToken).mockReturnValue(null);
+      const { bookingUid, subscriberUrl } = await runBatchProcessorJobFinished();
+
+      await expectWebhookToHaveBeenCalledWith(subscriberUrl, {
+        triggerEvent: WebhookTriggerEvents.RECORDING_TRANSCRIPTION_GENERATED,
+        payload: {
+          uid: bookingUid,
+          downloadLinks: {
+            transcription: TRANSCRIPTION_ACCESS_LINK.transcription,
           },
         },
       });
