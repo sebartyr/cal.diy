@@ -1976,6 +1976,8 @@
   "recent_impersonations": "Recent impersonations",
   "quick_impersonate": "Quick impersonate",
   "no_recent_impersonations": "No recent impersonations",
+  "impersonated_at": "Impersonated at",
+  "impersonation_session_duration_notice": "Impersonation sessions end automatically after one hour. Password, two-factor, email, API key and connected account changes are disabled while impersonating.",
   "users": "Users",
   "user": "User",
   "profile_description": "Manage settings for your {{appName}} profile",

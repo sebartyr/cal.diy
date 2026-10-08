@@ -201,6 +201,16 @@ export function UsersTable() {
                           href: `/settings/admin/users/${user.id}/edit`,
                           icon: "pencil" as const,
                         },
+                        ...(user.role !== "ADMIN" && !user.locked
+                          ? [
+                              {
+                                id: "impersonate",
+                                label: t("impersonate"),
+                                href: `/settings/admin/impersonation?username=${encodeURIComponent(user.email)}`,
+                                icon: "venetian-mask" as const,
+                              },
+                            ]
+                          : []),
                         {
                           id: "reset-password",
                           label: t("reset_password"),

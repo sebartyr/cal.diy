@@ -1,5 +1,3 @@
-import { useSession } from "next-auth/react";
-
 import { appStoreMetadata } from "@calcom/app-store/appStoreMetaData";
 import dayjs from "@calcom/dayjs";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
@@ -27,6 +25,7 @@ import {
   useRegisterActions,
 } from "kbar";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 
@@ -170,14 +169,6 @@ const KBAR_ACTION_CONFIGS: ActionConfig[] = [
     href: "/settings/security/two-factor-auth",
   },
   {
-    id: "impersonation",
-    name: "user_impersonation_heading",
-    section: "security",
-    shortcut: ["u", "i"],
-    keywords: "user impersonation",
-    href: "/settings/security/impersonation",
-  },
-  {
     id: "license",
     name: "choose_a_license",
     section: "admin",
@@ -262,6 +253,28 @@ function useEventTypesAction(): void {
   }
 
   useRegisterActions(actions, [data]);
+}
+
+function useAdminImpersonationAction(): void {
+  const router = useRouter();
+  const session = useSession();
+  const isAdmin = session.data?.user.role === "ADMIN" && !session.data?.user.impersonatedBy;
+
+  const adminActions: Action[] = useMemo(() => {
+    if (!isAdmin) return [];
+    return [
+      {
+        id: "impersonation",
+        name: "user_impersonation_heading",
+        section: "admin",
+        shortcut: ["u", "i"],
+        keywords: "user impersonation impersonate admin",
+        perform: () => router.push("/settings/admin/impersonation"),
+      },
+    ];
+  }, [isAdmin, router]);
+
+  useRegisterActions(adminActions, [adminActions]);
 }
 
 function useUpcomingBookingsAction(): void {
@@ -463,6 +476,7 @@ function RenderResults(): JSX.Element {
 
   useEventTypesAction();
   useUpcomingBookingsAction();
+  useAdminImpersonationAction();
 
   if (results.length === 0 && searchQuery.trim().length > 0) {
     return <NoResultsFound searchQuery={searchQuery} />;

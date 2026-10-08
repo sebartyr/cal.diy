@@ -1951,6 +1951,8 @@
   "recent_impersonations": "Usurpations récentes",
   "quick_impersonate": "Usurpation rapide",
   "no_recent_impersonations": "Aucune usurpation récente",
+  "impersonated_at": "Date de l'emprunt",
+  "impersonation_session_duration_notice": "Les sessions d'emprunt d'identité se terminent automatiquement au bout d'une heure. Les modifications du mot de passe, de la double authentification, de l'adresse e-mail, des clés API et des comptes connectés sont désactivées pendant l'emprunt.",
   "users": "Utilisateurs",
   "user": "Utilisateur",
   "profile_description": "Gérez les paramètres de votre profil {{appName}}.",
