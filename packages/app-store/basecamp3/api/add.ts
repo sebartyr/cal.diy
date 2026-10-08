@@ -1,11 +1,10 @@
-import type { NextApiRequest } from "next";
 import { stringify } from "node:querystring";
-
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import { defaultHandler } from "@calcom/lib/server/defaultHandler";
 import { defaultResponder } from "@calcom/lib/server/defaultResponder";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest } from "next";
+import { encodeOAuthState } from "../../_utils/oauth/encodeOAuthState";
 import { getBasecampKeys } from "../lib/getBasecampKeys";
 
 async function handler(req: NextApiRequest) {
@@ -23,6 +22,7 @@ async function handler(req: NextApiRequest) {
   const params = {
     type: "web_server",
     client_id,
+    state: encodeOAuthState(req),
   };
   const query = stringify(params);
   const url = `https://launchpad.37signals.com/authorization/new?${query}&redirect_uri=${WEBAPP_URL}/api/integrations/basecamp3/callback`;

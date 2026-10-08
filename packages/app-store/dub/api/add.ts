@@ -1,10 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { HttpError } from "@calcom/lib/http-error";
 import { defaultHandler } from "@calcom/lib/server/defaultHandler";
 import { defaultResponder } from "@calcom/lib/server/defaultResponder";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getParsedAppKeysFromSlug from "../../_utils/getParsedAppKeysFromSlug";
+import { encodeOAuthState } from "../../_utils/oauth/encodeOAuthState";
 import { dubAppKeysSchema, scopeString } from "../lib/utils";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,7 +19,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     throw new HttpError({ statusCode: 400, message: "Session user must have an email" });
   }
 
-  const { teamId } = req.query;
   const { client_id, redirect_uris } = await getParsedAppKeysFromSlug("dub", dubAppKeysSchema);
 
   const url = new URL("https://app.dub.co/oauth/authorize");
@@ -28,9 +26,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   url.searchParams.append("redirect_uri", redirect_uris);
   url.searchParams.append("response_type", "code");
   url.searchParams.append("scope", scopeString);
-  if (typeof teamId === "string" && !Number.isNaN(Number(teamId))) {
-    url.searchParams.append("state", JSON.stringify({ teamId: Number(teamId) }));
-  }
+  // The signed state already carries teamId; createOAuthAppCredential re-checks team admin access.
+  url.searchParams.append("state", encodeOAuthState(req) ?? "");
   const oauthUrl = url.toString();
 
   return res.status(200).json({ url: oauthUrl });

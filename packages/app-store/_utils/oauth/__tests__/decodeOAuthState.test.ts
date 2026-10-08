@@ -1,6 +1,5 @@
 import { createHmac } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-
 import { decodeOAuthState } from "../decodeOAuthState";
 
 const SECRET = "test-nextauth-secret";
@@ -32,32 +31,30 @@ describe("decodeOAuthState (SEC-101)", () => {
     vi.unstubAllEnvs();
   });
 
-  it("rejects an unsigned state for Stripe (no longer on NONCE_EXEMPT)", () => {
+  it("rejects an unsigned state", () => {
     const state = JSON.stringify({ returnTo: "/evil" });
-    expect(decodeOAuthState(buildReq({ state, userId: 1 }), "stripe")).toBeUndefined();
+    expect(decodeOAuthState(buildReq({ state, userId: 1 }))).toBeUndefined();
   });
 
-  it("accepts a properly-signed state for Stripe", () => {
+  it("accepts a properly-signed state", () => {
     const state = makeSignedState({ returnTo: "/ok" }, 1);
-    const result = decodeOAuthState(buildReq({ state, userId: 1 }), "stripe");
+    const result = decodeOAuthState(buildReq({ state, userId: 1 }));
     expect(result).toBeTruthy();
     expect(result?.returnTo).toBe("/ok");
   });
 
   it("rejects a state signed for a different user (nonce binding)", () => {
     const state = makeSignedState({ returnTo: "/ok" }, 1);
-    expect(decodeOAuthState(buildReq({ state, userId: 999 }), "stripe")).toBeUndefined();
+    expect(decodeOAuthState(buildReq({ state, userId: 999 }))).toBeUndefined();
   });
 
-  it("still accepts unsigned state for remaining exempt apps (basecamp3, dub, webex, tandem)", () => {
-    const state = JSON.stringify({ returnTo: "/anywhere" });
-    for (const app of ["basecamp3", "dub", "webex", "tandem"]) {
-      expect(decodeOAuthState(buildReq({ state, userId: 1 }), app)).toBeTruthy();
-    }
+  it("rejects an unsigned state carrying a teamId (no app is exempt from the nonce)", () => {
+    const state = JSON.stringify({ teamId: 7 });
+    expect(decodeOAuthState(buildReq({ state, userId: 1 }))).toBeUndefined();
   });
 
   it("returns undefined if query.state is missing", () => {
-    expect(decodeOAuthState(buildReq({}), "stripe")).toBeUndefined();
+    expect(decodeOAuthState(buildReq({}))).toBeUndefined();
   });
 
   it("returns undefined if nonceHash is tampered with", () => {
@@ -66,6 +63,6 @@ describe("decodeOAuthState (SEC-101)", () => {
       nonce: "nonce-fixed",
       nonceHash: "deadbeef".padEnd(64, "0"),
     });
-    expect(decodeOAuthState(buildReq({ state, userId: 1 }), "stripe")).toBeUndefined();
+    expect(decodeOAuthState(buildReq({ state, userId: 1 }))).toBeUndefined();
   });
 });
