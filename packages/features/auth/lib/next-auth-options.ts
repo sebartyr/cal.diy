@@ -21,6 +21,7 @@ import {
   OUTLOOK_CLIENT_SECRET,
   OUTLOOK_LOGIN_ENABLED,
 } from "@calcom/features/auth/lib/outlook";
+import { getEffectiveSessionRole } from "@calcom/features/auth/lib/sessionRole";
 import { CredentialRepository } from "@calcom/features/credentials/repositories/CredentialRepository";
 import { buildCredentialCreateData } from "@calcom/features/credentials/services/CredentialDataService";
 import { ImpersonationProvider } from "@calcom/features/impersonation/lib/ImpersonationProvider";
@@ -612,7 +613,7 @@ export const getOptions = ({
           email: session?.email ?? token.email,
         } as JWT;
       }
-      const autoMergeIdentities = async () => {
+      const autoMergeIdentities = async ({ isTokenRefresh }: { isTokenRefresh: boolean }) => {
         const existingUser = await prisma.user.findFirst({
           where: { email: token.email! },
           select: {
@@ -676,13 +677,10 @@ export const getOptions = ({
         return {
           ...existingUserWithoutTeamsField,
           ...token,
-          // Only ever downgrade from the DB: a demotion must not survive in a long-lived JWT, but a
-          // promotion (or INACTIVE_ADMIN -> ADMIN) must go through a fresh login so that the admin
-          // password/2FA policy in `validateRole` runs.
-          role:
-            existingUser.role === UserPermissionRole.ADMIN
-              ? (token.role ?? existingUser.role)
-              : existingUser.role,
+          // On refresh, only ever downgrade from the DB: a demotion must not survive in a long-lived
+          // JWT, but a promotion (or INACTIVE_ADMIN -> ADMIN) must go through a fresh login so that
+          // the admin password/2FA policy in `validateRole` runs.
+          role: isTokenRefresh ? getEffectiveSessionRole(token.role, existingUser.role) : existingUser.role,
           profileId: profile.id,
           upId,
           belongsToActiveTeam,
@@ -705,7 +703,7 @@ export const getOptions = ({
         } as JWT;
       };
       if (!user) {
-        return await autoMergeIdentities();
+        return await autoMergeIdentities({ isTokenRefresh: true });
       }
       if (!account) {
         return token;
@@ -756,7 +754,7 @@ export const getOptions = ({
           log.warn("callbacks:jwt:accountType:oauth - unknown provider, falling back to auto-merge", {
             provider: account.provider,
           });
-          return await autoMergeIdentities();
+          return await autoMergeIdentities({ isTokenRefresh: false });
         }
 
         const existingUser = await prisma.user.findFirst({
@@ -773,7 +771,7 @@ export const getOptions = ({
         });
 
         if (!existingUser) {
-          return await autoMergeIdentities();
+          return await autoMergeIdentities({ isTokenRefresh: false });
         }
 
         const grantedScopes = account.scope?.split(" ") ?? [];
@@ -931,7 +929,7 @@ export const getOptions = ({
       }
 
       if (account.type === "email") {
-        return await autoMergeIdentities();
+        return await autoMergeIdentities({ isTokenRefresh: false });
       }
 
       log.warn(

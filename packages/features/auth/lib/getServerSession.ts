@@ -1,3 +1,4 @@
+import { getEffectiveSessionRole } from "@calcom/features/auth/lib/sessionRole";
 import { isImpersonationExpired } from "@calcom/features/impersonation/lib/impersonationSession";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { getUserAvatarUrl } from "@calcom/lib/getAvatarUrl";
@@ -137,7 +138,8 @@ export async function getServerSession(options: {
       emailVerified: user.emailVerified,
       email_verified: user.emailVerified !== null,
       completedOnboarding: user.completedOnboarding,
-      role: user.role,
+      // Never above the role validated at login: promotions wait for a fresh authentication.
+      role: getEffectiveSessionRole(token.role, user.role),
       image: getUserAvatarUrl({
         avatarUrl: user.avatarUrl,
       }),
