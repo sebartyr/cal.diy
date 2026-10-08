@@ -9,8 +9,7 @@ import type { PrismaClient } from "@calcom/prisma";
 import { availabilityUserSelect } from "@calcom/prisma";
 import type { DestinationCalendar, SelectedCalendar, User as UserType } from "@calcom/prisma/client";
 import { Prisma } from "@calcom/prisma/client";
-import type { IdentityProvider } from "@calcom/prisma/enums";
-import type { CreationSource } from "@calcom/prisma/enums";
+import type { CreationSource, IdentityProvider } from "@calcom/prisma/enums";
 import { BookingStatus, MembershipRole } from "@calcom/prisma/enums";
 import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
 import { userSelect as prismaUserSelect } from "@calcom/prisma/selects/user";
@@ -119,6 +118,27 @@ const userSelect = {
   identityProvider: true,
   teams: true,
   profiles: true,
+} satisfies Prisma.UserSelect;
+
+// Admin user pages serialize the user to the client (RSC payload, tRPC response):
+// only fields the admin UI edits or displays, never credentials or 2FA material.
+export const adminUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  username: true,
+  bio: true,
+  timeZone: true,
+  weekStart: true,
+  theme: true,
+  defaultScheduleId: true,
+  locale: true,
+  timeFormat: true,
+  allowDynamicBooking: true,
+  identityProvider: true,
+  role: true,
+  avatarUrl: true,
+  createdDate: true,
 } satisfies Prisma.UserSelect;
 
 export class UserRepository {
@@ -1082,6 +1102,7 @@ export class UserRepository {
       where: {
         id: userId,
       },
+      select: adminUserSelect,
     });
   }
 
@@ -1419,7 +1440,7 @@ export class UserRepository {
     });
   }
 
-  async deleteMany({ userIds }: {userIds: number[]}){
+  async deleteMany({ userIds }: { userIds: number[] }) {
     await this.prismaClient.user.deleteMany({
       where: {
         id: { in: userIds },
@@ -1488,15 +1509,15 @@ export class UserRepository {
     });
   }
 
-  async findByEmailWithInvitedTo({ email }: { email: string } ) {
+  async findByEmailWithInvitedTo({ email }: { email: string }) {
     return this.prismaClient.user.findUnique({
       where: {
-        email: email.toLowerCase()
+        email: email.toLowerCase(),
       },
       select: {
-        invitedTo: true
-      }
-    })
+        invitedTo: true,
+      },
+    });
   }
 
   async findByUsernameAndOrganizationId({
@@ -1504,20 +1525,20 @@ export class UserRepository {
     organizationId,
     excludeEmail,
   }: {
-    username: string,
-    organizationId: number | null,
-    excludeEmail: string
+    username: string;
+    organizationId: number | null;
+    excludeEmail: string;
   }) {
     return this.prismaClient.user.findFirst({
       where: {
         username,
         organizationId,
-        NOT: { email: excludeEmail }
+        NOT: { email: excludeEmail },
       },
       select: {
-        id: true
-      }
-    })
+        id: true,
+      },
+    });
   }
 
   async lockByEmail({ email }: { email: string }) {
@@ -1602,26 +1623,26 @@ export class UserRepository {
     const trimmedSearchTerm = searchTerm?.trim();
     const searchFilters: Prisma.UserWhereInput = trimmedSearchTerm
       ? {
-        AND: [
-          // To bypass the excludeLockedUsersExtension
-          bothLockedAndUnlockedWhere,
-          {
-            OR: [
-              { email: { contains: trimmedSearchTerm, mode: "insensitive" } },
-              { username: { contains: trimmedSearchTerm, mode: "insensitive" } },
-              {
-                profiles: {
-                  some: {
-                    username: { contains: trimmedSearchTerm, mode: "insensitive" },
+          AND: [
+            // To bypass the excludeLockedUsersExtension
+            bothLockedAndUnlockedWhere,
+            {
+              OR: [
+                { email: { contains: trimmedSearchTerm, mode: "insensitive" } },
+                { username: { contains: trimmedSearchTerm, mode: "insensitive" } },
+                {
+                  profiles: {
+                    some: {
+                      username: { contains: trimmedSearchTerm, mode: "insensitive" },
+                    },
                   },
                 },
-              },
-            ],
-          },
-        ],
-      }
-      // To bypass the excludeLockedUsersExtension
-      : bothLockedAndUnlockedWhere;
+              ],
+            },
+          ],
+        }
+      : // To bypass the excludeLockedUsersExtension
+        bothLockedAndUnlockedWhere;
 
     const hasLimit = limit !== undefined && limit !== null;
     const take = hasLimit ? limit + 1 : undefined; // +1 lets us detect "has more" for the cursor

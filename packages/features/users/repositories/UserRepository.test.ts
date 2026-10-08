@@ -1,7 +1,8 @@
 import prismock from "@calcom/testing/lib/__mocks__/prisma";
-import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
+import { adminUserSelect, UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { CreationSource } from "@calcom/prisma/enums";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+
 vi.mock("@calcom/app-store/delegationCredential", () => ({
   enrichHostsWithDelegationCredentials: vi.fn(),
   getUsersCredentialsIncludeServiceAccountKey: vi.fn(),
@@ -257,7 +258,6 @@ describe("listUsers", () => {
     });
 
     const { users, total } = await new UserRepository(prismock).listUsers({
-
       searchTerm: "nonexistent-term-xyz",
       cursor: null,
       limit: 10,
@@ -265,5 +265,43 @@ describe("listUsers", () => {
 
     expect(users).toEqual([]);
     expect(total).toEqual(0);
+  });
+});
+describe("adminFindById", () => {
+  const secretFields = [
+    "password",
+    "twoFactorSecret",
+    "backupCodes",
+    "twoFactorEnabled",
+    "metadata",
+    "identityProviderId",
+  ];
+
+  test("adminUserSelect does not select credentials or 2FA material", () => {
+    for (const field of secretFields) {
+      expect(adminUserSelect).not.toHaveProperty(field);
+    }
+  });
+
+  test("Should not return 2FA secrets or metadata", async () => {
+    const created = await prismock.user.create({
+      data: {
+        username: "admin-target",
+        email: "admin-target@example.com",
+        twoFactorSecret: "encrypted-totp-secret",
+        twoFactorEnabled: true,
+        backupCodes: "encrypted-backup-codes",
+        metadata: { stripeCustomerId: "cus_123" },
+      },
+    });
+
+    const user = await new UserRepository(prismock).adminFindById(created.id);
+
+    expect(user).toEqual(
+      expect.objectContaining({ id: created.id, username: "admin-target", email: "admin-target@example.com" })
+    );
+    for (const field of secretFields) {
+      expect(user).not.toHaveProperty(field);
+    }
   });
 });
