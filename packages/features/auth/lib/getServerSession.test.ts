@@ -212,6 +212,50 @@ describe("getServerSession", () => {
 
       expect(result?.user.impersonatedBy).toEqual({ id: 1, uuid: "admin-uuid", role: "ADMIN" });
     });
+
+    it("revokes the impersonation once its author is demoted, even after a successful call", async () => {
+      setupGetTokenMock({
+        ...createMockToken({ sub: "205" }),
+        impersonatedBy: { id: 1, uuid: "admin-uuid", role: "ADMIN" },
+        impersonationExpiresAt: nowSeconds + 600,
+      });
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce(createMockUser({ id: 205 }))
+        .mockResolvedValueOnce(createMockUser({ id: 1, uuid: "admin-uuid", role: "ADMIN" }));
+      expect(await getServerSession({ req: createMockRequest() })).not.toBeNull();
+
+      // Same token: a cached session would be served here if impersonated sessions were cached.
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce(createMockUser({ id: 205 }))
+        .mockResolvedValueOnce(createMockUser({ id: 1, uuid: "admin-uuid", role: "USER" }));
+      expect(await getServerSession({ req: createMockRequest() })).toBeNull();
+    });
+
+    it("returns null when the author is demoted before the first call (cold cache)", async () => {
+      setupGetTokenMock({
+        ...createMockToken({ sub: "206" }),
+        impersonatedBy: { id: 1, uuid: "admin-uuid", role: "ADMIN" },
+        impersonationExpiresAt: nowSeconds + 600,
+      });
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce(createMockUser({ id: 206 }))
+        .mockResolvedValueOnce(createMockUser({ id: 1, uuid: "admin-uuid", role: "USER" }));
+
+      expect(await getServerSession({ req: createMockRequest() })).toBeNull();
+    });
+
+    it("returns null when the author is locked", async () => {
+      setupGetTokenMock({
+        ...createMockToken({ sub: "207" }),
+        impersonatedBy: { id: 1, uuid: "admin-uuid", role: "ADMIN" },
+        impersonationExpiresAt: nowSeconds + 600,
+      });
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce(createMockUser({ id: 207 }))
+        .mockResolvedValueOnce(createMockUser({ id: 1, uuid: "admin-uuid", role: "ADMIN", locked: true }));
+
+      expect(await getServerSession({ req: createMockRequest() })).toBeNull();
+    });
   });
 });
 
