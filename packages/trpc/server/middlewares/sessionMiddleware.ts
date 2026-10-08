@@ -1,3 +1,4 @@
+import process from "node:process";
 import { recordAdminAction, recordAdminDenial } from "@calcom/features/audit-log/adminAuditLog";
 import { getUserSession } from "@calcom/features/auth/lib/userFromSessionUtils";
 import logger from "@calcom/lib/logger";
@@ -41,7 +42,9 @@ export const isAdminMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) =>
         reason: "non-admin role attempted to call admin route",
       });
     }
-    throw new TRPCError({ code: "UNAUTHORIZED" });
+    // ctx.user.role is capped by the role validated at login (see getEffectivePermissionRole), so
+    // an account promoted in the database since then lands here until it signs in again.
+    throw new TRPCError({ code: "FORBIDDEN" });
   }
   if (REQUIRE_2FA_FOR_ADMIN && !user.twoFactorEnabled) {
     recordAdminDenial({

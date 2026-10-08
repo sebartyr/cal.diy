@@ -1,3 +1,4 @@
+import { getEffectiveSessionRole } from "@calcom/features/auth/lib/sessionRole";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { getUserAvatarUrl } from "@calcom/lib/getAvatarUrl";
 import logger from "@calcom/lib/logger";
@@ -9,21 +10,41 @@ import type { AuthOptions, Session } from "next-auth";
 import { getToken } from "next-auth/jwt";
 
 class LicenseKeySingleton {
-  static async getInstance(..._args: unknown[]) { return new LicenseKeySingleton(); }
-  async checkLicense() { return true; }
-  async validateLicenseKey() { return true; }
+  static async getInstance(..._args: unknown[]) {
+    return new LicenseKeySingleton();
+  }
+  async checkLicense() {
+    return true;
+  }
+  async validateLicenseKey() {
+    return true;
+  }
 }
 class DeploymentRepository {
   constructor(_prisma?: unknown) {}
-  async findFirst(..._args: unknown[]) { return null; }
+  async findFirst(..._args: unknown[]) {
+    return null;
+  }
 }
 
 const log = logger.getSubLogger({ prefix: ["getServerSession"] });
 /**
  * Stores the session in memory using the stringified token as the key.
  *
+ * The TTL bounds how long a privilege change (e.g. an admin demotion) can stay invisible on
+ * instances that did not process the change: explicit invalidation below only reaches the
+ * in-memory cache of the process that handled the mutation.
  */
-const CACHE = new LRUCache<string, Session>({ max: 1000 });
+const SESSION_CACHE_TTL_MS = 60 * 1000;
+const CACHE = new LRUCache<string, Session>({ max: 1000, ttl: SESSION_CACHE_TTL_MS });
+
+export function invalidateServerSessionCacheForUser(userId: number): void {
+  const staleKeys: string[] = [];
+  CACHE.forEach((session, key) => {
+    if (session.user.id === userId) staleKeys.push(key);
+  });
+  for (const key of staleKeys) CACHE.delete(key);
+}
 
 /**
  * This is a slimmed down version of the `getServerSession` function from
@@ -110,7 +131,8 @@ export async function getServerSession(options: {
       emailVerified: user.emailVerified,
       email_verified: user.emailVerified !== null,
       completedOnboarding: user.completedOnboarding,
-      role: user.role,
+      // Never above the role validated at login: promotions wait for a fresh authentication.
+      role: getEffectiveSessionRole(token.role, user.role),
       image: getUserAvatarUrl({
         avatarUrl: user.avatarUrl,
       }),

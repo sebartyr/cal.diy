@@ -27,7 +27,7 @@ vi.mock("@calcom/lib/safeStringify", createSafeStringifyMock);
 vi.mock("next-auth/jwt", createGetTokenMock);
 
 import { getToken } from "next-auth/jwt";
-import { getServerSession } from "./getServerSession";
+import { getServerSession, invalidateServerSessionCacheForUser } from "./getServerSession";
 
 type MockNextApiRequest = ReturnType<typeof createMocks<NextApiRequest>>["req"];
 
@@ -158,5 +158,76 @@ describe("getServerSession", () => {
         expect(whereClause).not.toHaveProperty("email");
       }
     });
+  });
+});
+
+describe("invalidateServerSessionCacheForUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrismaMock();
+  });
+
+  it("forces the next call to re-read the user (and its role) from the database", async () => {
+    setupGetTokenMock(
+      createMockToken({ sub: "42", upId: "usr-42", email: "cached@example.com", role: "ADMIN" })
+    );
+    prismaMock.user.findUnique.mockResolvedValue(createMockUser({ id: 42, role: "ADMIN" }));
+
+    const first = await getServerSession({ req: createMockRequest() });
+    expect(first?.user.role).toBe("ADMIN");
+
+    prismaMock.user.findUnique.mockResolvedValue(createMockUser({ id: 42, role: "USER" }));
+    const cached = await getServerSession({ req: createMockRequest() });
+    expect(cached?.user.role).toBe("ADMIN");
+
+    invalidateServerSessionCacheForUser(42);
+
+    const refreshed = await getServerSession({ req: createMockRequest() });
+    expect(refreshed?.user.role).toBe("USER");
+  });
+
+  it("leaves other users' cached sessions untouched", async () => {
+    setupGetTokenMock(createMockToken({ sub: "43", upId: "usr-43", email: "other@example.com" }));
+    prismaMock.user.findUnique.mockResolvedValue(createMockUser({ id: 43 }));
+    await getServerSession({ req: createMockRequest() });
+
+    invalidateServerSessionCacheForUser(42);
+    prismaMock.user.findUnique.mockClear();
+    await getServerSession({ req: createMockRequest() });
+
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("session role is capped by the role validated at login", () => {
+  let nextId = 500;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrismaMock();
+  });
+
+  it.each([
+    ["JWT USER + DB ADMIN (promotion without re-login)", "USER", "ADMIN", "USER"],
+    ["JWT INACTIVE_ADMIN + DB ADMIN", "INACTIVE_ADMIN", "ADMIN", "INACTIVE_ADMIN"],
+    ["JWT without role + DB ADMIN", undefined, "ADMIN", "USER"],
+    ["JWT ADMIN + DB ADMIN", "ADMIN", "ADMIN", "ADMIN"],
+    ["JWT ADMIN + DB USER (demotion)", "ADMIN", "USER", "USER"],
+  ] as const)("%s", async (_, tokenRole, dbRole, expectedRole) => {
+    // Distinct tokens per case so the in-memory session cache never short-circuits the DB read.
+    const id = nextId++;
+    setupGetTokenMock(
+      createMockToken({
+        sub: String(id),
+        upId: `usr-${id}`,
+        email: `role-${id}@example.com`,
+        role: tokenRole,
+      })
+    );
+    prismaMock.user.findUnique.mockResolvedValue(createMockUser({ id, role: dbRole }));
+
+    const session = await getServerSession({ req: createMockRequest() });
+
+    expect(session?.user.role).toBe(expectedRole);
   });
 });
