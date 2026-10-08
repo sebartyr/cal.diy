@@ -1,3 +1,4 @@
+import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
 import { checkRateLimitAndThrowError } from "@calcom/lib/checkRateLimitAndThrowError";
@@ -9,7 +10,6 @@ import type { TEventTypeInputSchema } from "./getByViewer.schema";
 import { TeamAccessUseCase } from "./teamAccessUseCase";
 import { EventGroupBuilder } from "./usecases/EventGroupBuilder";
 import { ProfilePermissionProcessor } from "./usecases/ProfilePermissionProcessor";
-import { PermissionCheckService } from "./util";
 import { EventTypeGroupFilter } from "./utils/EventTypeGroupFilter";
 
 type GetByViewerOptions = {
@@ -58,7 +58,7 @@ export const getUserEventGroups = async ({ ctx, input }: GetByViewerOptions) => 
   const profileProcessor = new ProfilePermissionProcessor();
   const profiles = profileProcessor.processProfiles(eventTypeGroups, teamPermissionsMap);
 
-  const permissionCheckService = new PermissionCheckService(ctx.prisma);
+  const permissionCheckService = getTeamRolePermissionService();
 
   const teamIdsToCheck = filteredEventTypeGroups
     .map((group) => group.teamId)

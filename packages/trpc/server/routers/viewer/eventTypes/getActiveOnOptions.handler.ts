@@ -1,4 +1,5 @@
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
+import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
 import { checkRateLimitAndThrowError } from "@calcom/lib/checkRateLimitAndThrowError";
@@ -8,7 +9,6 @@ import { EventTypeMetaDataSchema, teamMetadataSchema } from "@calcom/prisma/zod-
 import { TRPCError } from "@trpc/server";
 import type { TrpcSessionUser } from "../../../types";
 import type { TGetActiveOnOptionsSchema } from "./getActiveOnOptions.schema";
-import { PermissionCheckService } from "./util";
 
 const listOtherTeamHandler = async (
   ..._args: unknown[]
@@ -208,8 +208,7 @@ export const getActiveOnOptions = async ({ ctx, input }: GetActiveOnOptions) => 
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   }
 
-  const permissionCheckService = new PermissionCheckService(ctx.prisma);
-  const teamIdsWithEventTypeUpdatePermission = await permissionCheckService.getTeamIdsWithPermission({
+  const teamIdsWithEventTypeUpdatePermission = await getTeamRolePermissionService().getTeamIdsWithPermission({
     userId: user.id,
     permission: "eventType.update",
     fallbackRoles: [MembershipRole.ADMIN, MembershipRole.OWNER],

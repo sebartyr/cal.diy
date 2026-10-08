@@ -9,6 +9,12 @@ vi.mock("@calcom/lib/checkRateLimitAndThrowError", () => ({
   checkRateLimitAndThrowError: vi.fn(),
 }));
 
+const { mockCheckPermission } = vi.hoisted(() => ({ mockCheckPermission: vi.fn() }));
+
+vi.mock("@calcom/features/membership/di/TeamRolePermissionService.container", () => ({
+  getTeamRolePermissionService: () => ({ checkPermission: mockCheckPermission }),
+}));
+
 const { mockFindAllByUpIdIncludeTeam, MockMembershipRepository } = vi.hoisted(() => {
   const mockFindAllByUpIdIncludeTeam = vi.fn();
   const mockFindUniqueByUserIdAndTeamId = vi.fn();
@@ -79,6 +85,7 @@ describe("getUserEventGroups", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCheckPermission.mockResolvedValue(true);
   });
 
   describe("Basic functionality", () => {
@@ -171,7 +178,7 @@ describe("getUserEventGroups", () => {
   });
 
   describe("Permissions", () => {
-    it("should grant permissions for team members (stub always returns true)", async () => {
+    it("should grant canCreateEventType to team admins and owners", async () => {
       const { ProfileRepository } = await import("@calcom/features/profile/repositories/ProfileRepository");
 
       const mockTeamMembership = {
@@ -211,6 +218,47 @@ describe("getUserEventGroups", () => {
 
       expect(result.teamPermissions[100]).toMatchObject({
         canCreateEventType: true,
+      });
+    });
+
+    it("should deny canCreateEventType when the role check fails", async () => {
+      const { ProfileRepository } = await import("@calcom/features/profile/repositories/ProfileRepository");
+      const memberMembership = {
+        id: 2,
+        teamId: 200,
+        userId: 1,
+        accepted: true,
+        role: MembershipRole.MEMBER,
+        team: {
+          id: 200,
+          name: "Other Team",
+          slug: "other-team",
+          logoUrl: null,
+          parentId: null,
+          parent: null,
+          metadata: {},
+        },
+      } as unknown as NonNullable<
+        Awaited<
+          ReturnType<
+            typeof import("@calcom/features/membership/repositories/MembershipRepository").MembershipRepository.findAllByUpIdIncludeTeam
+          >
+        >
+      >[0];
+
+      vi.mocked(ProfileRepository.findByUpIdWithAuth).mockResolvedValue(mockProfile);
+      mockFindAllByUpIdIncludeTeam.mockResolvedValue([memberMembership]);
+      mockFilterTeamsByEventTypeReadPermission.mockResolvedValue([memberMembership]);
+      mockCheckPermission.mockResolvedValue(false);
+
+      const result = await getUserEventGroups({ ctx: mockCtx, input: null });
+
+      expect(result.teamPermissions[200]).toMatchObject({ canCreateEventType: false });
+      expect(mockCheckPermission).toHaveBeenCalledWith({
+        userId: 1,
+        teamId: 200,
+        permission: "eventType.create",
+        fallbackRoles: [MembershipRole.OWNER, MembershipRole.ADMIN],
       });
     });
   });

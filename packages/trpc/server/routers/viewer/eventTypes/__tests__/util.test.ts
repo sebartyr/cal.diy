@@ -5,13 +5,31 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { authedProcedure } from "../../../procedures/authedProcedure";
 import { createEventPbacProcedure, ensureEmailOrPhoneNumberIsPresent } from "../util";
 
+const { membershipFindUnique } = vi.hoisted(() => ({ membershipFindUnique: vi.fn() }));
+
+// Back the real TeamRolePermissionService with a fake repository that reads the
+// membership mock, so these cases keep exercising the role/accepted rules.
+vi.mock("@calcom/features/membership/di/TeamRolePermissionService.container", async () => {
+  const { TeamRolePermissionService } = await import(
+    "@calcom/features/membership/services/TeamRolePermissionService"
+  );
+  const service = new TeamRolePermissionService({
+    hasAcceptedMembershipWithRoles: async ({ userId, teamId, roles }) => {
+      const membership = await membershipFindUnique({ where: { userId_teamId: { userId, teamId } } });
+      return !!membership?.accepted && roles.includes(membership.role);
+    },
+    listAcceptedTeamIdsWithRoles: async () => [],
+  });
+  return { getTeamRolePermissionService: () => service };
+});
+
 describe("createEventPbacProcedure", () => {
   const mockPrisma = {
     eventType: {
       findUnique: vi.fn(),
     },
     membership: {
-      findUnique: vi.fn(),
+      findUnique: membershipFindUnique,
       findMany: vi.fn(),
     },
   } as unknown as PrismaClient;
@@ -477,7 +495,6 @@ describe("createEventPbacProcedure", () => {
       const procedure = createEventPbacProcedure("eventType.delete");
       const middleware = getMiddleware(procedure);
 
-      // PermissionCheckService stub always returns true
       await expect(
         middleware({
           ctx: mockCtx,
@@ -497,7 +514,6 @@ describe("createEventPbacProcedure", () => {
       const procedure = createEventPbacProcedure("eventType.create", [MembershipRole.OWNER]);
       const middleware = getMiddleware(procedure);
 
-      // PermissionCheckService stub always returns true
       await expect(
         middleware({
           ctx: mockCtx,
