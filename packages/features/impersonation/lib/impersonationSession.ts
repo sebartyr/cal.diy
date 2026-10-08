@@ -37,6 +37,14 @@ export function capMaxAgeForImpersonation(
   return maxAge === undefined ? remaining : Math.min(maxAge, remaining);
 }
 
+/**
+ * An impersonation stays valid only while its author is an existing, unlocked system admin: a
+ * demoted or locked author must lose the target's session immediately, not at the 1h deadline.
+ */
+export function isActiveImpersonator(author: { role: string; locked: boolean } | null | undefined): boolean {
+  return !!author && !author.locked && author.role === "ADMIN";
+}
+
 export function isImpersonatedSession(session: SessionLike): boolean {
   return !!session?.user?.impersonatedBy;
 }

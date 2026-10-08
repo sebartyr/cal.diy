@@ -249,6 +249,13 @@ describe("ImpersonationService.stopImpersonation", () => {
     );
   });
 
+  it("still lets a demoted author return, with their current (non-admin) role", async () => {
+    const { service } = setup({ adminIdentity: { ...admin, role: "USER" } });
+    const result = await service.stopImpersonation({ actor: impersonatedActor, returnToId: 1 });
+
+    expect(result.user).toMatchObject({ id: 1, role: "USER" });
+  });
+
   it("rejects when the session is not impersonated", async () => {
     const { service } = setup();
     await expectErrorCode(
