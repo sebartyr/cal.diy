@@ -12,6 +12,7 @@ import { DataTableProvider } from "~/data-table/DataTableProvider";
 import { useSegments } from "~/data-table/hooks/useSegments";
 import { BookingListContainer } from "../components/BookingListContainer";
 import { useActiveFiltersValidator } from "../hooks/useActiveFiltersValidator";
+import { useIsPristineBookingsUrl } from "../hooks/useAllBookingsScope";
 import { useBookingsView } from "../hooks/useBookingsView";
 import { useAdminTeamFilterOptions, useAdminUserFilterOptions } from "../hooks/useFacetedUniqueValues";
 import { ALL_BOOKINGS_SEGMENT_ID, MY_BOOKINGS_SEGMENT, MY_BOOKINGS_SEGMENT_ID } from "../lib/constants";
@@ -76,10 +77,15 @@ export function useSystemSegments(userId?: number, isSystemAdmin = false) {
   return systemSegments;
 }
 
-// "My bookings" is selected on first display when the URL names no segment.
+// "My bookings" is only the default of a blank URL: filter edits drop the system segment but keep
+// the filters in the URL, and those (reloads, shared links) must not be overridden.
 export const useBookingSegments: UseSegments = (props) => {
   const result = useSegments(props);
-  return { ...result, preferredSegmentId: result.preferredSegmentId ?? MY_BOOKINGS_SEGMENT };
+  const isPristineUrl = useIsPristineBookingsUrl();
+  return {
+    ...result,
+    preferredSegmentId: result.preferredSegmentId ?? (isPristineUrl ? MY_BOOKINGS_SEGMENT : null),
+  };
 };
 
 // System admins pick any user or team of the instance in the member and team filters.

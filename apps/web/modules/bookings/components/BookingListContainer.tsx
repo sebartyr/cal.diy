@@ -21,6 +21,7 @@ import { useListAutoSelector } from "~/bookings/hooks/useListAutoSelector";
 import { DataTableFilters, DataTableSegment } from "~/data-table/components";
 import { useDataTable } from "~/data-table/hooks/useDataTable";
 import { useDisplayedFilterCount } from "~/data-table/hooks/useDisplayedFilterCount";
+import { useAllBookingsScope, useSyncAllBookingsScopeWithSegment } from "../hooks/useAllBookingsScope";
 import { isAllBookingsSegment } from "../lib/constants";
 import {
   BookingDetailsSheetStoreProvider,
@@ -55,6 +56,30 @@ function FilterButton({ table, displayedFilterCount, setShowFilters }: FilterBut
       <Badge variant="gray" className="ml-1">
         {displayedFilterCount}
       </Badge>
+    </Button>
+  );
+}
+
+/**
+ * Shows that the instance-wide scope is still on once the "All bookings" segment has been
+ * deselected by a filter or page size change, and lets the admin drop it explicitly.
+ */
+function AllBookingsScopeBadge() {
+  const { t } = useLocale();
+  const { segmentId } = useDataTable();
+  const { listsAllBookings, clearAllBookingsScope } = useAllBookingsScope({ isSystemAdmin: true });
+
+  if (!listsAllBookings || isAllBookingsSegment(segmentId)) return null;
+
+  return (
+    <Button
+      color="secondary"
+      size="sm"
+      EndIcon="x"
+      data-testid="all-bookings-scope"
+      aria-label={`${t("all_bookings_filter_label")}: ${t("remove")}`}
+      onClick={clearAllBookingsScope}>
+      {t("all_bookings_filter_label")}
     </Button>
   );
 }
@@ -189,6 +214,8 @@ function BookingListInner({
           setShowFilters={setShowFilters}
         />
 
+        {isSystemAdmin && <AllBookingsScopeBadge />}
+
         {/* Desktop: auto-pushed to right via flex-grow spacer, Mobile: continue on second row */}
         <div className="hidden grow md:block" />
 
@@ -237,11 +264,12 @@ function BookingListInner({
 }
 
 export function BookingListContainer(props: BookingListContainerProps) {
-  const { limit, offset, setPageIndex, isValidatorPending, segmentId } = useDataTable();
+  const { limit, offset, setPageIndex, isValidatorPending } = useDataTable();
   const { eventTypeIds, teamIds, userIds, dateRange, attendeeName, attendeeEmail, bookingUid } =
     useBookingFilters();
-  // Only offered to system admins; bookings.get refuses it to anyone else anyway.
-  const listsAllBookings = !!props.isSystemAdmin && isAllBookingsSegment(segmentId);
+  const isSystemAdmin = !!props.isSystemAdmin;
+  useSyncAllBookingsScopeWithSegment({ isSystemAdmin });
+  const { listsAllBookings } = useAllBookingsScope({ isSystemAdmin });
 
   // Build query input once - shared between query and prefetching
   const queryInput = useMemo(
