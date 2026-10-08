@@ -538,7 +538,11 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
 
       const error = await errorOf(getAvailability());
 
-      expect(error).toEqual(expect.objectContaining({ message: expect.stringContaining("0 of 1") }));
+      expect(error).toEqual(
+        expect.objectContaining({
+          message: expect.stringContaining(`did not return https://caldav.example.com${SIBLING_HREF}`),
+        })
+      );
     });
 
     it("falls back to an unexpanded query when the server rejects the expanded one", async () => {
@@ -559,6 +563,55 @@ describe("CalendarService - SSRF through CalDAV responses (real tsdav)", () => {
       const error = await errorOf(getAvailability());
 
       expect(error).toEqual(expect.objectContaining({ message: expect.stringContaining("500") }));
+    });
+
+    it("fails availability when the query answers with an error on the calendar collection", async () => {
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: () =>
+          xmlResponse(
+            `<d:response><d:href>${CALENDAR_PATH}</d:href><d:status>HTTP/1.1 403 Forbidden</d:status></d:response>`
+          ),
+      };
+
+      const error = await errorOf(getAvailability());
+
+      expect(error).toEqual(expect.objectContaining({ message: expect.stringContaining("403") }));
+    });
+
+    it("fails availability when duplicate answers for one object hide another that is missing", async () => {
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: (body) =>
+          body.includes("calendar-multiget")
+            ? xmlResponse(notFound(SIBLING_HREF) + notFound(SIBLING_HREF))
+            : xmlResponse(eventEntry(false) + siblingWithoutData),
+      };
+
+      const error = await errorOf(getAvailability());
+
+      expect(error).toEqual(expect.objectContaining({ message: expect.stringContaining(`did not return`) }));
+    });
+
+    it("matches multiget answers whose href is spelled differently from the request", async () => {
+      const encodedSibling = `${CALENDAR_PATH}sib%40ling.ics`;
+      scenario = {
+        ...SAFE_SCENARIO,
+        calendarReport: (body) =>
+          body.includes("calendar-multiget")
+            ? xmlResponse(
+                // Absolute URL with an escaped character, then a relative and decoded href
+                propstat(
+                  `https://caldav.example.com${CALENDAR_PATH}event%2D1.ics`,
+                  `<d:getetag>"etag-1"</d:getetag><c:calendar-data><![CDATA[${ICS}]]></c:calendar-data>`
+                ) + notFound("sib@ling.ics")
+              )
+            : xmlResponse(eventEntry(false) + propstat(encodedSibling, `<d:getetag>"etag-2"</d:getetag>`)),
+      };
+
+      const busy = await getAvailability();
+
+      expect(busy).toEqual(BUSY);
     });
 
     it("reports an empty calendar as free", async () => {

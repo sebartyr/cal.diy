@@ -412,6 +412,28 @@ const toDAVObject = (response: DAVResponse, url: string): DAVObject | null => {
 const writeError = (action: string, response: Response): Error =>
   new Error(`Error ${action} event: CalDAV server answered ${response.status} ${response.statusText}`.trim());
 
+/**
+ * Compares DAV hrefs the way the server may spell them: resolved against the calendar, percent
+ * decoded, without trailing slash.
+ */
+const toUrlKey = (href: string, baseUrl: string): string => {
+  const url = new URL(href, baseUrl);
+  let path = url.pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // Malformed escapes are compared as sent
+  }
+  return `${url.origin}${path.replace(/\/+$/, "")}`;
+};
+
+const assertSkippedResponseOk = (response: DAVResponse, calendarUrl: string): void => {
+  if (response.ok) return;
+  throw new Error(
+    `CalDAV REPORT on ${calendarUrl} answered ${response.status} ${response.statusText} for ${response.href}`
+  );
+};
+
 const mapAttendees = (attendees: AttendeeInCalendarEvent[] | TeamMember[]): Attendee[] =>
   attendees.map(({ email, name }) => ({ name, email, partstat: "NEEDS-ACTION" }));
 
@@ -941,10 +963,11 @@ export default abstract class BaseCalendarService implements Calendar {
       responses = await query(false);
     }
 
+    const calendarKey = toUrlKey(calendarUrl, calendarUrl);
     const objects: DAVObject[] = [];
     const urlsWithoutData: string[] = [];
     for (const response of responses) {
-      const url = this.getObjectUrl(response, calendarUrl);
+      const url = this.getObjectUrl(response, calendarUrl, calendarKey);
       if (!url) continue;
       const object = toDAVObject(response, url);
       if (object) objects.push(object);
@@ -952,33 +975,48 @@ export default abstract class BaseCalendarService implements Calendar {
     }
     if (urlsWithoutData.length === 0) return objects;
 
-    const fetched = await this.calendarMultiGet(calendarUrl, urlsWithoutData, headers);
-    for (const response of fetched) {
+    const requested = new Map(urlsWithoutData.map((url) => [toUrlKey(url, calendarUrl), url]));
+    const answered = new Map<string, DAVResponse>();
+    for (const response of await this.calendarMultiGet(calendarUrl, urlsWithoutData, headers)) {
+      const key = toUrlKey(response.href ?? "", calendarUrl);
+      if (key === calendarKey) assertSkippedResponseOk(response, calendarUrl);
+      // Responses for objects that were not asked for, and repeated answers for one that was, are
+      // ignored rather than rejected: they say nothing about the objects still unanswered, which
+      // the check below catches, so they can neither hide a missing object nor fail a valid reply
+      if (requested.has(key) && !answered.has(key)) answered.set(key, response);
+    }
+    for (const [key, url] of Array.from(requested)) {
+      const response = answered.get(key);
+      if (!response) {
+        throw new Error(`CalDAV calendar-multiget on ${calendarUrl} did not return ${url}`);
+      }
       // Deleted between the query and the multiget, so it no longer occupies the slot
       if (response.status === 404) continue;
-      const url = this.getObjectUrl(response, calendarUrl);
-      const object = url ? toDAVObject(response, url) : null;
+      const object = toDAVObject(response, url);
       if (!object) {
         throw new Error(
-          `CalDAV calendar-multiget on ${calendarUrl} returned ${response.status} ${response.statusText} without calendar-data`
+          `CalDAV calendar-multiget on ${calendarUrl} returned ${response.status} ${response.statusText} without calendar-data for ${url}`
         );
       }
       objects.push(object);
     }
-    if (fetched.length < urlsWithoutData.length) {
-      throw new Error(
-        `CalDAV calendar-multiget on ${calendarUrl} returned ${fetched.length} of ${urlsWithoutData.length} objects`
-      );
-    }
     return objects;
   }
 
-  /** Resolves a response href to an object URL, or null for the calendar itself and non-event objects. */
-  private getObjectUrl(response: DAVResponse, calendarUrl: string): string | null {
-    if (!response.href) return null;
-    const url = new URL(response.href, calendarUrl).href;
-    if (url.replace(/\/$/, "") === calendarUrl.replace(/\/$/, "")) return null;
-    return this.isValidFormat(url) ? url : null;
+  /**
+   * Resolves a response href to an object URL, or null for the calendar itself and non-event
+   * resources. Those are only skipped when their status is 2xx: an error on them (a 403 on the
+   * collection, say) means the query did not cover the calendar, not that it is empty.
+   */
+  private getObjectUrl(response: DAVResponse, calendarUrl: string, calendarKey: string): string | null {
+    const url = new URL(response.href ?? "", calendarUrl).href;
+    if (toUrlKey(url, calendarUrl) === calendarKey) {
+      assertSkippedResponseOk(response, calendarUrl);
+      return null;
+    }
+    if (this.isValidFormat(url)) return url;
+    assertSkippedResponseOk(response, calendarUrl);
+    return null;
   }
 
   /**
@@ -1019,8 +1057,12 @@ export default abstract class BaseCalendarService implements Calendar {
     if (failed) {
       throw new Error(`CalDAV REPORT on ${calendarUrl} failed: ${failed.status} ${failed.statusText}`);
     }
-    // An empty multistatus comes back as a single response without href
-    return responses.filter((response) => response.href);
+    // An empty multistatus comes back as a single pseudo-response, without href nor propstat
+    const actual = responses.filter((response) => response.href || response.propStats);
+    if (actual.some((response) => !response.href)) {
+      throw new Error(`CalDAV REPORT on ${calendarUrl} returned a response without href`);
+    }
+    return actual;
   }
 
   private async getEvents(calId: string, objectUrls: string[]) {
