@@ -2,9 +2,10 @@
 
 import i18nMock from "../__mocks__/libServerI18n";
 import prismock from "../__mocks__/prisma";
+import dns from "node:dns/promises";
 import type { TFunction } from "i18next";
 import { v4 as uuidv4 } from "uuid";
-import { vi } from "vitest";
+import { type MockInstance, vi } from "vitest";
 import "vitest-fetch-mock";
 import { appStoreMetadata } from "@calcom/app-store/appStoreMetaData";
 import { type WeekDays, weekdayToWeekIndex } from "@calcom/lib/dayjs";
@@ -701,8 +702,39 @@ async function addPaymentToDb(payment: InputPayment[]) {
   });
 }
 
-async function addWebhooks(webhooks: InputWebhook[]) {
+// Public address (not a reserved/documentation range) so the SSRF guard lets fictitious hosts through
+const FICTITIOUS_HOST_IP = "93.184.216.34";
+const realDnsLookup: typeof dns.lookup = dns.lookup;
+let fictitiousHostsLookupSpy: MockInstance<typeof dns.lookup> | null = null;
+
+function isFictitiousHost(hostname: string): boolean {
+  return /(^|\.)example\.(com|net|org)\.?$/i.test(hostname);
+}
+
+/**
+ * Webhook URLs in scenarios use RFC 2606 hosts (e.g. my-webhook.example.com) that do not resolve, and the
+ * SSRF guard fails closed on DNS errors. Only those hosts are faked; other hosts still hit the real resolver.
+ */
+function mockFictitiousHostsDns(): void {
+  // A test that mocks node:dns/promises itself keeps full control of resolution
+  const currentLookup = dns.lookup;
+  if (vi.isMockFunction(currentLookup) && currentLookup !== fictitiousHostsLookupSpy) return;
+  fictitiousHostsLookupSpy = vi.spyOn(dns, "lookup");
+  fictitiousHostsLookupSpy.mockImplementation((async (hostname: string, options?: { all?: boolean }) => {
+    if (!isFictitiousHost(hostname)) {
+      return realDnsLookup(hostname, options ?? {});
+    }
+    const address = { address: FICTITIOUS_HOST_IP, family: 4 };
+    if (options?.all) return [address];
+    return address;
+  }) as typeof dns.lookup);
+}
+
+async function addWebhooks(webhooks: InputWebhook[]): Promise<void> {
   log.silly("TestData: Creating Webhooks", safeStringify(webhooks));
+  if (webhooks.length > 0) {
+    mockFictitiousHostsDns();
+  }
 
   await addWebhooksToDb(webhooks);
 }
