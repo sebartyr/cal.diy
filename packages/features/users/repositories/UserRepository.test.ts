@@ -180,6 +180,28 @@ describe("listUsers", () => {
     );
   });
 
+  test("Should restrict the list to the given ids", async () => {
+    const repo = new UserRepository(prismock);
+    await repo.create({
+      username: "alice",
+      email: "alice@example.com",
+      organizationId: null,
+      creationSource: CreationSource.WEBAPP,
+      locked: false,
+    });
+    const bob = await repo.create({
+      username: "bob",
+      email: "bob@example.com",
+      organizationId: null,
+      creationSource: CreationSource.WEBAPP,
+      locked: true,
+    });
+
+    const { users } = await repo.listUsers({ ids: [bob.id], cursor: null, limit: 10 });
+
+    expect(users.map((user) => user.username)).toEqual(["bob"]);
+  });
+
   test("Should include both locked and unlocked users", async () => {
     await new UserRepository(prismock).create({
       username: "locked-user",
