@@ -1,3 +1,4 @@
+import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
 import getAllUserBookings from "@calcom/features/bookings/lib/getAllUserBookings";
 import type { DB } from "@calcom/kysely";
 import type { PrismaClient } from "@calcom/prisma";
@@ -9,6 +10,7 @@ import { getBookings, getHandler } from "./get.handler";
 const { mockGetTeamIdsWithPermission } = vi.hoisted(() => ({ mockGetTeamIdsWithPermission: vi.fn() }));
 
 vi.mock("@calcom/features/bookings/lib/getAllUserBookings");
+vi.mock("@calcom/features/audit-log/adminAuditLog", () => ({ recordAdminAction: vi.fn() }));
 vi.mock("@calcom/features/membership/di/TeamRolePermissionService.container", () => ({
   getTeamRolePermissionService: () => ({ getTeamIdsWithPermission: mockGetTeamIdsWithPermission }),
 }));
@@ -477,5 +479,203 @@ describe("getBookings - team booking permissions", () => {
         expect(parameters[Number(index) - 1]).toBe(true);
       }
     });
+  });
+});
+
+describe("system admin booking scopes", () => {
+  const admin = { id: 1, email: "admin@example.com", orgId: null };
+
+  const createCompilingKysely = () => {
+    const queries: CompiledQuery[] = [];
+    const db = new Kysely<DB>({
+      dialect: {
+        createAdapter: () => new PostgresAdapter(),
+        createDriver: () => new DummyDriver(),
+        createIntrospector: (k) => new PostgresIntrospector(k),
+        createQueryCompiler: () => new PostgresQueryCompiler(),
+      },
+      log: (event) => {
+        queries.push(event.query);
+      },
+    });
+    return { db, queries };
+  };
+
+  const findListQuery = (queries: CompiledQuery[]) =>
+    queries.find((q) => q.sql.includes("union_subquery") && q.sql.includes("limit"));
+
+  let prisma: PrismaClient;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetTeamIdsWithPermission.mockResolvedValue([]);
+    prisma = {
+      user: {
+        findMany: vi.fn((args: { where?: { id?: { in?: number[] } } }) =>
+          Promise.resolve((args?.where?.id?.in ?? []).map((id) => ({ id, email: `user${id}@example.com` })))
+        ),
+      },
+      eventType: { findMany: vi.fn().mockResolvedValue([]) },
+      booking: { findUnique: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
+      $queryRaw: vi.fn().mockResolvedValue([]),
+    } as unknown as PrismaClient;
+  });
+
+  const run = (
+    db: Kysely<DB>,
+    filters: Parameters<typeof getBookings>[0]["filters"],
+    isSystemAdmin: boolean | undefined
+  ) =>
+    getBookings({
+      user: admin,
+      prisma,
+      kysely: db,
+      bookingListingByStatus: ["upcoming"],
+      filters,
+      take: 10,
+      skip: 0,
+      isSystemAdmin,
+    });
+
+  it("leaves the default listing unchanged for an admin", async () => {
+    const asUser = createCompilingKysely();
+    await run(asUser.db, {}, false);
+    const asAdmin = createCompilingKysely();
+    await run(asAdmin.db, {}, true);
+
+    expect(findListQuery(asAdmin.queries)?.sql).toBe(findListQuery(asUser.queries)?.sql);
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("forbids the all scope to anyone but a system admin", async () => {
+    const { db } = createCompilingKysely();
+    await expect(run(db, { scope: "all" }, false)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(run(db, { scope: "all" }, undefined)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("lists every booking for an admin with the all scope, paginated and audited", async () => {
+    const { db, queries } = createCompilingKysely();
+    await run(db, { scope: "all" }, true);
+
+    const sql = findListQuery(queries)?.sql ?? "";
+    expect(sql).toContain("limit");
+    expect(sql).toContain("offset");
+    expect(sql).not.toContain('"Booking"."userId"');
+    expect(sql).not.toContain('"Attendee"');
+    expect(sql).not.toContain("distinct");
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+    expect(recordAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: admin.id,
+        path: "viewer.bookings.get",
+        outcome: "granted",
+        context: expect.objectContaining({ scope: "all" }),
+      })
+    );
+  });
+
+  it("keeps DISTINCT on the all scope when an attendee filter joins attendees", async () => {
+    const { db, queries } = createCompilingKysely();
+    await run(db, { scope: "all", attendeeName: "Jane" }, true);
+
+    expect(findListQuery(queries)?.sql).toContain("select distinct");
+  });
+
+  it("lets an admin filter by any user and audits it", async () => {
+    const { db, queries } = createCompilingKysely();
+    await expect(run(db, { userIds: [42] }, true)).resolves.toBeDefined();
+
+    const listQuery = findListQuery(queries);
+    expect(listQuery?.sql).toContain('"userId" in ($');
+    expect(listQuery?.parameters).toContain(42);
+    expect(recordAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({ context: expect.objectContaining({ userIds: [42] }) })
+    );
+  });
+
+  it("still forbids a non-admin from filtering by any user", async () => {
+    const { db } = createCompilingKysely();
+    await expect(run(db, { userIds: [42] }, false)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("does not audit an admin filtering on their own bookings", async () => {
+    const { db } = createCompilingKysely();
+    await run(db, { userIds: [admin.id] }, true);
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("lists the bookings of any team's event types for an admin", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ id: 501 }, { id: 502 }]);
+    const { db, queries } = createCompilingKysely();
+    await run(db, { teamIds: [77] }, true);
+
+    const listQuery = findListQuery(queries);
+    const sql = listQuery?.sql ?? "";
+    expect(sql).toContain('"Booking"."eventTypeId" in ($');
+    expect(listQuery?.parameters).toEqual(expect.arrayContaining([501, 502]));
+    expect(sql).not.toContain('"Booking"."userId" = $');
+    expect(recordAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({ context: expect.objectContaining({ teamIds: [77] }) })
+    );
+  });
+
+  it("returns nothing for a team without event types instead of the whole instance", async () => {
+    const { db, queries } = createCompilingKysely();
+    const result = await run(db, { teamIds: [77] }, true);
+
+    expect(result).toEqual({ bookings: [], recurringInfo: [], totalCount: 0 });
+    expect(findListQuery(queries)).toBeUndefined();
+  });
+
+  it("keeps the regular team filter for a non-admin", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ id: 501 }]);
+    const { db, queries } = createCompilingKysely();
+    await run(db, { teamIds: [77] }, false);
+
+    expect(findListQuery(queries)?.sql).toContain('"Booking"."userId" = $');
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("does not widen the team filter for an admin who already administers the team", async () => {
+    mockGetTeamIdsWithPermission.mockResolvedValue([77]);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ id: 501 }]);
+    const { db, queries } = createCompilingKysely();
+    await run(db, { teamIds: [77] }, true);
+
+    expect(findListQuery(queries)?.sql).toContain('"Booking"."userId" = $');
+    expect(recordAdminAction).not.toHaveBeenCalled();
+  });
+});
+
+describe("getHandler - system admin detection", () => {
+  type HandlerUser = Parameters<typeof getHandler>[0]["ctx"]["user"];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getAllUserBookings).mockResolvedValue({ bookings: [], recurringInfo: [], totalCount: 0 });
+  });
+
+  it.each([
+    ["an admin with a regular session", "ADMIN", { user: {} }, true],
+    ["an admin impersonating someone", "ADMIN", { user: { impersonatedBy: { id: 9 } } }, false],
+    ["a regular user", "USER", { user: {} }, false],
+    ["an admin without session context", "ADMIN", undefined, false],
+  ])("passes isSystemAdmin for %s", async (_label, role, session, expected) => {
+    await getHandler({
+      ctx: {
+        user: {
+          id: 1,
+          email: "a@example.com",
+          role,
+          profile: { organizationId: null },
+        } as unknown as HandlerUser,
+        prisma: {} as PrismaClient,
+        session,
+      },
+      input: { filters: {}, limit: 10, offset: 0 },
+    });
+
+    expect(getAllUserBookings).toHaveBeenCalledWith(expect.objectContaining({ isSystemAdmin: expected }));
   });
 });

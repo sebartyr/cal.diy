@@ -1,9 +1,8 @@
-import type { Kysely } from "kysely";
-
 import type { TextFilterValue } from "@calcom/features/data-table/lib/types";
 import type { DB } from "@calcom/kysely";
 import type { PrismaClient } from "@calcom/prisma";
 import { getBookings } from "@calcom/trpc/server/routers/viewer/bookings/get.handler";
+import type { Kysely } from "kysely";
 
 type InputByStatus = "upcoming" | "recurring" | "past" | "cancelled" | "unconfirmed";
 export type SortOptions = {
@@ -25,6 +24,7 @@ type GetOptions = {
     // Support both singular 'status' (for API v2) and plural 'statuses' (/bookings page)
     status?: InputByStatus;
     statuses?: InputByStatus[];
+    scope?: "mine" | "all";
     teamIds?: number[] | undefined;
     userIds?: number[] | undefined;
     eventTypeIds?: number[] | undefined;
@@ -33,9 +33,18 @@ type GetOptions = {
     bookingUid?: string | undefined;
   };
   sort?: SortOptions;
+  isSystemAdmin?: boolean;
 };
 
-const getAllUserBookings = async ({ ctx, filters, bookingListingByStatus, take, skip, sort }: GetOptions) => {
+const getAllUserBookings = async ({
+  ctx,
+  filters,
+  bookingListingByStatus,
+  take,
+  skip,
+  sort,
+  isSystemAdmin = false,
+}: GetOptions) => {
   const { prisma, user, kysely } = ctx;
 
   // Support both singular 'status' and plural 'statuses' for backward compatibility
@@ -56,6 +65,7 @@ const getAllUserBookings = async ({ ctx, filters, bookingListingByStatus, take, 
     sort,
     take,
     skip,
+    isSystemAdmin,
   });
 
   return {

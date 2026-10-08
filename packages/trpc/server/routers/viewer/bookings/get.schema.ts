@@ -1,11 +1,16 @@
-import { z } from "zod";
-
 import { ZTextFilterValue } from "@calcom/features/data-table/lib/types";
+import { z } from "zod";
 
 // Note: offset has .default(0), so input type has it optional but output type has it required
 type BookingStatus = "upcoming" | "recurring" | "past" | "cancelled" | "unconfirmed";
 
+// "mine" is the regular per-user listing. "all" lists every booking of the instance and is only
+// accepted from system administrators.
+const BOOKING_LIST_SCOPES = ["mine", "all"] as const;
+type BookingListScope = (typeof BOOKING_LIST_SCOPES)[number];
+
 type TGetInputSchemaFilters = {
+  scope?: BookingListScope;
   teamIds?: number[];
   userIds?: number[];
   status?: BookingStatus;
@@ -44,6 +49,7 @@ export type TGetInputSchema = {
 
 export const ZGetInputSchema: z.ZodType<TGetInputSchema, z.ZodTypeDef, TGetInputRawSchema> = z.object({
   filters: z.object({
+    scope: z.enum(BOOKING_LIST_SCOPES).optional(),
     teamIds: z.number().array().optional(),
     userIds: z.number().array().optional(),
     // Support both singular 'status' (for API v2) and plural 'statuses' (/bookings page)
@@ -71,3 +77,5 @@ export const ZGetInputSchema: z.ZodType<TGetInputSchema, z.ZodTypeDef, TGetInput
     })
     .optional(),
 });
+
+export type { BookingListScope };
