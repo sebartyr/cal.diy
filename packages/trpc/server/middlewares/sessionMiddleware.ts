@@ -1,5 +1,5 @@
-import process from "node:process";
 import { recordAdminAction, recordAdminDenial } from "@calcom/features/audit-log/adminAuditLog";
+import { getSystemAdminDenialReason } from "@calcom/features/auth/lib/systemAdminPolicy";
 import { getUserSession } from "@calcom/features/auth/lib/userFromSessionUtils";
 import logger from "@calcom/lib/logger";
 import { setUser as SentrySetUser } from "@sentry/nextjs";
@@ -44,11 +44,10 @@ export const isNotImpersonatingMiddleware = isAuthed.unstable_pipe(({ ctx, next,
   return next();
 });
 
-// SPRINT3-041: opt-in flag enforcing 2FA on admin routes. We don't flip this
-// on by default to give existing admins time to enroll; ops sets it via env
-// once every admin has TOTP configured. RGPD §9 / common audit requirement.
-const REQUIRE_2FA_FOR_ADMIN = process.env.REQUIRE_2FA_FOR_ADMIN === "true";
-
+// SPRINT3-041: REQUIRE_2FA_FOR_ADMIN is an opt-in flag enforcing 2FA on admin powers. We don't flip
+// it on by default to give existing admins time to enroll; ops sets it via env once every admin has
+// TOTP configured. RGPD §9 / common audit requirement. The policy lives in getSystemAdminDenialReason
+// so that admin routes, impersonation and admin extensions of regular features stay aligned.
 export const isAdminMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) => {
   const { user } = ctx;
   const impersonatedBy = ctx.session.user.impersonatedBy;
@@ -61,7 +60,8 @@ export const isAdminMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) =>
     });
     throw new TRPCError({ code: "FORBIDDEN", message: IMPERSONATION_BLOCKED_MESSAGE });
   }
-  if (user?.role !== "ADMIN") {
+  const denialReason = getSystemAdminDenialReason(user);
+  if (denialReason === "not_admin" || denialReason === "locked") {
     // SEC-305-FORK (Sprint 3): record attempted access to an admin-only path
     // even when it gets rejected, so the trail surfaces probing.
     if (user?.id) {
@@ -75,7 +75,7 @@ export const isAdminMiddleware = isAuthed.unstable_pipe(({ ctx, next, path }) =>
     // an account promoted in the database since then lands here until it signs in again.
     throw new TRPCError({ code: "FORBIDDEN" });
   }
-  if (REQUIRE_2FA_FOR_ADMIN && !user.twoFactorEnabled) {
+  if (denialReason === "two_factor_required") {
     recordAdminDenial({
       actorUserId: user.id,
       path,
