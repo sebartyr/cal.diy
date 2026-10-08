@@ -1,16 +1,20 @@
 "use client";
 
 import { ColumnFilterType, type SystemFilterSegment } from "@calcom/features/data-table";
+import type { UseSegments } from "@calcom/features/data-table/lib/types";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import classNames from "@calcom/ui/classNames";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
+import { DataTableRemoteFilterOptionsProvider } from "~/data-table/contexts/DataTableRemoteFilterOptionsContext";
 import { DataTableProvider } from "~/data-table/DataTableProvider";
 import { useSegments } from "~/data-table/hooks/useSegments";
 import { BookingListContainer } from "../components/BookingListContainer";
 import { useActiveFiltersValidator } from "../hooks/useActiveFiltersValidator";
 import { useBookingsView } from "../hooks/useBookingsView";
+import { useAdminTeamFilterOptions, useAdminUserFilterOptions } from "../hooks/useFacetedUniqueValues";
+import { ALL_BOOKINGS_SEGMENT_ID, MY_BOOKINGS_SEGMENT, MY_BOOKINGS_SEGMENT_ID } from "../lib/constants";
 import type { validStatuses } from "../lib/validStatuses";
 
 const BookingCalendarContainer = dynamic(() =>
@@ -30,15 +34,15 @@ type BookingsProps = {
   isSystemAdmin?: boolean;
 };
 
-function useSystemSegments(userId?: number) {
+export function useSystemSegments(userId?: number, isSystemAdmin = false) {
   const { t } = useLocale();
 
   const systemSegments: SystemFilterSegment[] = useMemo(() => {
     if (!userId) return [];
 
-    return [
+    const segments: SystemFilterSegment[] = [
       {
-        id: "my_bookings",
+        id: MY_BOOKINGS_SEGMENT_ID,
         name: t("my_bookings"),
         type: "system",
         activeFilters: [
@@ -53,25 +57,57 @@ function useSystemSegments(userId?: number) {
         perPage: 10,
       },
     ];
-  }, [userId, t]);
+
+    // The list query turns this segment into filters.scope = "all", which bookings.get only accepts
+    // from system admins.
+    if (isSystemAdmin) {
+      segments.push({
+        id: ALL_BOOKINGS_SEGMENT_ID,
+        name: t("all_bookings_filter_label"),
+        type: "system",
+        activeFilters: [],
+        perPage: 10,
+      });
+    }
+
+    return segments;
+  }, [userId, isSystemAdmin, t]);
 
   return systemSegments;
 }
 
+// "My bookings" is selected on first display when the URL names no segment.
+export const useBookingSegments: UseSegments = (props) => {
+  const result = useSegments(props);
+  return { ...result, preferredSegmentId: result.preferredSegmentId ?? MY_BOOKINGS_SEGMENT };
+};
+
+// System admins pick any user or team of the instance in the member and team filters.
+const adminRemoteFilterOptions = {
+  userId: useAdminUserFilterOptions,
+  teamId: useAdminTeamFilterOptions,
+};
+const noRemoteFilterOptions = {};
+
 export default function Bookings(props: BookingsProps) {
   const pathname = usePathname();
-  const systemSegments = useSystemSegments(props.userId);
+  const isSystemAdmin = !!props.isSystemAdmin;
+  const systemSegments = useSystemSegments(props.userId, isSystemAdmin);
   const validateActiveFilters = useActiveFiltersValidator({
     canReadOthersBookings: props.permissions.canReadOthersBookings,
+    isSystemAdmin,
   });
   if (!pathname) return null;
   return (
     <DataTableProvider
       tableIdentifier={pathname}
-      useSegments={useSegments}
+      useSegments={useBookingSegments}
       systemSegments={systemSegments}
       validateActiveFilters={validateActiveFilters}>
-      <BookingsContent {...props} />
+      <DataTableRemoteFilterOptionsProvider
+        value={isSystemAdmin ? adminRemoteFilterOptions : noRemoteFilterOptions}>
+        <BookingsContent {...props} />
+      </DataTableRemoteFilterOptionsProvider>
     </DataTableProvider>
   );
 }
