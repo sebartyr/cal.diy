@@ -1,17 +1,18 @@
-import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
-import { cookies, headers } from "next/headers";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
+import { isSessionActingSystemAdmin } from "@calcom/features/auth/lib/isSessionActingSystemAdmin";
 import handleCancelBooking from "@calcom/features/bookings/lib/handleCancelBooking";
+import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { checkRateLimitAndThrowError } from "@calcom/lib/checkRateLimitAndThrowError";
 import getIP from "@calcom/lib/getIP";
 import { piiHasher } from "@calcom/lib/server/PiiHasher";
+import prisma from "@calcom/prisma";
 import { bookingCancelWithCsrfSchema } from "@calcom/prisma/zod-utils";
 import { validateCsrfToken } from "@calcom/web/lib/validateCsrfToken";
-
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
+import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
+import { cookies, headers } from "next/headers";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 async function handler(req: NextRequest) {
   let appDirRequestBody;
@@ -52,6 +53,10 @@ async function handler(req: NextRequest) {
   const result = await handleCancelBooking({
     bookingData: safeBookingData,
     userId: session?.user?.id || -1,
+    // session.user.role is already capped by the database role (getServerSession); the account is
+    // loaded to apply the rest of the admin policy (lock, 2FA).
+    isSystemAdmin: await isSessionActingSystemAdmin(session, new UserRepository(prisma)),
+    auditPath: "/api/cancel",
   });
 
   // const bookingCancelService = getBookingCancelService();
