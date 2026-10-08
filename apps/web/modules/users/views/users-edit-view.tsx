@@ -60,8 +60,6 @@ export function UsersEditView({ user }: { user: User }) {
           locale: values.locale?.value,
           timeFormat: values.timeFormat?.value,
           allowDynamicBooking: values.allowDynamicBooking,
-          identityProvider: values.identityProvider?.value,
-          role: values.role?.value,
           avatarUrl: values.avatarUrl,
           userId: user.id,
         };

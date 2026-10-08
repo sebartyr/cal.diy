@@ -43,8 +43,6 @@ export default function UsersAddView() {
           locale: values.locale?.value,
           timeFormat: values.timeFormat?.value,
           allowDynamicBooking: values.allowDynamicBooking,
-          identityProvider: values.identityProvider?.value,
-          role: values.role?.value,
           avatarUrl: values.avatarUrl,
         };
         mutation.mutate(data as Parameters<typeof mutation.mutate>[0]);

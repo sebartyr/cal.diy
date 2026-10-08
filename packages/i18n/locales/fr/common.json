@@ -4636,5 +4636,14 @@
   "paypal_step_7": "Vous devriez être prêt après cela.",
   "dashboard": "tableau de bord",
   "paypal_webhook_reminder": "Notre intégration crée un webhook spécifique sur votre compte PayPal que nous utilisons pour transmettre les transactions à notre système. Si vous supprimez ce webhook, nous ne pourrons plus transmettre les informations et vous devrez désinstaller puis réinstaller l'application pour que cela fonctionne correctement. La désinstallation de l'application ne supprimera pas la configuration actuelle du prix/devise de votre type d'événement, mais vous ne pourrez plus recevoir de réservations.",
+  "promote_to_admin": "Promouvoir administrateur",
+  "remove_admin_role": "Retirer le rôle d'administrateur",
+  "promote_to_admin_confirmation": "{{user}} aura un accès complet à l'administration de l'instance (utilisateurs, paramètres, applications). Le menu d'administration apparaîtra pour cet utilisateur après sa prochaine connexion.",
+  "remove_admin_role_confirmation": "{{user}} perdra immédiatement l'accès à l'administration de l'instance.",
+  "user_promoted_to_admin": "L'utilisateur a été promu administrateur.",
+  "user_admin_role_removed": "Le rôle d'administrateur a été retiré.",
+  "error_updating_user_role": "Une erreur est survenue lors de la modification du rôle de cet utilisateur.",
+  "admin_user_role_change_hint": "Utilisez l'action « Promouvoir administrateur » / « Retirer le rôle d'administrateur » dans la liste des utilisateurs pour le modifier.",
+  "admin_user_identity_provider_hint": "Géré par le processus de connexion ; il n'est pas modifiable ici.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Ajoutez vos nouvelles chaînes ci-dessus ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }
