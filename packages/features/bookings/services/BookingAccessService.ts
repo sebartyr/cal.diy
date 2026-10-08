@@ -1,9 +1,10 @@
 import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
 import { TeamRolePermissionService } from "@calcom/features/membership/services/TeamRolePermissionService";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import type { PrismaClient } from "@calcom/prisma";
-import { MembershipRole, UserPermissionRole } from "@calcom/prisma/enums";
+import { MembershipRole } from "@calcom/prisma/enums";
 import { BookingRepository } from "../repositories/BookingRepository";
 
 type BookingForAccessCheck = NonNullable<Awaited<ReturnType<BookingRepository["findByUidIncludeEventType"]>>>;
@@ -139,8 +140,8 @@ export class BookingAccessService {
    * of the admin's own scope.
    *
    * `isSystemAdmin` must come from the caller's authenticated session (`isActingSystemAdmin`), which
-   * also rules impersonation out; the database role is checked again so that a demotion applies
-   * immediately.
+   * also rules impersonation out; the admin policy (role, lock, 2FA when required) is checked again
+   * on the database account so that a demotion or a 2FA removal applies immediately.
    */
   async doesSystemAdminHaveAccessToBooking({
     userId,
@@ -172,7 +173,8 @@ export class BookingAccessService {
           : null,
     ]);
 
-    if (actor?.role !== UserPermissionRole.ADMIN || !booking) return false;
+    // Same policy as the admin routes (role, lock, 2FA), on the database state of the account.
+    if (!actor || !meetsSystemAdminPolicy(actor) || !booking) return false;
 
     recordAdminAction({
       actorUserId: userId,

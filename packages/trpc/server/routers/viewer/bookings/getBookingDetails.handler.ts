@@ -19,6 +19,6 @@ export const getBookingDetailsHandler = async ({ ctx, input }: GetBookingDetails
   return await bookingDetailsService.getBookingDetails({
     userId: ctx.user.id,
     bookingUid: input.uid,
-    isSystemAdmin: isActingSystemAdmin({ role: ctx.user.role, session: ctx.session }),
+    isSystemAdmin: isActingSystemAdmin({ user: ctx.user, session: ctx.session }),
   });
 };

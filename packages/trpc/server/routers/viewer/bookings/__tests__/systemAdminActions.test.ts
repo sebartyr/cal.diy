@@ -1,5 +1,5 @@
 import type { Session } from "next-auth";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getUserSessionMock,
@@ -87,20 +87,47 @@ function buildSession(user: Partial<Session["user"]> = {}): Session {
   };
 }
 
-// The three callers every action must distinguish: an acting admin, a regular user, and an admin
-// session impersonating someone (here an admin too, the worst case).
-const actors: { label: string; role: Role; session: Session; allowed: boolean }[] = [
-  { label: "an acting system admin", role: "ADMIN", session: buildSession(), allowed: true },
-  { label: "a regular user", role: "USER", session: buildSession({ role: "USER" }), allowed: false },
+// The callers every action must distinguish, with REQUIRE_2FA_FOR_ADMIN on: an acting admin, an
+// admin without 2FA (refused like on the admin routes), a regular user, and an admin session
+// impersonating someone (here an admin too, the worst case).
+const actors: {
+  label: string;
+  role: Role;
+  twoFactorEnabled: boolean;
+  session: Session;
+  allowed: boolean;
+}[] = [
+  {
+    label: "an acting system admin",
+    role: "ADMIN",
+    twoFactorEnabled: true,
+    session: buildSession(),
+    allowed: true,
+  },
+  {
+    label: "an admin without 2FA",
+    role: "ADMIN",
+    twoFactorEnabled: false,
+    session: buildSession(),
+    allowed: false,
+  },
+  {
+    label: "a regular user",
+    role: "USER",
+    twoFactorEnabled: true,
+    session: buildSession({ role: "USER" }),
+    allowed: false,
+  },
   {
     label: "an impersonating admin",
     role: "ADMIN",
+    twoFactorEnabled: true,
     session: buildSession({ impersonatedBy }),
     allowed: false,
   },
 ];
 
-const sessionUser = (role: Role) => ({
+const sessionUser = (role: Role, twoFactorEnabled = true) => ({
   id: ADMIN_ID,
   uuid: "admin-uuid",
   email: "admin@example.com",
@@ -110,11 +137,18 @@ const sessionUser = (role: Role) => ({
   locale: "en",
   timeZone: "UTC",
   destinationCalendar: null,
+  locked: false,
+  twoFactorEnabled,
 });
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("REQUIRE_2FA_FOR_ADMIN", "true");
   doesUserIdHaveAccessToBookingMock.mockResolvedValue(false);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("hasBookingAccessOrIsSystemAdmin (confirm, reject, booking details)", () => {
@@ -132,10 +166,28 @@ describe("hasBookingAccessOrIsSystemAdmin (confirm, reject, booking details)", (
     expect(doesSystemAdminHaveAccessToBookingMock).not.toHaveBeenCalled();
   });
 
-  it.each(actors)("for $label, grants access: $allowed", async ({ role, session, allowed }) => {
+  it("keeps an admin without 2FA's regular access to their own bookings", async () => {
+    doesUserIdHaveAccessToBookingMock.mockResolvedValue(true);
+
     await expect(
       hasBookingAccessOrIsSystemAdmin({
-        actor: { user: { id: ADMIN_ID, role }, session },
+        actor: { user: sessionUser("ADMIN", false), session: buildSession() },
+        bookingId: 10,
+        path: "viewer.bookings.confirm",
+        action: "confirm",
+      })
+    ).resolves.toBe(true);
+  });
+
+  it.each(actors)("for $label, grants access: $allowed", async ({
+    role,
+    twoFactorEnabled,
+    session,
+    allowed,
+  }) => {
+    await expect(
+      hasBookingAccessOrIsSystemAdmin({
+        actor: { user: sessionUser(role, twoFactorEnabled), session },
         bookingId: 10,
         path: "viewer.bookings.confirm",
         action: "reject",
@@ -157,10 +209,10 @@ describe("confirmHandler", () => {
     });
   });
 
-  it.each(actors)("handles $label", async ({ role, session, allowed }) => {
+  it.each(actors)("handles $label", async ({ role, twoFactorEnabled, session, allowed }) => {
     const result = confirmHandler({
       ctx: {
-        user: sessionUser(role),
+        user: sessionUser(role, twoFactorEnabled),
         session,
         traceContext: { traceId: "t", spanId: "s", operation: "confirm" },
       },
@@ -199,8 +251,8 @@ describe("bookingsProcedure (editLocation)", () => {
   });
   const createCaller = createCallerFactory(testRouter);
 
-  async function callerFor(role: Role, session: Session) {
-    getUserSessionMock.mockResolvedValue({ user: { ...sessionUser(role), twoFactorEnabled: true }, session });
+  async function callerFor(role: Role, session: Session, twoFactorEnabled = true) {
+    getUserSessionMock.mockResolvedValue({ user: sessionUser(role, twoFactorEnabled), session });
     return createCaller(await createContextInner({ locale: "en", session }));
   }
 
@@ -211,8 +263,8 @@ describe("bookingsProcedure (editLocation)", () => {
     );
   });
 
-  it.each(actors)("handles $label", async ({ role, session, allowed }) => {
-    const caller = await callerFor(role, session);
+  it.each(actors)("handles $label", async ({ role, twoFactorEnabled, session, allowed }) => {
+    const caller = await callerFor(role, session, twoFactorEnabled);
     const result = caller.editLocation({ bookingId: 10 });
 
     if (allowed) {
@@ -229,7 +281,8 @@ describe("bookingsProcedure (editLocation)", () => {
     prismaMock.booking.findFirst.mockImplementation(async ({ where }: { where: Record<string, unknown> }) =>
       "AND" in where ? { id: 10, userId: ADMIN_ID } : null
     );
-    const caller = await callerFor("ADMIN", buildSession());
+    // An admin without 2FA keeps the organizer's rights on their own booking.
+    const caller = await callerFor("ADMIN", buildSession(), false);
 
     await expect(caller.editLocation({ bookingId: 10 })).resolves.toEqual({
       bookingId: 10,
@@ -265,10 +318,12 @@ describe("requestRescheduleHandler", () => {
     bookingRepositoryMock.updateBookingStatus.mockRejectedValue(stopAfterAuthorization);
   });
 
-  it.each(actors)("handles $label", async ({ role, session, allowed }) => {
+  it.each(actors)("handles $label", async ({ role, twoFactorEnabled, session, allowed }) => {
     const result = requestRescheduleHandler({
       ctx: {
-        user: sessionUser(role) as Parameters<typeof requestRescheduleHandler>[0]["ctx"]["user"],
+        user: sessionUser(role, twoFactorEnabled) as Parameters<
+          typeof requestRescheduleHandler
+        >[0]["ctx"]["user"],
         session,
       },
       input: { bookingUid: "booking-uid", rescheduleReason: "" },
@@ -286,5 +341,31 @@ describe("requestRescheduleHandler", () => {
       await expect(result).rejects.toMatchObject({ code: "FORBIDDEN" });
       expect(bookingRepositoryMock.updateBookingStatus).not.toHaveBeenCalled();
     }
+  });
+
+  it("lets an admin without 2FA request a reschedule of their own booking", async () => {
+    bookingRepositoryMock.findByUidIncludeEventTypeAndReferences.mockResolvedValue({
+      id: 10,
+      uid: "booking-uid",
+      status: "ACCEPTED",
+      userId: ADMIN_ID,
+      user: { id: ADMIN_ID, email: "admin@example.com" },
+      eventType: { teamId: null },
+      dynamicEventSlugRef: null,
+      attendees: [],
+      references: [],
+    });
+
+    await expect(
+      requestRescheduleHandler({
+        ctx: {
+          user: sessionUser("ADMIN", false) as Parameters<typeof requestRescheduleHandler>[0]["ctx"]["user"],
+          session: buildSession(),
+        },
+        input: { bookingUid: "booking-uid", rescheduleReason: "" },
+        source: "WEBAPP",
+      })
+    ).rejects.toBe(stopAfterAuthorization);
+    expect(doesSystemAdminHaveAccessToBookingMock).not.toHaveBeenCalled();
   });
 });

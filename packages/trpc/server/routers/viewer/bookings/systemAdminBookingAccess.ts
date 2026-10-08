@@ -2,7 +2,9 @@ import { isActingSystemAdmin } from "@calcom/features/auth/lib/isActingSystemAdm
 import { getBookingAccessService } from "@calcom/features/di/containers/BookingAccessService";
 
 export type BookingActor = {
-  user: { id: number; role?: string | null };
+  // twoFactorEnabled is optional because callers without a session (magic links) never qualify;
+  // when it is missing and the 2FA policy is on, the admin access is denied.
+  user: { id: number; role?: string | null; twoFactorEnabled?: boolean | null; locked?: boolean | null };
   session?: { user?: { impersonatedBy?: { id: number } | null } | null } | null;
 };
 
@@ -35,7 +37,14 @@ export async function hasBookingAccessOrIsSystemAdmin({
 
   return bookingAccessService.doesSystemAdminHaveAccessToBooking({
     userId: actor.user.id,
-    isSystemAdmin: isActingSystemAdmin({ role: actor.user.role, session: actor.session }),
+    isSystemAdmin: isActingSystemAdmin({
+      user: {
+        role: actor.user.role,
+        twoFactorEnabled: actor.user.twoFactorEnabled,
+        locked: actor.user.locked,
+      },
+      session: actor.session,
+    }),
     bookingId,
     bookingUid,
     path,

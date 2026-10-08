@@ -39,7 +39,8 @@ type ConfirmOptions = {
     user: Pick<
       NonNullable<TrpcSessionUser>,
       "id" | "uuid" | "email" | "username" | "role" | "destinationCalendar"
-    >;
+    > &
+      Partial<Pick<NonNullable<TrpcSessionUser>, "twoFactorEnabled">>;
     traceContext: TraceContext;
     // Only set by the tRPC router, so that callers without a session (API v2, magic links) never
     // get the system admin access.
