@@ -1,23 +1,23 @@
+import { isActingSystemAdmin } from "@calcom/features/auth/lib/isActingSystemAdmin";
+import { getBookingAccessService } from "@calcom/features/di/containers/BookingAccessService";
 import { prisma } from "@calcom/prisma";
 import type {
-  Booking,
-  EventType,
-  BookingReference,
   Attendee,
+  Booking,
+  BookingReference,
   Credential,
   DestinationCalendar,
+  EventType,
   User,
 } from "@calcom/prisma/client";
 import { MembershipRole, SchedulingType } from "@calcom/prisma/enums";
-
 import { TRPCError } from "@trpc/server";
-
 import authedProcedure from "../../../procedures/authedProcedure";
 import { commonBookingSchema } from "./types";
 
 export const bookingsProcedure = authedProcedure
   .input(commonBookingSchema)
-  .use(async ({ ctx, input, next }) => {
+  .use(async ({ ctx, input, next, path }) => {
     // Endpoints that just read the logged in user's data - like 'list' don't necessary have any input
     const { bookingId } = input;
     const loggedInUser = ctx.user;
@@ -68,7 +68,7 @@ export const bookingsProcedure = authedProcedure
       include: bookingInclude,
     });
 
-    if (!!bookingByBeingAdmin) {
+    if (bookingByBeingAdmin) {
       return next({ ctx: { booking: bookingByBeingAdmin } });
     }
 
@@ -98,9 +98,26 @@ export const bookingsProcedure = authedProcedure
       include: bookingInclude,
     });
 
-    if (!bookingByBeingOrganizerOrCollectiveEventMember) throw new TRPCError({ code: "UNAUTHORIZED" });
+    if (bookingByBeingOrganizerOrCollectiveEventMember) {
+      return next({ ctx: { booking: bookingByBeingOrganizerOrCollectiveEventMember } });
+    }
 
-    return next({ ctx: { booking: bookingByBeingOrganizerOrCollectiveEventMember } });
+    const isSystemAdminAction = await getBookingAccessService().doesSystemAdminHaveAccessToBooking({
+      userId: loggedInUser.id,
+      isSystemAdmin: isActingSystemAdmin({ role: loggedInUser.role, session: ctx.session }),
+      bookingId,
+      path,
+      action: path.split(".").pop() ?? path,
+    });
+    if (!isSystemAdminAction) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    const bookingAsSystemAdmin = await prisma.booking.findFirst({
+      where: { id: bookingId },
+      include: bookingInclude,
+    });
+    if (!bookingAsSystemAdmin) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    return next({ ctx: { booking: bookingAsSystemAdmin, isSystemAdminAction } });
   });
 
 export type BookingsProcedureContext = {
@@ -121,4 +138,6 @@ export type BookingsProcedureContext = {
     references: BookingReference[];
     attendees: Attendee[];
   };
+  /** The caller reached this booking only through the system admin access. */
+  isSystemAdminAction?: boolean;
 };

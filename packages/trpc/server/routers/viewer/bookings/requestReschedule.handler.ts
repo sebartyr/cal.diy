@@ -5,22 +5,25 @@ import {
 } from "@calcom/app-store/delegationCredential";
 import dayjs from "@calcom/dayjs";
 import { sendRequestRescheduleEmailAndSMS } from "@calcom/emails/email-manager";
+import { isActingSystemAdmin } from "@calcom/features/auth/lib/isActingSystemAdmin";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
 import { BookingRepository } from "@calcom/features/bookings/repositories/BookingRepository";
 import { deleteMeeting } from "@calcom/features/conferencing/lib/videoClient";
+import { getBookingAccessService } from "@calcom/features/di/containers/BookingAccessService";
+import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import getWebhooks from "@calcom/features/webhooks/lib/getWebhooks";
 import {
   cancelNoShowTasksForBooking,
   deleteWebhookScheduledTriggers,
 } from "@calcom/features/webhooks/lib/scheduleTrigger";
 import sendPayload from "@calcom/features/webhooks/lib/sendOrSchedulePayload";
+import { getTranslation } from "@calcom/i18n/server";
 import { CalendarEventBuilder } from "@calcom/lib/builders/CalendarEvent/builder";
 import { CalendarEventDirector } from "@calcom/lib/builders/CalendarEvent/director";
 import getOrgIdFromMemberOrTeamId from "@calcom/lib/getOrgIdFromMemberOrTeamId";
 import { getTeamIdFromEventType } from "@calcom/lib/getTeamIdFromEventType";
 import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
-import { getTranslation } from "@calcom/i18n/server";
 import { BookingWebhookFactory } from "@calcom/lib/server/service/BookingWebhookFactory";
 import { prisma } from "@calcom/prisma";
 import type { BookingReference, EventType } from "@calcom/prisma/client";
@@ -32,6 +35,7 @@ import { TRPCError } from "@trpc/server";
 import type { TFunction } from "i18next";
 import type { TrpcSessionUser } from "../../../types";
 import type { TRequestRescheduleInputSchema } from "./requestReschedule.schema";
+import type { BookingActor } from "./systemAdminBookingAccess";
 import type { PersonAttendeeCommonFields } from "./types";
 
 type ActionSource = string;
@@ -39,6 +43,7 @@ type ActionSource = string;
 type RequestRescheduleOptions = {
   ctx: {
     user: NonNullable<TrpcSessionUser>;
+    session?: BookingActor["session"];
   };
   input: TRequestRescheduleInputSchema;
   source: ActionSource;
@@ -73,8 +78,23 @@ export const requestRescheduleHandler = async ({ ctx, input, source }: RequestRe
   const isBookingOrganizer = bookingToReschedule.userId === user.id;
 
   if (!isBookingOrganizer) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "User isn't owner of the current booking" });
+    const isSystemAdminAction = await getBookingAccessService().doesSystemAdminHaveAccessToBooking({
+      userId: user.id,
+      isSystemAdmin: isActingSystemAdmin({ role: user.role, session: ctx.session }),
+      bookingUid,
+      path: "viewer.bookings.requestReschedule",
+      action: "requestReschedule",
+    });
+    if (!isSystemAdminAction) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "User isn't owner of the current booking" });
+    }
   }
+
+  // The emails and calendar updates are sent on behalf of the organizer, even when a system admin
+  // requests the reschedule; cancelledBy still records who actually did it.
+  const organizerUser: PersonAttendeeCommonFields = isBookingOrganizer
+    ? user
+    : await new UserRepository(prisma).findByIdOrThrow({ id: bookingToReschedule.userId });
 
   const event: Partial<EventType> = bookingToReschedule.eventType ?? {};
   await bookingRepository.updateBookingStatus({
@@ -94,7 +114,6 @@ export const requestRescheduleHandler = async ({ ctx, input, source }: RequestRe
     log.error("Error while deleting scheduled webhook triggers", JSON.stringify({ error }));
   });
 
-
   const [mainAttendee] = bookingToReschedule.attendees;
   // @NOTE: Should we assume attendees language?
   const tAttendees = await getTranslation(mainAttendee.locale ?? "en", "common");
@@ -112,8 +131,8 @@ export const requestRescheduleHandler = async ({ ctx, input, source }: RequestRe
     });
   };
 
-  const userTranslation = await getTranslation(user.locale ?? "en", "common");
-  const [userAsPeopleType] = usersToPeopleType([user], userTranslation);
+  const userTranslation = await getTranslation(organizerUser.locale ?? "en", "common");
+  const [userAsPeopleType] = usersToPeopleType([organizerUser], userTranslation);
   const organizer = {
     ...userAsPeopleType,
     email: bookingToReschedule.userPrimaryEmail ?? userAsPeopleType.email,
@@ -236,9 +255,7 @@ export const requestRescheduleHandler = async ({ ctx, input, source }: RequestRe
     uid: bookingToReschedule.uid,
     location: bookingToReschedule.location,
     destinationCalendar: bookingToReschedule.destinationCalendar,
-    cancellationReason: [tAttendees("please_reschedule"), cancellationReason]
-    .filter(Boolean)
-    .join(" "),
+    cancellationReason: [tAttendees("please_reschedule"), cancellationReason].filter(Boolean).join(" "),
     iCalUID: bookingToReschedule.iCalUID,
     ...(bookingToReschedule.smsReminderNumber && {
       smsReminderNumber: bookingToReschedule.smsReminderNumber,
@@ -284,5 +301,4 @@ export const requestRescheduleHandler = async ({ ctx, input, source }: RequestRe
     })
   );
   await Promise.all(promises);
-
 };

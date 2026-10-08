@@ -7,11 +7,11 @@ import { BookingRepository } from "@calcom/features/bookings/repositories/Bookin
 import { CredentialRepository } from "@calcom/features/credentials/repositories/CredentialRepository";
 import { CredentialAccessService } from "@calcom/features/credentials/services/CredentialAccessService";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
+import { getTranslation } from "@calcom/i18n/server";
 import { buildCalEventFromBooking } from "@calcom/lib/buildCalEventFromBooking";
 import { getVideoCallUrlFromCalEvent } from "@calcom/lib/CalEventParser";
 import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
-import { getTranslation } from "@calcom/i18n/server";
 import { prisma } from "@calcom/prisma";
 import type { Booking, BookingReference } from "@calcom/prisma/client";
 import type { EventTypeMetadata, userMetadata } from "@calcom/prisma/zod-utils";
@@ -283,10 +283,14 @@ export async function editLocationHandler({ ctx, input, actionSource }: EditLoca
     organizationId,
   });
 
+  // A system admin acting on someone else's booking has none of the organizer's calendar or
+  // conferencing credentials: the organizer's own ones must update the existing events.
+  const calendarUser = ctx.isSystemAdminAction && booking.user ? booking.user : ctx.user;
+
   const eventManager = new EventManager({
-    ...ctx.user,
+    ...calendarUser,
     credentials: await getAllCredentialsIncludeServiceAccountKey({
-      user: ctx.user,
+      user: calendarUser,
       conferenceCredentialId,
       bookingOwnerId: booking.userId,
     }),

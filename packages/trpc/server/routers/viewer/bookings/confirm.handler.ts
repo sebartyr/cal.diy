@@ -3,24 +3,23 @@ import type { LocationObject } from "@calcom/app-store/locations";
 import { getLocationValueForDB } from "@calcom/app-store/locations";
 import { sendDeclinedEmailsAndSMS } from "@calcom/emails/email-manager";
 import { getAllCredentialsIncludeServiceAccountKey } from "@calcom/features/bookings/lib/getAllCredentialsForUsersOnEvent/getAllCredentials";
-import { WEBAPP_URL } from "@calcom/lib/constants";
 import { getAssignmentReasonCategory } from "@calcom/features/bookings/lib/getAssignmentReasonCategory";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
 import { handleConfirmation } from "@calcom/features/bookings/lib/handleConfirmation";
 import { handleWebhookTrigger } from "@calcom/features/bookings/lib/handleWebhookTrigger";
 import { processPaymentRefund } from "@calcom/features/bookings/lib/payment/processPaymentRefund";
-import { BookingAccessService } from "@calcom/features/bookings/services/BookingAccessService";
 import {
   type EventTypeBrandingData,
   getEventTypeService,
 } from "@calcom/features/eventtypes/di/EventTypeService.container";
 import type { GetSubscriberOptions } from "@calcom/features/webhooks/lib/getWebhooks";
 import type { EventPayloadType, EventTypeInfo } from "@calcom/features/webhooks/lib/sendPayload";
+import { getTranslation } from "@calcom/i18n/server";
+import { WEBAPP_URL } from "@calcom/lib/constants";
 import getOrgIdFromMemberOrTeamId from "@calcom/lib/getOrgIdFromMemberOrTeamId";
 import { getTeamIdFromEventType } from "@calcom/lib/getTeamIdFromEventType";
 import { isPrismaObjOrUndefined } from "@calcom/lib/isPrismaObj";
 import { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
-import { getTranslation } from "@calcom/i18n/server";
 import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { getTimeFormatStringFromUserTimeFormat } from "@calcom/lib/timeFormat";
@@ -33,6 +32,7 @@ import type { CalendarEvent } from "@calcom/types/Calendar";
 import { TRPCError } from "@trpc/server";
 import type { TrpcSessionUser } from "../../../types";
 import type { TConfirmInputSchema } from "./confirm.schema";
+import { type BookingActor, hasBookingAccessOrIsSystemAdmin } from "./systemAdminBookingAccess";
 
 type ConfirmOptions = {
   ctx: {
@@ -41,6 +41,9 @@ type ConfirmOptions = {
       "id" | "uuid" | "email" | "username" | "role" | "destinationCalendar"
     >;
     traceContext: TraceContext;
+    // Only set by the tRPC router, so that callers without a session (API v2, magic links) never
+    // get the system admin access.
+    session?: BookingActor["session"];
   };
   input: TConfirmInputSchema;
 };
@@ -163,10 +166,11 @@ export const confirmHandler = async ({ ctx, input }: ConfirmOptions) => {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Booking must have an organizer" });
   }
 
-  const bookingAccessService = new BookingAccessService(prisma);
-  const isUserAuthorizedToConfirmBooking = await bookingAccessService.doesUserIdHaveAccessToBooking({
-    userId: ctx.user.id,
-    bookingId: bookingId,
+  const isUserAuthorizedToConfirmBooking = await hasBookingAccessOrIsSystemAdmin({
+    actor: ctx,
+    bookingId,
+    path: "viewer.bookings.confirm",
+    action: confirmed ? "confirm" : "reject",
   });
 
   if (!isUserAuthorizedToConfirmBooking) {
@@ -477,7 +481,6 @@ export const confirmHandler = async ({ ctx, input }: ConfirmOptions) => {
       smsReminderNumber: booking.smsReminderNumber || undefined,
     };
     await handleWebhookTrigger({ subscriberOptions, eventTrigger, webhookData, traceContext });
-
   }
 
   const message = confirmed ? "Booking confirmed" : "Booking rejected";
