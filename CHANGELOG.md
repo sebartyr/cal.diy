@@ -10,12 +10,13 @@ its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independen
 
 ### Added
 
-- Bookings page: system admins get a scope selector in the filter bar —
-  **My bookings** (default, unchanged), **All bookings**, **User…** or
-  **Team…**, with server-side search for users and teams. The scope lives in
-  the URL. The team filter shows bookings of the team's event types (managed
-  children included), as for team admins. Non-admins see no change (#45, #46,
-  #49).
+- Bookings page, for system admins: the existing segment selector offers an
+  **All bookings** segment next to **My bookings**, and the existing member
+  and team filters list every user and team of the instance, searched and
+  paginated on the server. "All bookings" is kept in the URL (`scope=all`)
+  while filters or pagination change; an "All bookings ×" badge removes it.
+  The team filter shows bookings of the team's event types (managed children
+  included). Non-admins keep today's options (#45, #46, #49, #51).
 - System admins can confirm or reject, change the location of, request a
   reschedule of and cancel any booking. Location changes and reschedule
   requests use the organizer's calendar/video credentials and send the
@@ -23,6 +24,16 @@ its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independen
   (mandatory reason, no no-show fee) and record the admin's email in
   `cancelledBy`. Every action outside the admin's own scope goes to the admin
   audit log (#47, #48).
+
+### Fixed
+
+- Bookings page: the **My bookings** segment was never applied, so the list
+  also showed bookings of administered teams. The filter validator waited for
+  a teams list that the Cal.diy refactor no longer loads, and a segment read
+  from the URL was displayed but not applied. "My bookings" is now the
+  default on a blank URL and only shows bookings where the viewer is
+  organizer, host or attendee; a URL that already carries filters, page or
+  size is kept as is (#50, #51).
 
 ### Security
 
