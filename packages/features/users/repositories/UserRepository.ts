@@ -658,30 +658,55 @@ export class UserRepository {
     }
   > {
     const profiles = await ProfileRepository.findManyForUser({ id: user.id });
-    if (profiles.length) {
-      const profile = profiles[0];
-      // platform org user doesn't need org profile
-      if (profile?.organization?.isPlatform) {
-        return {
-          ...user,
-          nonProfileUsername: user.username,
-          profile: ProfileRepository.buildPersonalProfileFromUser({ user }),
-        };
-      }
+    return UserRepository.withFirstProfile(user, profiles);
+  }
 
+  /**
+   * Fetches the profiles of all the given users in a single query and returns a synchronous enricher that
+   * behaves like `enrichUserWithItsProfile`. Prefer it over calling `enrichUserWithItsProfile` in a loop,
+   * and over `enrichUsersWithTheirProfiles` when the same user appears in lists of different shapes.
+   */
+  async buildProfileEnricher(userIds: number[]) {
+    const uniqueUserIds = Array.from(new Set(userIds));
+    const profiles = uniqueUserIds.length ? await ProfileRepository.findManyForUsers(uniqueUserIds) : [];
+
+    const profilesByUserId = new Map<number, UserProfile[]>();
+    for (const profile of profiles) {
+      const userProfiles = profilesByUserId.get(profile.userId);
+      if (userProfiles) {
+        userProfiles.push(profile);
+      } else {
+        profilesByUserId.set(profile.userId, [profile]);
+      }
+    }
+
+    return <T extends { id: number; username: string | null }>(user: T) =>
+      UserRepository.withFirstProfile(user, profilesByUserId.get(user.id) ?? []);
+  }
+
+  private static withFirstProfile<T extends { id: number; username: string | null }>(
+    user: T,
+    profiles: UserProfile[]
+  ): T & {
+    nonProfileUsername: string | null;
+    profile: UserProfile;
+  } {
+    const profile = profiles[0];
+    // platform org user doesn't need org profile
+    if (!profile || profile.organization?.isPlatform) {
+      // If no organization profile exists, use the personal profile so that the returned user is normalized to have a profile always
       return {
         ...user,
-        username: profile.username,
         nonProfileUsername: user.username,
-        profile,
+        profile: ProfileRepository.buildPersonalProfileFromUser({ user }),
       };
     }
 
-    // If no organization profile exists, use the personal profile so that the returned user is normalized to have a profile always
     return {
       ...user,
+      username: profile.username,
       nonProfileUsername: user.username,
-      profile: ProfileRepository.buildPersonalProfileFromUser({ user }),
+      profile,
     };
   }
 
