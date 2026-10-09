@@ -108,11 +108,11 @@ import { scheduleNoShowTriggers } from "../handleNewBooking/scheduleNoShowTrigge
 import type { IEventTypePaymentCredentialType, Invitee, IsFixedAwareUser } from "../handleNewBooking/types";
 import { validateBookingTimeIsNotOutOfBounds } from "../handleNewBooking/validateBookingTimeIsNotOutOfBounds";
 import { validateEventLength } from "../handleNewBooking/validateEventLength";
+import { validateRescheduleRestrictions } from "../handleNewBooking/validateRescheduleRestrictions";
 import handleSeats from "../handleSeats/handleSeats";
 import type { IBookingService } from "../interfaces/IBookingService";
 import type { BookingEventHandlerService } from "../onBookingEvents/BookingEventHandlerService";
 import type { BookingRescheduledPayload } from "../onBookingEvents/types";
-import { isWithinMinimumRescheduleNotice } from "../reschedule/isWithinMinimumRescheduleNotice";
 
 const translator = short();
 
@@ -432,57 +432,6 @@ export interface IBookingServiceDependencies {
   webhookProducer: IWebhookProducerService;
 }
 
-async function validateRescheduleRestrictions({
-  rescheduleUid,
-  userId,
-  eventType,
-}: {
-  rescheduleUid: string | null | undefined;
-  userId: number | null;
-  eventType: { seatsPerTimeSlot: number | null; minimumRescheduleNotice: number | null } | null;
-}): Promise<void> {
-  if (!rescheduleUid || !eventType) {
-    return; // Not a reschedule, skip validation
-  }
-
-  const bookingSeat = rescheduleUid ? await getSeatedBooking(rescheduleUid) : null;
-  const actualRescheduleUid = bookingSeat ? bookingSeat.booking.uid : rescheduleUid;
-
-  if (!actualRescheduleUid) {
-    return; // No valid reschedule UID
-  }
-
-  try {
-    const originalRescheduledBooking = await getOriginalRescheduledBooking(
-      actualRescheduleUid,
-      !!eventType.seatsPerTimeSlot
-    );
-
-    // Check if user is the organizer
-    const isUserOrganizer =
-      userId && originalRescheduledBooking.userId && userId === originalRescheduledBooking.userId;
-
-    // Check minimum reschedule notice (only for non-organizers)
-    const { minimumRescheduleNotice } = originalRescheduledBooking.eventType || {};
-    if (
-      !isUserOrganizer &&
-      isWithinMinimumRescheduleNotice(originalRescheduledBooking.startTime, minimumRescheduleNotice ?? null)
-    ) {
-      throw new HttpError({
-        statusCode: 403,
-        message: "Rescheduling is not allowed within the minimum notice period before the event",
-      });
-    }
-  } catch (error) {
-    // Re-throw HttpError (including our 403 validation error)
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    // For other errors (like booking not found), let the service handle it later
-    // We don't want to fail early validation for these cases
-  }
-}
-
 async function handler(
   this: RegularBookingService,
   input: BookingHandlerInput,
@@ -526,7 +475,7 @@ async function handler(
   });
 
   // Early validation: Check reschedule restrictions if rescheduling
-  await validateRescheduleRestrictions({
+  const rescheduleLookup = await validateRescheduleRestrictions({
     rescheduleUid: rawBookingData.rescheduleUid,
     userId: userId ?? null,
     eventType: eventType
@@ -650,14 +599,23 @@ async function handler(
     });
   }
 
-  const bookingSeat = reqBody.rescheduleUid ? await getSeatedBooking(reqBody.rescheduleUid) : null;
+  // Reuse the lookups done by the early validation instead of querying the same rows again
+  const reusableRescheduleLookup =
+    rescheduleLookup && rescheduleLookup.rescheduleUid === reqBody.rescheduleUid ? rescheduleLookup : null;
+  const bookingSeat = reusableRescheduleLookup
+    ? reusableRescheduleLookup.bookingSeat
+    : reqBody.rescheduleUid
+      ? await getSeatedBooking(reqBody.rescheduleUid)
+      : null;
   const rescheduleUid = bookingSeat ? bookingSeat.booking.uid : reqBody.rescheduleUid;
   const isNormalBookingOrFirstRecurringSlot = input.bookingData.allRecurringDates
     ? !!input.bookingData.isFirstRecurringSlot
     : true;
 
+  // When the early validation swallowed an error, query again so it surfaces here as before
   let originalRescheduledBooking = rescheduleUid
-    ? await getOriginalRescheduledBooking(rescheduleUid, !!eventType.seatsPerTimeSlot)
+    ? (reusableRescheduleLookup?.originalRescheduledBooking ??
+      (await getOriginalRescheduledBooking(rescheduleUid, !!eventType.seatsPerTimeSlot)))
     : null;
 
   const paymentAppData = getPaymentAppData({
