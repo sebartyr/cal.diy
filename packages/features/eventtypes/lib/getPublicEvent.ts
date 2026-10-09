@@ -259,32 +259,6 @@ function isAvailableInTimeSlot(
 
 export type PublicEventType = Awaited<ReturnType<typeof getPublicEvent>>;
 
-export async function getEventTypeHosts({
-  hosts,
-  fetchAllUsers = false,
-  prisma,
-}: {
-  hosts: Prisma.EventTypeGetPayload<{ select: ReturnType<typeof getPublicEventSelect> }>["hosts"];
-  fetchAllUsers?: boolean;
-  prisma: PrismaClient;
-}) {
-  const usersAsHosts = hosts.map((host) => host.user);
-
-  // Enrich users in a single batch call
-  const enrichedUsers = await new UserRepository(prisma).enrichUsersWithTheirProfiles(usersAsHosts);
-
-  // Map enriched users back to the hosts
-  const enrichedHosts = hosts.map((host, index) => ({
-    ...host,
-    user: enrichedUsers[index],
-  }));
-
-  return {
-    subsetOfHosts: enrichedHosts,
-    hosts: fetchAllUsers ? enrichedHosts : undefined,
-  };
-}
-
 // TODO: Convert it to accept a single parameter with structured data
 export const getPublicEvent = async (
   username: string,
@@ -731,39 +705,3 @@ function mapHostsToUsers(host: {
     profile: host.user.profile,
   };
 }
-
-export const processEventDataShared = async ({
-  eventData,
-  metadata,
-  prisma,
-}: {
-  eventData: Prisma.EventTypeGetPayload<{ select: ReturnType<typeof getPublicEventSelect> }>;
-  metadata: ReturnType<typeof eventTypeMetaDataSchemaWithTypedApps.parse>;
-  prisma: PrismaClient;
-}) => {
-  let showInstantEventConnectNowModal = eventData.isInstantEvent ?? false;
-  if (eventData.isInstantEvent && eventData.instantMeetingSchedule?.id) {
-    const { id, timeZone } = eventData.instantMeetingSchedule;
-    showInstantEventConnectNowModal = await isCurrentlyAvailable({
-      prisma,
-      instantMeetingScheduleId: id,
-      availabilityTimezone: timeZone ?? "Europe/London",
-      length: eventData.length,
-    });
-  }
-
-  return {
-    ...eventData,
-    bookerLayouts: bookerLayoutsSchema.parse(metadata?.bookerLayouts || null),
-    description: markdownToSafeHTML(eventData.description),
-    metadata,
-    customInputs: customInputSchema.array().parse(eventData.customInputs || []),
-    locations: privacyFilteredLocations((eventData.locations || []) as LocationObject[]),
-    bookingFields: getBookingFieldsWithSystemFields(eventData),
-    recurringEvent: isRecurringEvent(eventData.recurringEvent)
-      ? parseRecurringEvent(eventData.recurringEvent)
-      : null,
-    isDynamic: false,
-    showInstantEventConnectNowModal,
-  };
-};
