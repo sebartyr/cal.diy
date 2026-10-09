@@ -1,9 +1,8 @@
-import { useMemo } from "react";
-
 import dayjs from "@calcom/dayjs";
 import useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
-
-import type { BookingListingStatus, BookingOutput, BookingsGetOutput, RowData } from "../types";
+import { useMemo } from "react";
+import { buildRecurringInfoMap, dedupeRecurringSeries } from "../lib/recurringBookings";
+import type { BookingListingStatus, BookingsGetOutput, RowData } from "../types";
 
 interface UseBookingCalendarDataParams {
   data?: {
@@ -27,47 +26,15 @@ export function useBookingCalendarData({ data, status }: UseBookingCalendarDataP
       return [];
     }
 
-    // For recurring/unconfirmed/cancelled tabs: track recurring series to show only one representative booking per series
-    // Key: recurringEventId, Value: array of all bookings in that series
-    const shownBookings: Record<string, BookingOutput[]> = {};
+    const recurringInfoMap = buildRecurringInfoMap(data.recurringInfo);
+    const today = dayjs().tz(user?.timeZone).format("YYYY-MM-DD");
 
-    const filterBookings = (booking: BookingOutput) => {
-      // Deduplicate recurring bookings for specific status tabs
-      // This ensures we show only ONE booking per recurring series instead of all occurrences
-      if (status === "recurring" || status == "unconfirmed" || status === "cancelled") {
-        // Non-recurring bookings are always shown
-        if (!booking.recurringEventId) {
-          return true;
-        }
-
-        // If we've already encountered this recurring series
-        if (
-          shownBookings[booking.recurringEventId] !== undefined &&
-          shownBookings[booking.recurringEventId].length > 0
-        ) {
-          // Store this occurrence but DON'T display it (return false to filter out)
-          shownBookings[booking.recurringEventId].push(booking);
-          return false;
-        }
-
-        // First occurrence of this recurring series - show it and start tracking
-        shownBookings[booking.recurringEventId] = [booking];
-      }
-      return true;
-    };
-
-    return data.bookings.filter(filterBookings).map((booking) => {
-      const bookingDate = dayjs(booking.startTime).tz(user?.timeZone);
-      const today = dayjs().tz(user?.timeZone).format("YYYY-MM-DD");
-      const bookingDateStr = bookingDate.format("YYYY-MM-DD");
-
-      return {
-        type: "data" as const,
-        booking,
-        isToday: bookingDateStr === today,
-        recurringInfo: data.recurringInfo.find((info) => info.recurringEventId === booking.recurringEventId),
-      };
-    });
+    return dedupeRecurringSeries(data.bookings, status).map((booking) => ({
+      type: "data" as const,
+      booking,
+      isToday: dayjs(booking.startTime).tz(user?.timeZone).format("YYYY-MM-DD") === today,
+      recurringInfo: booking.recurringEventId ? recurringInfoMap.get(booking.recurringEventId) : undefined,
+    }));
   }, [data, status, user?.timeZone]);
 
   return rowData;

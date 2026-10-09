@@ -103,8 +103,6 @@ export function useFacetedUniqueValues({
   columnId: string
 ) => () => Map<FacetedValue, number> {
   const eventTypes = useEventTypes();
-  const teams = undefined as { id: number; name: string }[] | undefined;
-  const members = undefined as { id: number; name: string | null }[] | undefined;
   const { data: currentUser } = useMeQuery();
   const adminSelectedOptions = useAdminSelectedOptions(isSystemAdmin);
 
@@ -117,12 +115,7 @@ export function useFacetedUniqueValues({
           if (isSystemAdmin) {
             return convertFacetedValuesToMap(adminSelectedOptions.teams);
           }
-          return convertFacetedValuesToMap(
-            (teams || []).map((team) => ({
-              label: team.name,
-              value: team.id,
-            }))
-          );
+          return new Map<FacetedValue, number>();
         } else if (columnId === "userId") {
           if (isSystemAdmin) {
             return convertFacetedValuesToMap(adminSelectedOptions.users);
@@ -138,17 +131,10 @@ export function useFacetedUniqueValues({
               },
             ]);
           }
-          return convertFacetedValuesToMap(
-            (members || [])
-              .map((member) => ({
-                label: member.name,
-                value: member.id,
-              }))
-              .filter((option): option is { label: string; value: number } => Boolean(option.label))
-          );
+          return new Map<FacetedValue, number>();
         }
         return new Map<FacetedValue, number>();
       },
-    [eventTypes, teams, members, canReadOthersBookings, currentUser, isSystemAdmin, adminSelectedOptions]
+    [eventTypes, canReadOthersBookings, currentUser, isSystemAdmin, adminSelectedOptions]
   );
 }
