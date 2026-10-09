@@ -1,7 +1,7 @@
 import { parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 import { useCallback, useEffect } from "react";
 import { useDataTable } from "~/data-table/hooks/useDataTable";
-import { isAllBookingsSegment } from "../lib/constants";
+import { BOOKINGS_LIST_STATE_KEYS, isAllBookingsSegment } from "../lib/constants";
 
 const scopeParser = parseAsStringLiteral(["all"] as const);
 
@@ -32,18 +32,15 @@ export function useSyncAllBookingsScopeWithSegment({ isSystemAdmin }: { isSystem
   }, [isSystemAdmin, selectedSegmentId, setScope]);
 }
 
+const listStateParsers = Object.fromEntries(
+  BOOKINGS_LIST_STATE_KEYS.map((key) => [key, parseAsString])
+) as Record<(typeof BOOKINGS_LIST_STATE_KEYS)[number], typeof parseAsString>;
+
 /**
  * Whether the bookings URL carries no list state at all: the only case where the default
  * "My bookings" segment may be applied without overriding an explicit search or a shared link.
  */
 export function useIsPristineBookingsUrl(): boolean {
-  const [state] = useQueryStates({
-    segment: parseAsString,
-    activeFilters: parseAsString,
-    scope: parseAsString,
-    page: parseAsString,
-    size: parseAsString,
-    q: parseAsString,
-  });
+  const [state] = useQueryStates(listStateParsers);
   return Object.values(state).every((value) => value === null || value === "");
 }

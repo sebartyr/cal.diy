@@ -1,7 +1,6 @@
 "use client";
 
-import { ColumnFilterType, type SystemFilterSegment } from "@calcom/features/data-table";
-import type { UseSegments } from "@calcom/features/data-table/lib/types";
+import type { SystemFilterSegment, UseSegments } from "@calcom/features/data-table/lib/types";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import classNames from "@calcom/ui/classNames";
 import dynamic from "next/dynamic";
@@ -15,7 +14,12 @@ import { useActiveFiltersValidator } from "../hooks/useActiveFiltersValidator";
 import { useIsPristineBookingsUrl } from "../hooks/useAllBookingsScope";
 import { useBookingsView } from "../hooks/useBookingsView";
 import { useAdminTeamFilterOptions, useAdminUserFilterOptions } from "../hooks/useFacetedUniqueValues";
-import { ALL_BOOKINGS_SEGMENT_ID, MY_BOOKINGS_SEGMENT, MY_BOOKINGS_SEGMENT_ID } from "../lib/constants";
+import {
+  ALL_BOOKINGS_SEGMENT_ID,
+  getMyBookingsActiveFilters,
+  MY_BOOKINGS_SEGMENT,
+  MY_BOOKINGS_SEGMENT_ID,
+} from "../lib/constants";
 import type { validStatuses } from "../lib/validStatuses";
 
 const BookingCalendarContainer = dynamic(() =>
@@ -46,15 +50,7 @@ export function useSystemSegments(userId?: number, isSystemAdmin = false) {
         id: MY_BOOKINGS_SEGMENT_ID,
         name: t("my_bookings"),
         type: "system",
-        activeFilters: [
-          {
-            f: "userId",
-            v: {
-              type: ColumnFilterType.MULTI_SELECT,
-              data: [userId],
-            },
-          },
-        ],
+        activeFilters: getMyBookingsActiveFilters(userId),
         perPage: 10,
       },
     ];
@@ -78,7 +74,9 @@ export function useSystemSegments(userId?: number, isSystemAdmin = false) {
 }
 
 // "My bookings" is only the default of a blank URL: filter edits drop the system segment but keep
-// the filters in the URL, and those (reloads, shared links) must not be overridden.
+// the filters in the URL, and those (reloads, shared links) must not be overridden. The bookings page
+// already redirects blank URLs to the segment and its filters (getDefaultBookingsListUrl), because this
+// mount-time URL write can be dropped by the Next.js router; this only covers URLs it never saw.
 export const useBookingSegments: UseSegments = (props) => {
   const result = useSegments(props);
   const isPristineUrl = useIsPristineBookingsUrl();
