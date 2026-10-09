@@ -1,15 +1,13 @@
 "use client";
 
-import classNames from "classnames";
-import Link from "next/link";
-
 import { useIsEmbed } from "@calcom/embed-core/embed-iframe";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import useTheme from "@calcom/lib/hooks/useTheme";
 import { Avatar } from "@calcom/ui/components/avatar";
 import { UnpublishedEntity } from "@calcom/ui/components/unpublished-entity";
-
 import type { TeamPagePublicProps } from "@server/lib/team/[slug]/getServerSideProps";
+import classNames from "classnames";
+import Link from "next/link";
 
 export type PageProps = TeamPagePublicProps;
 
@@ -20,7 +18,7 @@ function formatDuration(minutes: number) {
   return m === 0 ? `${h}h` : `${h}h ${m}min`;
 }
 
-export default function TeamPublicView({ team, members, considerUnpublished }: PageProps) {
+export default function TeamPublicView({ team, memberCount, considerUnpublished }: PageProps) {
   useTheme(team.theme);
   const { t } = useLocale();
   const isEmbed = useIsEmbed();
@@ -50,9 +48,9 @@ export default function TeamPublicView({ team, members, considerUnpublished }: P
             dangerouslySetInnerHTML={{ __html: team.safeBio }}
           />
         ) : null}
-        {members.length > 0 ? (
+        {memberCount > 0 ? (
           <p className="text-subtle mt-2 text-xs">
-            {t("number_of_members", { count: members.length, defaultValue: `${members.length} members` })}
+            {t("number_of_members", { count: memberCount, defaultValue: `${memberCount} members` })}
           </p>
         ) : null}
       </div>

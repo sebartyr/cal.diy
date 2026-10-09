@@ -1,15 +1,11 @@
-import type { GetServerSideProps, GetServerSidePropsContext } from "next";
-
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import type { GetBookingType } from "@calcom/features/bookings/lib/get-booking";
-import {
-  getBookingForReschedule,
-  getBookingForSeatedEvent,
-} from "@calcom/features/bookings/lib/get-booking";
+import { getBookingForReschedule, getBookingForSeatedEvent } from "@calcom/features/bookings/lib/get-booking";
 import type { getPublicEvent } from "@calcom/features/eventtypes/lib/getPublicEvent";
 import { EventRepository } from "@calcom/features/eventtypes/repositories/EventRepository";
 import slugify from "@calcom/lib/slugify";
 import { prisma } from "@calcom/prisma";
+import type { GetServerSideProps, GetServerSidePropsContext } from "next";
 
 type TeamEventPageProps = {
   eventData: NonNullable<Awaited<ReturnType<typeof getPublicEvent>>>;
@@ -29,7 +25,7 @@ type TeamEventPageProps = {
 
 function pickString(value: string | string[] | undefined): string | null {
   if (!value) return null;
-  return Array.isArray(value) ? value[value.length - 1] ?? null : value;
+  return Array.isArray(value) ? (value[value.length - 1] ?? null) : value;
 }
 
 export const getTeamTypeServerSideProps: GetServerSideProps<TeamEventPageProps> = async (
@@ -42,17 +38,25 @@ export const getTeamTypeServerSideProps: GetServerSideProps<TeamEventPageProps> 
   const teamSlug = slugify(teamSlugRaw);
   const eventSlug = slugify(eventTypeSlugRaw);
 
-  const eventData = await EventRepository.getPublicEvent({
-    username: teamSlug,
-    eventSlug,
-    isTeamEvent: true,
-    org: null,
-    fromRedirectOfNonOrgLink: false,
-  });
+  const [eventData, session, teamRow] = await Promise.all([
+    EventRepository.getPublicEvent({
+      username: teamSlug,
+      eventSlug,
+      isTeamEvent: true,
+      org: null,
+      fromRedirectOfNonOrgLink: false,
+    }),
+    getServerSession(context),
+    // Aligned with /team/[slug]/getServerSideProps.ts — Cal.diy disabled orgs
+    // but legacy teams may still carry a non-null parentId, so we match on
+    // isOrganization rather than parentId.
+    prisma.team.findFirst({
+      where: { slug: teamSlug, isOrganization: false },
+      select: { id: true, hideBranding: true },
+    }),
+  ]);
 
   if (!eventData) return { notFound: true } as const;
-
-  const session = await getServerSession(context);
 
   let booking: GetBookingType | null = null;
   let rescheduleUid: string | null = null;
@@ -72,13 +76,6 @@ export const getTeamTypeServerSideProps: GetServerSideProps<TeamEventPageProps> 
     bookingUid = bookingUidParam;
   }
 
-  // Aligned with /team/[slug]/getServerSideProps.ts — Cal.diy disabled orgs
-  // but legacy teams may still carry a non-null parentId, so we match on
-  // isOrganization rather than parentId.
-  const teamRow = await prisma.team.findFirst({
-    where: { slug: teamSlug, isOrganization: false },
-    select: { id: true, hideBranding: true },
-  });
   const isBrandingHidden = teamRow?.hideBranding ?? false;
 
   const props: TeamEventPageProps = {
@@ -97,6 +94,6 @@ export const getTeamTypeServerSideProps: GetServerSideProps<TeamEventPageProps> 
   };
 
   return { props } as const;
-}
+};
 
 export type { TeamEventPageProps };
