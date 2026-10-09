@@ -1,22 +1,17 @@
-import type { Metadata } from "next";
-import { cookies, headers } from "next/headers";
-
 import { WEBAPP_URL } from "@calcom/lib/constants";
-
-import { buildLegacyCtx } from "@lib/buildLegacyCtx";
-import { withAppDirSsr } from "app/WithAppDirSsr";
+import type { TeamEventPageProps } from "@server/lib/team/[slug]/[type]/getServerSideProps";
+import { getTeamTypeServerSideProps } from "@server/lib/team/[slug]/[type]/getServerSideProps";
 import type { PageProps as _PageProps } from "app/_types";
 import { generateMeetingMetadata } from "app/_utils";
-import { getTeamTypeServerSideProps } from "@server/lib/team/[slug]/[type]/getServerSideProps";
-import type { TeamEventPageProps } from "@server/lib/team/[slug]/[type]/getServerSideProps";
-
+import { withCachedAppDirSsr } from "app/WithAppDirSsr";
+import type { Metadata } from "next";
 import TeamTypePublicView from "~/team/team-type-public-view";
 
-const getData: (ctx: ReturnType<typeof buildLegacyCtx>) => Promise<TeamEventPageProps> =
-  withAppDirSsr<TeamEventPageProps>(getTeamTypeServerSideProps);
+const getData: (pageProps: _PageProps) => Promise<TeamEventPageProps> =
+  withCachedAppDirSsr<TeamEventPageProps>(getTeamTypeServerSideProps);
 
 export const generateMetadata = async ({ params, searchParams }: _PageProps): Promise<Metadata> => {
-  const props = await getData(buildLegacyCtx(await headers(), await cookies(), await params, await searchParams));
+  const props = await getData({ params, searchParams });
   const { eventData, isBrandingHidden, isSEOIndexable, booking, user, slug } = props;
   const title = eventData?.title ?? "";
   const profileName = eventData?.profile?.name ?? "";
@@ -50,6 +45,6 @@ export const generateMetadata = async ({ params, searchParams }: _PageProps): Pr
 };
 
 export default async function TeamTypePage({ params, searchParams }: _PageProps) {
-  const props = await getData(buildLegacyCtx(await headers(), await cookies(), await params, await searchParams));
+  const props = await getData({ params, searchParams });
   return <TeamTypePublicView {...props} />;
 }
