@@ -60,7 +60,7 @@ function BackgroundGrid() {
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         fill="none"
-        className="[--grid-fill:#f7f7f7] [--grid-stroke:rgba(34,42,53,0.08)] dark:[--grid-fill:#1f1f1f] dark:[--grid-stroke:rgba(255,255,255,0.08)]">
+        className="[--grid-fill:var(--cal-bg-muted)] [--grid-stroke:var(--cal-border-subtle)]">
         <defs>
           <radialGradient id="gridFade" cx="50%" cy="50%" rx="70%" ry="70%">
             <stop offset="20%" stopColor="white" stopOpacity="1" />
@@ -69,10 +69,6 @@ function BackgroundGrid() {
           <mask id="gridMask">
             <rect width={width} height={height} fill="url(#gridFade)" />
           </mask>
-          <filter id="gridShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="rgba(34,42,53,0.05)" />
-            <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="rgba(19,19,22,0.03)" />
-          </filter>
         </defs>
         <g mask="url(#gridMask)">
           {Array.from({ length: rows * cols }).map((_, i) => {
@@ -91,7 +87,6 @@ function BackgroundGrid() {
                 fill="var(--grid-fill)"
                 stroke="var(--grid-stroke)"
                 strokeWidth="1"
-                filter="url(#gridShadow)"
               />
             );
           })}
@@ -181,12 +176,12 @@ export default function Login({
     process.env.NEXT_PUBLIC_DISABLE_SIGNUP !== "true" && searchParams?.get("register") !== "false";
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-default/80 px-4 py-10">
+    <div className="relative flex min-h-screen items-center justify-center bg-subtle px-4 py-10 dark:bg-default">
       <BackgroundGrid />
 
       <div className="relative z-10 flex w-full max-w-md flex-col items-center">
         {/* Main Card */}
-        <div className="w-full rounded-xl border border-subtle bg-default p-10 shadow-sm">
+        <div className="w-full rounded-xl border border-default bg-default p-10 shadow-md dark:bg-subtle">
           {/* Logo */}
           <div className="mb-2 text-center">
             <h1 className="font-cal text-xl font-bold text-emphasis">Cal.diy</h1>
