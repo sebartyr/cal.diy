@@ -1,9 +1,57 @@
 import dayjs from "@calcom/dayjs";
 import logger from "@calcom/lib/logger";
 import type { PrismaClient } from "@calcom/prisma";
-
 import { DEFAULT_WEBHOOK_VERSION } from "./interface/IWebhookRepository";
 import { createWebhookSignature, jsonParse } from "./sendPayload";
+
+// Jobs beyond this batch stay due and are picked up by the next cron run.
+const MAX_JOBS_PER_RUN = 500;
+const FETCH_CONCURRENCY = 20;
+
+type ScheduledJob = {
+  id: number;
+  jobName: string | null;
+  payload: string;
+  subscriberUrl: string;
+  webhook: { secret: string | null; version: string | null } | null;
+};
+
+async function sendScheduledJob(prisma: PrismaClient, job: ScheduledJob): Promise<void> {
+  let webhook = job.webhook;
+
+  // only needed to support old jobs that don't have the webhook relationship yet
+  if (!webhook && job.jobName) {
+    const [appId, subscriberId] = job.jobName.split("_");
+    try {
+      webhook = await prisma.webhook.findUniqueOrThrow({
+        where: { id: subscriberId, appId: appId !== "null" ? appId : null },
+        select: { secret: true, version: true },
+      });
+    } catch {
+      logger.error(`Error finding webhook for subscriberId: ${subscriberId}, appId: ${appId}`);
+    }
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type":
+      !job.payload || jsonParse(job.payload) ? "application/json" : "application/x-www-form-urlencoded",
+    "X-Cal-Webhook-Version": webhook?.version ?? DEFAULT_WEBHOOK_VERSION,
+  };
+
+  if (webhook) {
+    headers["X-Cal-Signature-256"] = createWebhookSignature({ secret: webhook.secret, body: job.payload });
+  }
+
+  await fetch(job.subscriberUrl, {
+    method: "POST",
+    body: job.payload,
+    headers,
+    // Avoid following redirect
+    redirect: "manual",
+  }).catch((error) => {
+    console.error(`Webhook trigger for subscriber url ${job.subscriberUrl} failed with error: ${error}`);
+  });
+}
 
 export async function handleWebhookScheduledTriggers(prisma: PrismaClient) {
   await prisma.webhookScheduledTriggers.deleteMany({
@@ -13,13 +61,15 @@ export async function handleWebhookScheduledTriggers(prisma: PrismaClient) {
       },
     },
   });
-  // get jobs that should be run
-  const jobsToRun = await prisma.webhookScheduledTriggers.findMany({
+
+  const jobsToRun: ScheduledJob[] = await prisma.webhookScheduledTriggers.findMany({
     where: {
       startAfter: {
         lte: dayjs().toDate(),
       },
     },
+    orderBy: { startAfter: "asc" },
+    take: MAX_JOBS_PER_RUN,
     select: {
       id: true,
       jobName: true,
@@ -34,54 +84,23 @@ export async function handleWebhookScheduledTriggers(prisma: PrismaClient) {
     },
   });
 
-  const fetchPromises: Promise<Response | void>[] = [];
+  if (jobsToRun.length === 0) return;
 
-  // run jobs
-  for (const job of jobsToRun) {
-    // Fetch the webhook configuration so that we can get the secret.
-    let webhook = job.webhook;
+  // Jobs are removed before sending to keep the existing at-most-once delivery: a failed or slow send is
+  // never retried, and an overlapping cron run cannot pick the same job up again.
+  await prisma.webhookScheduledTriggers.deleteMany({
+    where: { id: { in: jobsToRun.map((job) => job.id) } },
+  });
 
-    // only needed to support old jobs that don't have the webhook relationship yet
-    if (!webhook && job.jobName) {
-      const [appId, subscriberId] = job.jobName.split("_");
-      try {
-        webhook = await prisma.webhook.findUniqueOrThrow({
-          where: { id: subscriberId, appId: appId !== "null" ? appId : null },
-          select: { secret: true, version: true },
-        });
-      } catch {
-        logger.error(`Error finding webhook for subscriberId: ${subscriberId}, appId: ${appId}`);
-      }
+  let nextJobIndex = 0;
+  const worker = async () => {
+    while (nextJobIndex < jobsToRun.length) {
+      const job = jobsToRun[nextJobIndex++];
+      await sendScheduledJob(prisma, job);
     }
+  };
 
-    const headers: Record<string, string> = {
-      "Content-Type":
-        !job.payload || jsonParse(job.payload) ? "application/json" : "application/x-www-form-urlencoded",
-      "X-Cal-Webhook-Version": webhook?.version ?? DEFAULT_WEBHOOK_VERSION,
-    };
-
-    if (webhook) {
-      headers["X-Cal-Signature-256"] = createWebhookSignature({ secret: webhook.secret, body: job.payload });
-    }
-    fetchPromises.push(
-      fetch(job.subscriberUrl, {
-        method: "POST",
-        body: job.payload,
-        headers,
-        // Avoid following redirect
-        redirect: "manual",
-      }).catch((error) => {
-        console.error(`Webhook trigger for subscriber url ${job.subscriberUrl} failed with error: ${error}`);
-      })
-    );
-
-    // clean finished job
-    await prisma.webhookScheduledTriggers.delete({
-      where: {
-        id: job.id,
-      },
-    });
-  }
-
-  Promise.allSettled(fetchPromises);
+  // Awaited so the cron response is only sent once every request is done, otherwise serverless runtimes
+  // may freeze the function and drop the in-flight requests.
+  await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, jobsToRun.length) }, worker));
 }
