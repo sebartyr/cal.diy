@@ -6,7 +6,6 @@ import { createWebhookSignature, jsonParse } from "./sendPayload";
 
 // Jobs beyond this batch stay due and are picked up by the next cron run.
 const MAX_JOBS_PER_RUN = 500;
-const FETCH_CONCURRENCY = 20;
 
 type ScheduledJob = {
   id: number;
@@ -92,15 +91,8 @@ export async function handleWebhookScheduledTriggers(prisma: PrismaClient) {
     where: { id: { in: jobsToRun.map((job) => job.id) } },
   });
 
-  let nextJobIndex = 0;
-  const worker = async () => {
-    while (nextJobIndex < jobsToRun.length) {
-      const job = jobsToRun[nextJobIndex++];
-      await sendScheduledJob(prisma, job);
-    }
-  };
-
-  // Awaited so the cron response is only sent once every request is done, otherwise serverless runtimes
+  // Every request goes out at once, as before, so a slow subscriber cannot delay the others. The batch is
+  // awaited so the cron response is only sent once every request is done, otherwise serverless runtimes
   // may freeze the function and drop the in-flight requests.
-  await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, jobsToRun.length) }, worker));
+  await Promise.allSettled(jobsToRun.map((job) => sendScheduledJob(prisma, job)));
 }

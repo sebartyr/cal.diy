@@ -51,11 +51,19 @@ async function scheduleTriggersForBookings({
     // Failures are logged and swallowed, like scheduleTrigger, so they never fail the webhook update itself.
     try {
       await prisma.webhookScheduledTriggers.createMany({ data });
-    } catch (error) {
-      log.error(
-        `Error scheduling ${triggerEvent} triggers for webhook ${subscriber.id}`,
-        safeStringify(error)
-      );
+    } catch {
+      // One bad row (e.g. a booking deleted since it was read) fails the whole createMany, so the batch is
+      // retried row by row to keep the previous per-booking isolation.
+      for (const row of data) {
+        try {
+          await prisma.webhookScheduledTriggers.create({ data: row });
+        } catch (error) {
+          log.error(
+            `Error scheduling ${triggerEvent} trigger for booking ${row.bookingId} on webhook ${subscriber.id}`,
+            safeStringify(error)
+          );
+        }
+      }
     }
   }
 }

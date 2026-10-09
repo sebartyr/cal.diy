@@ -197,17 +197,22 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
   it("deletes all run jobs with a single query before sending them", async () => {
     const jobs = [buildJob(1), buildJob(2), buildJob(3)];
     const mockPrisma = buildPrisma(jobs);
+    const events: string[] = [];
+    mockPrisma.webhookScheduledTriggers.deleteMany.mockImplementation(async () => {
+      events.push("delete");
+      return { count: 0 };
+    });
     mockFetch.mockImplementation(async () => {
-      expect(mockPrisma.webhookScheduledTriggers.deleteMany).toHaveBeenLastCalledWith({
-        where: { id: { in: [1, 2, 3] } },
-      });
+      events.push("fetch");
       return { ok: true, status: 200 };
     });
 
     await handleWebhookScheduledTriggers(mockPrisma as unknown as PrismaClient);
 
-    expect(mockPrisma.webhookScheduledTriggers.deleteMany).toHaveBeenCalledTimes(2);
-    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(events).toEqual(["delete", "delete", "fetch", "fetch", "fetch"]);
+    expect(mockPrisma.webhookScheduledTriggers.deleteMany).toHaveBeenLastCalledWith({
+      where: { id: { in: [1, 2, 3] } },
+    });
   });
 
   it("still deletes jobs whose request fails, without retrying them", async () => {
@@ -226,7 +231,7 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
     consoleError.mockRestore();
   });
 
-  it("waits for every request and runs at most 20 at a time", async () => {
+  it("sends every request at once and waits for all of them", async () => {
     const jobs = Array.from({ length: 50 }, (_, index) => buildJob(index + 1));
     const mockPrisma = buildPrisma(jobs);
     let inFlight = 0;
@@ -244,6 +249,6 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
     await handleWebhookScheduledTriggers(mockPrisma as unknown as PrismaClient);
 
     expect(completed).toBe(50);
-    expect(maxInFlight).toBe(20);
+    expect(maxInFlight).toBe(50);
   });
 });

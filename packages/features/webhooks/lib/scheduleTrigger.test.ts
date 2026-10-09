@@ -110,6 +110,7 @@ describe("scheduleTrigger bulk writes", () => {
       prismaMock.webhook.create.mockResolvedValue(subscription);
       prismaMock.booking.findMany.mockResolvedValue([{ ...buildBooking(1), eventType: null, attendees: [] }]);
       prismaMock.webhookScheduledTriggers.createMany.mockRejectedValue(new Error("db down"));
+      prismaMock.webhookScheduledTriggers.create.mockRejectedValue(new Error("db down"));
 
       const result = await addSubscription({
         triggerEvent: WebhookTriggerEvents.MEETING_STARTED,
@@ -119,6 +120,32 @@ describe("scheduleTrigger bulk writes", () => {
       });
 
       expect(result).toBe(subscription);
+    });
+
+    it("falls back to one insert per booking when the bulk insert fails, so one bad row does not drop the batch", async () => {
+      prismaMock.webhook.create.mockResolvedValue({
+        id: "webhook-1",
+        appId: "zapier",
+        subscriberUrl: "https://example.com/hook",
+      });
+      prismaMock.booking.findMany.mockResolvedValue(
+        [1, 2, 3].map((id) => ({ ...buildBooking(id), eventType: null, attendees: [] }))
+      );
+      prismaMock.webhookScheduledTriggers.createMany.mockRejectedValue(new Error("FK violation"));
+      prismaMock.webhookScheduledTriggers.create
+        .mockResolvedValueOnce({})
+        .mockRejectedValueOnce(new Error("FK violation"))
+        .mockResolvedValueOnce({});
+
+      await addSubscription({
+        triggerEvent: WebhookTriggerEvents.MEETING_STARTED,
+        subscriberUrl: "https://example.com/hook",
+        appId: "zapier",
+        account: { id: 1, name: null, isTeam: false },
+      });
+
+      const { data: batch } = prismaMock.webhookScheduledTriggers.createMany.mock.calls[0][0];
+      expect(prismaMock.webhookScheduledTriggers.create.mock.calls.map(([arg]) => arg.data)).toEqual(batch);
     });
   });
 
