@@ -17,7 +17,7 @@ import { BookingStatus, MembershipRole, SchedulingType } from "@calcom/prisma/en
 import { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import { TRPCError } from "@trpc/server";
 import type { Kysely, SelectQueryBuilder } from "kysely";
-import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { jsonArrayFrom, jsonBuildObject, jsonObjectFrom } from "kysely/helpers/postgres";
 import type { TrpcSessionUser } from "../../../types";
 import type { TGetInputSchema } from "./get.schema";
 
@@ -635,7 +635,21 @@ export async function getBookings({
               .whereRef("Booking.userId", "=", "users.id")
           ).as("user"),
           jsonArrayFrom(
-            eb.selectFrom("Attendee").selectAll().whereRef("Attendee.bookingId", "=", "Booking.id")
+            eb
+              .selectFrom("Attendee")
+              .selectAll("Attendee")
+              // Correlated lookups rather than a join keep the attendee rows in the order PostgreSQL has
+              // always returned them, and a user is always an object, with null fields when no account matches.
+              .select((eb) => {
+                const attendeeUser = eb.selectFrom("users").whereRef("users.email", "=", "Attendee.email");
+                return jsonBuildObject({
+                  name: attendeeUser.select("users.name"),
+                  email: eb.ref("Attendee.email"),
+                  avatarUrl: attendeeUser.select("users.avatarUrl"),
+                  username: attendeeUser.select("users.username"),
+                }).as("user");
+              })
+              .whereRef("Attendee.bookingId", "=", "Booking.id")
           ).as("attendees"),
           jsonArrayFrom(
             eb
@@ -745,10 +759,7 @@ export async function getBookings({
     };
   });
 
-  // Enrich attendees with user data
-  const enrichedBookings = await enrichAttendeesWithUserData(bookings, kysely);
-
-  return { bookings: enrichedBookings, recurringInfo, totalCount };
+  return { bookings, recurringInfo, totalCount };
 }
 
 async function getRecurringInfo(prisma: PrismaClient, where: Prisma.BookingWhereInput) {
@@ -806,71 +817,6 @@ async function getRecurringInfo(prisma: PrismaClient, where: Prisma.BookingWhere
       };
     }
   );
-}
-
-type EnrichedUserData = {
-  name: string | null;
-  email: string;
-  avatarUrl: string | null;
-  username: string | null;
-};
-
-/**
- * Enriches booking attendees with user data by performing a left outer join
- * between attendees and users tables on email addresses.
- *
- * @param bookings - Array of bookings with attendees to enrich
- * @param kysely - Kysely database client instance
- * @returns Bookings with attendees enriched with user data (name, email, avatarUrl, username)
- */
-async function enrichAttendeesWithUserData<
-  TBooking extends { attendees: ReadonlyArray<{ id: number; email: string }> },
->(
-  bookings: TBooking[],
-  kysely: Kysely<DB>
-): Promise<
-  Array<
-    Omit<TBooking, "attendees"> & {
-      attendees: Array<TBooking["attendees"][number] & { user: EnrichedUserData | null }>;
-    }
-  >
-> {
-  // Extract all unique attendee emails from bookings
-  const allAttendees = bookings.flatMap((booking) => booking.attendees);
-  const uniqueAttendeeIds = Array.from(new Set(allAttendees.map((attendee) => attendee.id)));
-
-  // Query attendees with left join to users table
-  const enrichedAttendees =
-    uniqueAttendeeIds.length > 0
-      ? await kysely
-          .selectFrom("Attendee")
-          .leftJoin("users", "users.email", "Attendee.email")
-          .select(["Attendee.id", "users.name", "Attendee.email", "users.avatarUrl", "users.username"])
-          .where("Attendee.id", "in", uniqueAttendeeIds)
-          .execute()
-      : [];
-
-  // Create a lookup map for O(1) access by attendee ID
-  const attendeeUserDataMap = new Map<number, EnrichedUserData>(
-    enrichedAttendees.map((enriched) => [
-      enriched.id,
-      {
-        name: enriched.name,
-        email: enriched.email,
-        avatarUrl: enriched.avatarUrl,
-        username: enriched.username,
-      },
-    ])
-  );
-
-  // Map over bookings and enrich each attendee with user data
-  return bookings.map((booking) => ({
-    ...booking,
-    attendees: booking.attendees.map((attendee) => ({
-      ...attendee,
-      user: attendeeUserDataMap.get(attendee.id) || null,
-    })),
-  }));
 }
 
 /**

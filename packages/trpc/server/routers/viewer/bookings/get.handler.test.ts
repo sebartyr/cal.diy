@@ -958,6 +958,65 @@ describe("getBookings - page, count and hydration queries", () => {
     expect(result.totalCount).toBe(2);
   });
 
+  it("reads the attendees' user data in the hydration query instead of a second Attendee lookup", async () => {
+    const withAccount = {
+      id: 11,
+      email: "jane@example.com",
+      name: "Jane",
+      user: { name: "Jane Doe", email: "jane@example.com", avatarUrl: "/jane.png", username: "jane" },
+    };
+    const withoutAccount = {
+      id: 12,
+      email: "guest@example.com",
+      name: "Guest",
+      user: { name: null, email: "guest@example.com", avatarUrl: null, username: null },
+    };
+    const { db, queries } = createDb({
+      count: 1,
+      hydrated: [hydratedBooking(1, { attendees: [withAccount, withoutAccount] })],
+    });
+
+    const result = await run(db);
+
+    const hydrationSql = queries.find(isHydrationQuery)?.sql ?? "";
+    expect(hydrationSql).toContain("json_build_object('name'");
+    expect(hydrationSql).toContain('"users"."email" = "Attendee"."email"');
+    expect(hydrationSql).not.toMatch(/join "users"/);
+    expect(queries.filter((q) => q.sql.includes('from "Attendee" left join "users"'))).toHaveLength(0);
+    expect(queries.filter((q) => !isCountQuery(q) && !isPageQuery(q) && !isHydrationQuery(q))).toHaveLength(
+      0
+    );
+    expect(result.bookings[0].attendees).toEqual([withAccount, withoutAccount]);
+  });
+
+  it("keeps the user data of the attendees left visible on a seated booking", async () => {
+    const mine = {
+      id: 21,
+      email: me.email,
+      name: "Me",
+      user: { name: "Me", email: me.email, avatarUrl: null, username: "me" },
+    };
+    const other = {
+      id: 22,
+      email: "other@example.com",
+      name: "Other",
+      user: { name: null, email: "other@example.com", avatarUrl: null, username: null },
+    };
+    const { db } = createDb({
+      hydrated: [
+        hydratedBooking(1, {
+          attendees: [mine, other],
+          seatsReferences: [{ referenceUid: "seat-1", attendee: { email: me.email } }],
+          eventType: { seatsShowAttendees: false, hosts: [] },
+        }),
+      ],
+    });
+
+    const result = await run(db);
+
+    expect(result.bookings[0].attendees).toEqual([mine]);
+  });
+
   it("looks up the caller's own recurring series outside an admin view", async () => {
     const { db } = createDb({ hydrated: [hydratedBooking(1, { recurringEventId: "series-1" })] });
 
