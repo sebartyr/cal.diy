@@ -9,6 +9,8 @@ describe("BookingRepository", () => {
     booking: {
       count: ReturnType<typeof vi.fn>;
       findMany: ReturnType<typeof vi.fn>;
+      findFirst: ReturnType<typeof vi.fn>;
+      findUnique: ReturnType<typeof vi.fn>;
     };
   };
 
@@ -17,10 +19,7 @@ describe("BookingRepository", () => {
 
     mockPrismaClient = {
       $queryRaw: vi.fn(),
-      booking: {
-        count: vi.fn(),
-        findMany: vi.fn(),
-      },
+      booking: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
     };
 
     repository = new BookingRepository(mockPrismaClient as unknown as PrismaClient);
@@ -243,6 +242,92 @@ describe("BookingRepository", () => {
           }),
         })
       );
+    });
+  });
+
+  describe("getValidBookingFromEventTypeForAttendee", () => {
+    const params = {
+      eventTypeId: 7,
+      bookerEmail: "booker@example.com",
+      startTime: new Date("2026-03-01T10:00:00.000Z"),
+    };
+
+    it("selects only the organizer fields the regular booking path returns", async () => {
+      mockPrismaClient.booking.findFirst.mockResolvedValue(null);
+
+      await repository.getValidBookingFromEventTypeForAttendee(params);
+
+      expect(mockPrismaClient.booking.findFirst).toHaveBeenCalledTimes(1);
+      const args = mockPrismaClient.booking.findFirst.mock.calls[0][0];
+      expect(args.include.user).toEqual({
+        select: {
+          uuid: true,
+          email: true,
+          name: true,
+          timeZone: true,
+          username: true,
+          isPlatformManaged: true,
+        },
+      });
+    });
+
+    it("never selects sensitive user columns", async () => {
+      mockPrismaClient.booking.findFirst.mockResolvedValue(null);
+
+      await repository.getValidBookingFromEventTypeForAttendee(params);
+
+      const userSelect = mockPrismaClient.booking.findFirst.mock.calls[0][0].include.user.select;
+      for (const field of [
+        "twoFactorSecret",
+        "backupCodes",
+        "twoFactorEnabled",
+        "identityProviderId",
+        "metadata",
+        "password",
+      ]) {
+        expect(userSelect).not.toHaveProperty(field);
+      }
+    });
+
+    it("keeps the same filters and booking relations", async () => {
+      mockPrismaClient.booking.findFirst.mockResolvedValue(null);
+
+      await repository.getValidBookingFromEventTypeForAttendee({ ...params, filterForUnconfirmed: true });
+
+      const args = mockPrismaClient.booking.findFirst.mock.calls[0][0];
+      expect(args.where).toEqual({
+        eventTypeId: 7,
+        attendees: { some: { email: "booker@example.com", phoneNumber: undefined } },
+        startTime: params.startTime,
+        status: "PENDING",
+      });
+      expect(args.include).toMatchObject({ attendees: true, references: true, payment: true });
+    });
+  });
+
+  describe("findBookingByUidWithEventType", () => {
+    it("selects only the fields read by the calendar sync instead of full rows", async () => {
+      mockPrismaClient.booking.findUnique.mockResolvedValue(null);
+
+      await repository.findBookingByUidWithEventType({ bookingUid: "booking-uid" });
+
+      const [args] = mockPrismaClient.booking.findUnique.mock.calls[0];
+      expect(args.where).toEqual({ uid: "booking-uid" });
+      expect(args).not.toHaveProperty("include");
+      expect(args.select).toEqual({
+        uid: true,
+        userId: true,
+        userPrimaryEmail: true,
+        eventTypeId: true,
+        startTime: true,
+        endTime: true,
+        title: true,
+        description: true,
+        location: true,
+        responses: true,
+        smsReminderNumber: true,
+        eventType: { select: { id: true } },
+      });
     });
   });
 });

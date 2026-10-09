@@ -94,7 +94,8 @@ export async function getBookingToDelete(id: number | undefined, uid: string | u
           customReplyToEmail: true,
           hosts: {
             select: {
-              user: true,
+              userId: true,
+              user: { select: { email: true } },
             },
           },
         },

@@ -1,7 +1,7 @@
 import { DailyLocationType } from "@calcom/app-store/constants";
 import dayjs from "@calcom/dayjs";
 import tasker from "@calcom/features/tasker";
-import getWebhooks from "@calcom/features/webhooks/lib/getWebhooks";
+import { getWebhooksForTriggers } from "@calcom/features/webhooks/lib/getWebhooks";
 import { withReporting } from "@calcom/lib/sentryWrapper";
 import { WebhookTriggerEvents } from "@calcom/prisma/enums";
 
@@ -40,14 +40,19 @@ const _scheduleNoShowTriggers = async (args: ScheduleNoShowTriggersArgs) => {
   // Add task for automatic no show in cal video
   const noShowPromises: Promise<any>[] = [];
 
-  const subscribersHostsNoShowStarted = await getWebhooks({
-    userId: triggerForUser ? organizerUser.id : null,
-    eventTypeId,
-    triggerEvent: WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW,
-    teamId,
-    orgId,
-    oAuthClientId,
-  });
+  const subscribersByTrigger = await getWebhooksForTriggers(
+    {
+      userId: triggerForUser ? organizerUser.id : null,
+      eventTypeId,
+      teamId,
+      orgId,
+      oAuthClientId,
+    },
+    [WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW, WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW]
+  );
+
+  const subscribersHostsNoShowStarted =
+    subscribersByTrigger[WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW];
 
   noShowPromises.push(
     ...subscribersHostsNoShowStarted.map((webhook) => {
@@ -70,14 +75,8 @@ const _scheduleNoShowTriggers = async (args: ScheduleNoShowTriggersArgs) => {
     })
   );
 
-  const subscribersGuestsNoShowStarted = await getWebhooks({
-    userId: triggerForUser ? organizerUser.id : null,
-    eventTypeId,
-    triggerEvent: WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW,
-    teamId,
-    orgId,
-    oAuthClientId,
-  });
+  const subscribersGuestsNoShowStarted =
+    subscribersByTrigger[WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW];
 
   noShowPromises.push(
     ...subscribersGuestsNoShowStarted.map((webhook) => {

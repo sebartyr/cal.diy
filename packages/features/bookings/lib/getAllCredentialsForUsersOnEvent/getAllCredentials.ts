@@ -1,5 +1,3 @@
-import type { z } from "zod";
-
 import { enrichUserWithDelegationCredentialsIncludeServiceAccountKey } from "@calcom/app-store/delegationCredential";
 import { eventTypeAppMetadataOptionalSchema } from "@calcom/app-store/zod-utils";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
@@ -7,6 +5,7 @@ import prisma from "@calcom/prisma";
 import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
 import type { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import type { CredentialPayload } from "@calcom/types/Credential";
+import type { z } from "zod";
 
 export type EventType = {
   userId?: number | null;
@@ -23,43 +22,50 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
   user: { id: number; username: string | null; email: string; credentials: CredentialPayload[] },
   eventType: EventType
 ) => {
-  let allCredentials = Array.isArray(user.credentials) ? user.credentials : [];
+  const teamId = eventType?.team?.id;
+  const parentId = eventType?.parentId;
 
-  if (eventType?.team?.id) {
-    const teamCredentialsQuery = await prisma.credential.findMany({
-      where: {
-        teamId: eventType.team.id,
-      },
-      select: credentialForCalendarServiceSelect,
-    });
-    if (Array.isArray(teamCredentialsQuery)) {
-      allCredentials.push(...teamCredentialsQuery);
-    }
-  }
-
-  if (eventType?.parentId) {
-    const teamCredentialsQuery = await prisma.team.findFirst({
-      where: {
-        eventTypes: {
-          some: {
-            id: eventType.parentId,
+  // These lookups are independent, so they run concurrently; only the org lookup depends on the profile
+  const [teamCredentials, parentTeam, { profile }] = await Promise.all([
+    teamId
+      ? prisma.credential.findMany({
+          where: {
+            teamId,
           },
-        },
-      },
-      select: {
-        credentials: {
           select: credentialForCalendarServiceSelect,
-        },
-      },
-    });
-    if (teamCredentialsQuery?.credentials && Array.isArray(teamCredentialsQuery.credentials)) {
-      allCredentials.push(...teamCredentialsQuery.credentials);
-    }
+        })
+      : null,
+    parentId
+      ? prisma.team.findFirst({
+          where: {
+            eventTypes: {
+              some: {
+                id: parentId,
+              },
+            },
+          },
+          select: {
+            credentials: {
+              select: credentialForCalendarServiceSelect,
+            },
+          },
+        })
+      : null,
+    new UserRepository(prisma).enrichUserWithItsProfile({
+      user: user,
+    }),
+  ]);
+
+  // Copied so the caller's user.credentials is not mutated
+  let allCredentials = Array.isArray(user.credentials) ? [...user.credentials] : [];
+
+  if (Array.isArray(teamCredentials)) {
+    allCredentials.push(...teamCredentials);
   }
 
-  const { profile } = await new UserRepository(prisma).enrichUserWithItsProfile({
-    user: user,
-  });
+  if (parentTeam?.credentials && Array.isArray(parentTeam.credentials)) {
+    allCredentials.push(...parentTeam.credentials);
+  }
 
   if (profile?.organizationId) {
     const org = await prisma.team.findUnique({

@@ -2,8 +2,7 @@ import { buildNonDelegationCredential } from "@calcom/lib/delegationCredential";
 import logger from "@calcom/lib/logger";
 import { prisma } from "@calcom/prisma";
 import type { Prisma, PrismaClient } from "@calcom/prisma/client";
-import { safeCredentialSelect } from "@calcom/prisma/selects/credential";
-import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
+import { credentialForCalendarServiceSelect, safeCredentialSelect } from "@calcom/prisma/selects/credential";
 
 const log = logger.getSubLogger({ prefix: ["CredentialRepository"] });
 
@@ -40,6 +39,14 @@ export class CredentialRepository {
     return this.prismaClient.credential.findMany({
       where: { id: { in: ids } },
       select: { id: true, appId: true },
+    });
+  }
+
+  async findManyForCalendarServiceByIds({ ids }: { ids: number[] }) {
+    if (ids.length === 0) return [];
+    return this.prismaClient.credential.findMany({
+      where: { id: { in: ids } },
+      select: credentialForCalendarServiceSelect,
     });
   }
 
@@ -321,8 +328,15 @@ export class CredentialRepository {
         ...idToSearchObject,
         appId,
       },
-      include: {
-        app: true,
+      // key is read by the payment service to charge the card
+      select: {
+        id: true,
+        type: true,
+        key: true,
+        appId: true,
+        userId: true,
+        teamId: true,
+        app: { select: { slug: true, dirName: true } },
       },
     });
   }

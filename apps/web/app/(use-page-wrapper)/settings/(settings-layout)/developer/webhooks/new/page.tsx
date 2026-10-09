@@ -3,7 +3,7 @@ import { APP_NAME } from "@calcom/lib/constants";
 import { appsRouter } from "@calcom/trpc/server/routers/viewer/apps/_router";
 import { webhookRouter } from "@calcom/trpc/server/routers/viewer/webhook/_router";
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
-import { createRouterCaller } from "app/_trpc/context";
+import { createRouterCaller, getTRPCContext } from "app/_trpc/context";
 import { _generateMetadata } from "app/_utils";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -24,9 +24,10 @@ const Page = async () => {
     redirect("/auth/login?callbackUrl=/settings/developer/webhooks/new");
   }
 
+  const trpcContext = await getTRPCContext();
   const [appsCaller, webhookCaller] = await Promise.all([
-    createRouterCaller(appsRouter),
-    createRouterCaller(webhookRouter),
+    createRouterCaller(appsRouter, trpcContext),
+    createRouterCaller(webhookRouter, trpcContext),
   ]);
 
   const [installedApps, webhooks] = await Promise.all([

@@ -885,8 +885,23 @@ export class BookingRepository implements IBookingRepository {
       where: {
         uid: bookingUid,
       },
-      include: {
-        eventType: true,
+      select: {
+        uid: true,
+        userId: true,
+        userPrimaryEmail: true,
+        eventTypeId: true,
+        startTime: true,
+        endTime: true,
+        title: true,
+        description: true,
+        location: true,
+        responses: true,
+        smsReminderNumber: true,
+        eventType: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
   }
@@ -1291,7 +1306,18 @@ export class BookingRepository implements IBookingRepository {
       include: {
         attendees: true,
         references: true,
-        user: true,
+        // The result is returned to the public booker as-is, so only expose the organizer
+        // fields the regular booking creation path already returns (see createBooking.ts).
+        user: {
+          select: {
+            uuid: true,
+            email: true,
+            name: true,
+            timeZone: true,
+            username: true,
+            isPlatformManaged: true,
+          },
+        },
         payment: true,
       },
     });
