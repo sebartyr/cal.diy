@@ -10,6 +10,7 @@ import { ShellMainAppDir } from "app/(use-page-wrapper)/(main-nav)/ShellMainAppD
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getDefaultBookingsListUrl } from "~/bookings/lib/defaultBookingsListUrl";
 import { validStatuses } from "~/bookings/lib/validStatuses";
 import BookingsList from "~/bookings/views/bookings-view";
 
@@ -26,7 +27,7 @@ export const generateMetadata = async ({ params }: { params: Promise<{ status: s
     `/bookings/${(await params).status}`
   );
 
-const Page = async ({ params }: PageProps) => {
+const Page = async ({ params, searchParams }: PageProps) => {
   const parsed = querySchema.safeParse(await params);
   if (!parsed.success) {
     redirect("/bookings/upcoming");
@@ -39,6 +40,14 @@ const Page = async ({ params }: PageProps) => {
   }
 
   const userId = session.user.id;
+  const defaultListUrl = getDefaultBookingsListUrl({
+    pathname: `/bookings/${parsed.data.status}`,
+    userId,
+    searchParams: await searchParams,
+  });
+  if (defaultListUrl) {
+    redirect(defaultListUrl);
+  }
   const featuresRepository = new FeaturesRepository(prisma);
 
   // No teams in cal.diy, so canReadOthersBookings is always false.
