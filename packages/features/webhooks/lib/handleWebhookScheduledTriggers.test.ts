@@ -23,6 +23,7 @@ describe("handleWebhookScheduledTriggers - X-Cal-Webhook-Version header", () => 
   it("should include X-Cal-Webhook-Version header with webhook version from database", async () => {
     const webhookVersion = "2021-10-20";
     const mockPrisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 1 }]),
       webhookScheduledTriggers: {
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
         findMany: vi.fn().mockResolvedValue([
@@ -56,6 +57,7 @@ describe("handleWebhookScheduledTriggers - X-Cal-Webhook-Version header", () => 
 
   it("should use DEFAULT_WEBHOOK_VERSION when webhook has no version", async () => {
     const mockPrisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 1 }]),
       webhookScheduledTriggers: {
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
         findMany: vi.fn().mockResolvedValue([
@@ -87,6 +89,7 @@ describe("handleWebhookScheduledTriggers - X-Cal-Webhook-Version header", () => 
 
   it("should use DEFAULT_WEBHOOK_VERSION when webhook relationship is null", async () => {
     const mockPrisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 1 }]),
       webhookScheduledTriggers: {
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
         findMany: vi.fn().mockResolvedValue([
@@ -116,6 +119,7 @@ describe("handleWebhookScheduledTriggers - X-Cal-Webhook-Version header", () => 
   it("should fetch webhook version from database for legacy jobs using jobName", async () => {
     const webhookVersion = "2021-10-20";
     const mockPrisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 1 }]),
       webhookScheduledTriggers: {
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
         findMany: vi.fn().mockResolvedValue([
@@ -162,7 +166,9 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
     webhook: { secret: "test-secret", version: "2021-10-20" },
   });
 
+  // By default this run claims every job it read; tests override $queryRaw to simulate another run.
   const buildPrisma = (jobs: ReturnType<typeof buildJob>[]) => ({
+    $queryRaw: vi.fn().mockResolvedValue(jobs.map((job) => ({ id: job.id }))),
     webhookScheduledTriggers: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       findMany: vi.fn().mockResolvedValue(jobs),
@@ -190,17 +196,17 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
     expect(mockPrisma.webhookScheduledTriggers.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 500, orderBy: { startAfter: "asc" } })
     );
-    expect(mockPrisma.webhookScheduledTriggers.deleteMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("deletes all run jobs with a single query before sending them", async () => {
+  it("claims all read jobs with a single DELETE ... RETURNING before sending them", async () => {
     const jobs = [buildJob(1), buildJob(2), buildJob(3)];
     const mockPrisma = buildPrisma(jobs);
     const events: string[] = [];
-    mockPrisma.webhookScheduledTriggers.deleteMany.mockImplementation(async () => {
-      events.push("delete");
-      return { count: 0 };
+    mockPrisma.$queryRaw.mockImplementation(async () => {
+      events.push("claim");
+      return jobs.map((job) => ({ id: job.id }));
     });
     mockFetch.mockImplementation(async () => {
       events.push("fetch");
@@ -209,13 +215,48 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
 
     await handleWebhookScheduledTriggers(mockPrisma as unknown as PrismaClient);
 
-    expect(events).toEqual(["delete", "delete", "fetch", "fetch", "fetch"]);
-    expect(mockPrisma.webhookScheduledTriggers.deleteMany).toHaveBeenLastCalledWith({
-      where: { id: { in: [1, 2, 3] } },
-    });
+    expect(events).toEqual(["claim", "fetch", "fetch", "fetch"]);
+    const [sql, ids] = mockPrisma.$queryRaw.mock.calls[0];
+    expect(sql.join("?")).toMatch(
+      /DELETE FROM "WebhookScheduledTriggers" WHERE "id" = ANY\(\?::int\[\]\) RETURNING "id"/
+    );
+    expect(ids).toEqual([1, 2, 3]);
   });
 
-  it("still deletes jobs whose request fails, without retrying them", async () => {
+  it("only sends the jobs this run claimed, not those another overlapping run deleted first", async () => {
+    const mockPrisma = buildPrisma([buildJob(1), buildJob(2), buildJob(3)]);
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 2 }]);
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+
+    await handleWebhookScheduledTriggers(mockPrisma as unknown as PrismaClient);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch.mock.calls[0][0]).toBe("https://example.com/webhook/2");
+  });
+
+  it("sends each job once when two runs read the same jobs concurrently", async () => {
+    const jobs = [buildJob(1), buildJob(2), buildJob(3)];
+    const remaining = new Set(jobs.map((job) => job.id));
+    // Mirrors PostgreSQL: a row is returned by at most one of the concurrent deletes.
+    const claim = vi.fn(async (_sql: TemplateStringsArray, ids: number[]) => {
+      const claimed = ids.filter((id) => remaining.has(id));
+      for (const id of claimed) remaining.delete(id);
+      return claimed.map((id) => ({ id }));
+    });
+    const runA = { ...buildPrisma(jobs), $queryRaw: claim };
+    const runB = { ...buildPrisma(jobs), $queryRaw: claim };
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+
+    await Promise.all([
+      handleWebhookScheduledTriggers(runA as unknown as PrismaClient),
+      handleWebhookScheduledTriggers(runB as unknown as PrismaClient),
+    ]);
+
+    const sentUrls = mockFetch.mock.calls.map(([url]) => url);
+    expect(sentUrls.sort()).toEqual(jobs.map((job) => job.subscriberUrl).sort());
+  });
+
+  it("does not retry jobs whose request fails", async () => {
     const mockPrisma = buildPrisma([buildJob(1), buildJob(2)]);
     mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED")).mockResolvedValue({ ok: true, status: 200 });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -225,9 +266,7 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
     ).resolves.toBeUndefined();
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect(mockPrisma.webhookScheduledTriggers.deleteMany).toHaveBeenLastCalledWith({
-      where: { id: { in: [1, 2] } },
-    });
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
     consoleError.mockRestore();
   });
 
