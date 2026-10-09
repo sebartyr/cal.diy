@@ -1,4 +1,4 @@
-import type { BlockableUser } from "./check-user-blocking";
+import type { BlockableUser, BlockingInfo } from "./check-user-blocking";
 import { getBlockedUsersMap, isUserBlocked } from "./check-user-blocking";
 
 /**
@@ -46,4 +46,27 @@ export async function filterBlockedHosts<T extends HostWithEmail>(
     eligibleHosts,
     blockedCount,
   };
+}
+
+/**
+ * Builds a single blocking map for several host lists that may overlap, so they can all be filtered
+ * with `isUserBlocked` after one watchlist lookup instead of one lookup per list.
+ */
+export async function getBlockingMapForHostGroups(
+  hostGroups: HostWithEmail[][],
+  organizationId?: number | null
+): Promise<Map<string, BlockingInfo>> {
+  const usersById = new Map<number, HostWithEmail["user"]>();
+  for (const hosts of hostGroups) {
+    for (const host of hosts) {
+      usersById.set(host.user.id, host.user);
+    }
+  }
+
+  if (usersById.size === 0) {
+    return new Map();
+  }
+
+  const { blockingMap } = await getBlockedUsersMap(Array.from(usersById.values()), organizationId);
+  return blockingMap;
 }
