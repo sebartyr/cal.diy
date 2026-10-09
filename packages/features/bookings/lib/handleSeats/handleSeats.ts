@@ -10,9 +10,7 @@ import createNewSeat from "./create/createNewSeat";
 import rescheduleSeatedBooking from "./reschedule/rescheduleSeatedBooking";
 import type { HandleSeatsResultBooking, NewSeatedBookingObject, SeatedBooking } from "./types";
 
-const handleSeats = async (
-  newSeatedBookingObject: NewSeatedBookingObject
-) => {
+const handleSeats = async (newSeatedBookingObject: NewSeatedBookingObject) => {
   const {
     eventType,
     reqBodyUser,
@@ -61,7 +59,9 @@ const handleSeats = async (
       userId: true,
       references: true,
       startTime: true,
-      user: true,
+      user: {
+        select: { id: true, email: true, name: true, timeZone: true, username: true },
+      },
       status: true,
       smsReminderNumber: true,
       endTime: true,
