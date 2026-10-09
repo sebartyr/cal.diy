@@ -181,6 +181,60 @@ describe("AvailableSlotsService - repeated queries", () => {
     });
   });
 
+  describe("host data", () => {
+    const booking = (id: number, userId: number | null, attendeeEmails: string[]) => ({
+      id,
+      uid: `booking-${id}`,
+      userId,
+      startTime: new Date("2026-03-03T10:00:00Z"),
+      endTime: new Date("2026-03-03T10:30:00Z"),
+      title: `Booking ${id}`,
+      attendees: attendeeEmails.map((email) => ({ email })),
+      eventType: null,
+    });
+    const withoutAttendees = ({ attendees: _attendees, ...rest }: ReturnType<typeof booking>) => rest;
+
+    it("gives each host the bookings it organizes or attends, in order, once each", async () => {
+      const bookings = [
+        booking(1, 1, ["guest@example.com"]),
+        booking(2, 3, ["two@example.com"]),
+        booking(3, 1, ["one@example.com", "two@example.com"]),
+        booking(4, null, ["one@example.com"]),
+        booking(5, 3, ["guest@example.com"]),
+      ];
+      mockDependencies.bookingRepo.findAllExistingBookingsForEventTypeBetween.mockResolvedValue(bookings);
+
+      await calculate({});
+
+      const { users } = mockDependencies.userAvailabilityService.getUsersAvailability.mock.calls[0][0];
+      expect(users.map((user: { id: number }) => user.id)).toEqual([1, 2]);
+      expect(users[0].currentBookings).toEqual([bookings[0], bookings[2], bookings[3]].map(withoutAttendees));
+      expect(users[1].currentBookings).toEqual([bookings[1], bookings[2]].map(withoutAttendees));
+    });
+
+    it("groups out-of-office entries by host", async () => {
+      const ooo = (id: number, userId: number) => ({ id, user: { id: userId, name: null } });
+      const entries = [ooo(1, 2), ooo(2, 1), ooo(3, 2)];
+      mockDependencies.oooRepo.findManyOOO.mockResolvedValue(entries);
+
+      await calculate({});
+
+      const { users } = mockDependencies.userAvailabilityService.getUsersAvailability.mock.calls[0][0];
+      expect(users[0].outOfOfficeDays).toEqual([entries[1]]);
+      expect(users[1].outOfOfficeDays).toEqual([entries[0], entries[2]]);
+    });
+
+    it("looks up out-of-office entries from the requested start when it is in the past", async () => {
+      await calculate({});
+
+      expect(mockDependencies.oooRepo.findManyOOO).toHaveBeenCalledWith({
+        startTimeDate: startTime.toDate(),
+        endTimeDate: endTime.toDate(),
+        allUserIds: [1, 2],
+      });
+    });
+  });
+
   describe("_getReservedSlotsAndCleanupExpired", () => {
     it("reads unexpired slots and deletes expired ones concurrently", async () => {
       let resolveRead: (value: { uid: string }[]) => void = () => undefined;

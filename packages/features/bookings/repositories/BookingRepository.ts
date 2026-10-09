@@ -744,18 +744,17 @@ export class BookingRepository implements IBookingRepository {
       startTime: true,
       endTime: true,
       title: true,
-      attendees: true,
+      attendees: {
+        select: {
+          email: true,
+        },
+      },
       eventType: {
         select: {
           id: true,
-          onlyShowFirstAvailableSlot: true,
           afterEventBuffer: true,
           beforeEventBuffer: true,
           seatsPerTimeSlot: true,
-          requiresConfirmationWillBlockSlot: true,
-          requiresConfirmation: true,
-          allowReschedulingPastBookings: true,
-          hideOrganizerEmail: true,
         },
       },
       ...(seatedEvent && {
