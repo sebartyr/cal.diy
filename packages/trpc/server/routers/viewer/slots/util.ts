@@ -35,7 +35,6 @@ type QualifiedHostsService = {
 import { isEventTypeLoggingEnabled } from "@calcom/features/bookings/lib/isEventTypeLoggingEnabled";
 import type { BookingRepository } from "@calcom/features/bookings/repositories/BookingRepository";
 import type { BusyTimesService } from "@calcom/features/busyTimes/services/getBusyTimes";
-import type { getBusyTimesService } from "@calcom/features/di/containers/BusyTimes";
 import { getDefaultEvent } from "@calcom/features/eventtypes/lib/defaultEvents";
 import type { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import type { PrismaOOORepository } from "@calcom/features/ooo/repositories/PrismaOOORepository";
@@ -47,12 +46,13 @@ import type { ISelectedSlotRepository } from "@calcom/features/selectedSlots/rep
 import type { NoSlotsNotificationService } from "@calcom/features/slots/handleNotificationWhenNoSlots";
 import type { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { withSelectedCalendars } from "@calcom/features/users/repositories/UserRepository";
-import { filterBlockedHosts } from "@calcom/features/watchlist/operations/filter-blocked-hosts.controller";
+import { isUserBlocked } from "@calcom/features/watchlist/operations/check-user-blocking";
+import { getBlockingMapForHostGroups } from "@calcom/features/watchlist/operations/filter-blocked-hosts.controller";
 import { shouldIgnoreContactOwner } from "@calcom/lib/bookings/routing/utils";
 import { RESERVED_SUBDOMAINS } from "@calcom/lib/constants";
-import { getUTCOffsetByTimezone } from "@calcom/lib/dayjs";
+import { getUTCOffsetByTimezone, stringToDayjs } from "@calcom/lib/dayjs";
 import { descendingLimitKeys, intervalLimitKeyToUnit } from "@calcom/lib/intervalLimits/intervalLimit";
-import type { IntervalLimit } from "@calcom/lib/intervalLimits/intervalLimitSchema";
+import type { IntervalLimit, IntervalLimitKey } from "@calcom/lib/intervalLimits/intervalLimitSchema";
 import { parseBookingLimit } from "@calcom/lib/intervalLimits/isBookingLimits";
 import { parseDurationLimit } from "@calcom/lib/intervalLimits/isDurationLimits";
 import LimitManager, { LimitSources } from "@calcom/lib/intervalLimits/limitManager";
@@ -155,23 +155,17 @@ export class AvailableSlotsService {
     const currentTimeInUtc = dayjs.utc().format();
     const slotsRepo = this.dependencies.selectedSlotRepo;
 
-    const unexpiredSelectedSlots =
-      (await slotsRepo.findManyUnexpiredSlots({
+    // The read keeps rows with releaseAt > now and the cleanup deletes rows with releaseAt < now,
+    // so the two queries touch disjoint rows and can run concurrently.
+    const [unexpiredSelectedSlots] = await Promise.all([
+      slotsRepo.findManyUnexpiredSlots({
         userIds: usersWithCredentials.map((user) => user.id),
         currentTimeInUtc,
-      })) || [];
+      }),
+      slotsRepo.deleteManyExpiredSlots({ eventTypeId, currentTimeInUtc }),
+    ]);
 
-    const slotsSelectedByOtherUsers = unexpiredSelectedSlots.filter((slot) => slot.uid !== bookerClientUid);
-
-    await _cleanupExpiredSlots({ eventTypeId });
-
-    const reservedSlots = slotsSelectedByOtherUsers;
-
-    return reservedSlots;
-
-    async function _cleanupExpiredSlots({ eventTypeId }: { eventTypeId: number }) {
-      await slotsRepo.deleteManyExpiredSlots({ eventTypeId, currentTimeInUtc });
-    }
+    return (unexpiredSelectedSlots || []).filter((slot) => slot.uid !== bookerClientUid);
   }
 
   private async _getDynamicEventType(
@@ -475,6 +469,44 @@ export class AvailableSlotsService {
       }
     }
 
+    // Without a teamId, checkBookingLimit counts bookings of the whole event type, so its outcome is the
+    // same for every host: memoize it per year instead of repeating the COUNT for each user.
+    const yearlyBookingLimitReached = new Map<string, Promise<boolean>>();
+    const isYearlyBookingLimitReached = ({
+      periodStart,
+      limit,
+      key,
+      user,
+    }: {
+      periodStart: Dayjs;
+      limit: number;
+      key: IntervalLimitKey;
+      user: { id: number; email: string };
+    }) => {
+      const cacheKey = `${key}:${periodStart.valueOf()}`;
+      let reached = yearlyBookingLimitReached.get(cacheKey);
+      if (!reached) {
+        reached = (async () => {
+          try {
+            await this.dependencies.checkBookingLimitsService.checkBookingLimit({
+              eventStartDate: periodStart.toDate(),
+              limitingNumber: limit,
+              eventId: eventType.id,
+              key,
+              user,
+              rescheduleUid,
+              timeZone,
+            });
+            return false;
+          } catch {
+            return true;
+          }
+        })();
+        yearlyBookingLimitReached.set(cacheKey, reached);
+      }
+      return reached;
+    };
+
     for (const user of users) {
       const userBookings = busyTimesFromLimitsBookings.filter((booking) => booking.userId === user.id);
       const limitManager = new LimitManager();
@@ -500,17 +532,7 @@ export class AvailableSlotsService {
             const { title, source } = LimitSources.eventBookingLimit({ limit, unit });
 
             if (unit === "year") {
-              try {
-                await this.dependencies.checkBookingLimitsService.checkBookingLimit({
-                  eventStartDate: periodStart.toDate(),
-                  limitingNumber: limit,
-                  eventId: eventType.id,
-                  key,
-                  user,
-                  rescheduleUid,
-                  timeZone,
-                });
-              } catch {
+              if (await isYearlyBookingLimitReached({ periodStart, limit, key, user })) {
                 limitManager.addBusyTime({
                   start: periodStart,
                   unit,
@@ -569,7 +591,10 @@ export class AvailableSlotsService {
 
             const selectedDuration = (duration || eventType.length) ?? 0;
 
-            const { title: durationTitle, source: durationSource } = LimitSources.eventDurationLimit({ limit, unit });
+            const { title: durationTitle, source: durationSource } = LimitSources.eventDurationLimit({
+              limit,
+              unit,
+            });
 
             if (selectedDuration > limit) {
               limitManager.addBusyTime({
@@ -751,23 +776,6 @@ export class AvailableSlotsService {
         ? parseDurationLimit(eventType?.durationLimits)
         : null;
 
-    let busyTimesFromLimitsBookingsAllUsers: Awaited<
-      ReturnType<typeof getBusyTimesService.prototype.getBusyTimesForLimitChecks>
-    > = [];
-
-    if (eventType && (bookingLimits || durationLimits)) {
-      busyTimesFromLimitsBookingsAllUsers =
-        await this.dependencies.busyTimesService.getBusyTimesForLimitChecks({
-          userIds: allUserIds,
-          eventTypeId: eventType.id,
-          startDate: startTime.format(),
-          endDate: endTime.format(),
-          rescheduleUid: input.rescheduleUid,
-          bookingLimits,
-          durationLimits,
-        });
-    }
-
     let busyTimesFromLimitsMap: Map<number, EventBusyDetails[]> | undefined;
     if (eventType && (bookingLimits || durationLimits)) {
       const usersForLimits = usersWithCredentials.map((user) => ({ id: user.id, email: user.email }));
@@ -804,11 +812,25 @@ export class AvailableSlotsService {
     const enrichUsersWithData = withReporting(_enrichUsersWithData.bind(this), "enrichUsersWithData");
     const users = enrichUsersWithData();
 
+    const dateFrom = startTime.format();
+    const dateTo = endTime.format();
+
+    // getUserAvailability would otherwise run this identical query once per host. Parsing the bounds
+    // the same way as its query schema keeps the dates sent to the repository unchanged.
+    const prefetchedCurrentSeats =
+      eventType.seatsPerTimeSlot && users.length > 0
+        ? await this.dependencies.userAvailabilityService.getCurrentSeats(
+            eventType,
+            stringToDayjs(dateFrom),
+            stringToDayjs(dateTo)
+          )
+        : undefined;
+
     const premappedUsersAvailability = await this.dependencies.userAvailabilityService.getUsersAvailability({
       users,
       query: {
-        dateFrom: startTime.format(),
-        dateTo: endTime.format(),
+        dateFrom,
+        dateTo,
         eventTypeId: eventType.id,
         afterEventBuffer: eventType.afterEventBuffer,
         beforeEventBuffer: eventType.beforeEventBuffer,
@@ -820,9 +842,8 @@ export class AvailableSlotsService {
       },
       initialData: {
         eventType,
-        currentSeats,
+        currentSeats: prefetchedCurrentSeats,
         rescheduleUid: input.rescheduleUid,
-        busyTimesFromLimitsBookings: busyTimesFromLimitsBookingsAllUsers,
         busyTimesFromLimits: busyTimesFromLimitsMap,
         eventTypeForLimits: eventType && (bookingLimits || durationLimits) ? eventType : null,
       },
@@ -977,14 +998,15 @@ export class AvailableSlotsService {
       eventType,
     });
 
-    const { eligibleHosts: eligibleQualifiedRRHosts } = await filterBlockedHosts(
-      qualifiedRRHosts,
+    const blockingMap = await getBlockingMapForHostGroups(
+      [qualifiedRRHosts, fixedHosts, allFallbackRRHosts ?? []],
       organizationId
     );
-    const { eligibleHosts: eligibleFixedHosts } = await filterBlockedHosts(fixedHosts, organizationId);
-    const { eligibleHosts: eligibleFallbackRRHosts } = allFallbackRRHosts
-      ? await filterBlockedHosts(allFallbackRRHosts, organizationId)
-      : { eligibleHosts: [] };
+    const isHostEligible = (host: { user: { email: string } }) =>
+      !isUserBlocked(host.user.email, blockingMap);
+    const eligibleQualifiedRRHosts = qualifiedRRHosts.filter(isHostEligible);
+    const eligibleFixedHosts = fixedHosts.filter(isHostEligible);
+    const eligibleFallbackRRHosts = allFallbackRRHosts ? allFallbackRRHosts.filter(isHostEligible) : [];
 
     const allHosts = [...eligibleQualifiedRRHosts, ...eligibleFixedHosts];
 
