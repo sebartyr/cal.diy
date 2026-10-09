@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-
-import { createColorMap } from "./getBrandColours";
+import { DEFAULT_DARK_BRAND_COLOR, DEFAULT_LIGHT_BRAND_COLOR } from "./constants";
+import { createColorMap, isCustomBrandColor } from "./getBrandColours";
 
 describe("useGetBrandingColours", () => {
   it("should return the correct color values for given lightVal and darkVal", () => {
@@ -37,5 +37,22 @@ describe("useGetBrandingColours", () => {
 
     expect(lightMap).toEqual(expectedResult.light);
     expect(darkMap).toEqual(expectedResult.dark);
+  });
+});
+
+describe("isCustomBrandColor", () => {
+  it("treats the current defaults as not custom, regardless of case", () => {
+    expect(isCustomBrandColor(DEFAULT_LIGHT_BRAND_COLOR, false)).toBe(false);
+    expect(isCustomBrandColor(DEFAULT_DARK_BRAND_COLOR.toUpperCase(), true)).toBe(false);
+  });
+
+  it("treats the legacy defaults persisted by older appearance settings as not custom", () => {
+    expect(isCustomBrandColor("#292929", false)).toBe(false);
+    expect(isCustomBrandColor("#FAFAFA", true)).toBe(false);
+  });
+
+  it("treats any other color as custom", () => {
+    expect(isCustomBrandColor("#ff1616", false)).toBe(true);
+    expect(isCustomBrandColor(DEFAULT_LIGHT_BRAND_COLOR, true)).toBe(true);
   });
 });

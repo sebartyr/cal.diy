@@ -86,12 +86,12 @@ const Day = ({
       className={classNames(
         "disabled:text-bookinglighter absolute bottom-0 left-0 right-0 top-0 mx-auto w-full cursor-pointer rounded-md border-2 border-transparent text-center text-sm font-medium transition disabled:cursor-default disabled:border-transparent disabled:font-light ",
         active
-          ? "bg-brand-default text-brand"
+          ? "bg-cal-accent text-cal-accent-contrast"
           : !disabled
             ? `${
                 !customClassName?.dayActive
-                  ? "hover:border-brand-default text-emphasis bg-emphasis"
-                  : `hover:border-brand-default ${customClassName.dayActive}`
+                  ? "hover:border-cal-accent text-emphasis bg-emphasis"
+                  : `hover:border-cal-accent ${customClassName.dayActive}`
               }`
             : `${customClassName ? "" : " text-mute"}`
       )}
@@ -104,8 +104,8 @@ const Day = ({
       {date.isToday() && (
         <span
           className={classNames(
-            "bg-brand-default absolute left-1/2 top-1/2 flex h-[5px] w-[5px] -translate-x-1/2 translate-y-[8px] items-center justify-center rounded-full align-middle sm:translate-y-[12px]",
-            active && "bg-brand-accent"
+            "bg-cal-accent absolute left-1/2 top-1/2 flex h-[5px] w-[5px] -translate-x-1/2 translate-y-[8px] items-center justify-center rounded-full align-middle sm:translate-y-[12px]",
+            active && "bg-cal-accent-contrast"
           )}>
           <span className="sr-only">{t("today")}</span>
         </span>

@@ -170,7 +170,7 @@ export const NavigationItem: React.FC<{
                 <Icon
                   name={item.isLoading ? "rotate-cw" : item.icon}
                   className={classNames(
-                    "todesktop:!text-blue-500 h-4 w-4 shrink-0 lg:ltr:mr-2 lg:rtl:ml-2",
+                    "todesktop:!text-blue-500 group-aria-[current=page]:text-cal-accent h-4 w-4 shrink-0 lg:ltr:mr-2 lg:rtl:ml-2",
                     item.isLoading && "animate-spin"
                   )}
                   aria-hidden="true"
@@ -228,7 +228,7 @@ export const NavigationItem: React.FC<{
               <Icon
                 name={item.isLoading ? "rotate-cw" : item.icon}
                 className={classNames(
-                  "todesktop:!text-blue-500 h-4 w-4 shrink-0 aria-[aria-current='page']:text-inherit lg:ltr:mr-2 lg:rtl:ml-2",
+                  "todesktop:!text-blue-500 h-4 w-4 shrink-0 [&[aria-current='page']]:text-cal-accent lg:ltr:mr-2 lg:rtl:ml-2",
                   item.isLoading && "animate-spin"
                 )}
                 aria-hidden="true"
@@ -289,7 +289,7 @@ export const MobileNavigationItem: React.FC<{
       {item.icon && (
         <Icon
           name={item.icon}
-          className="[&[aria-current='page']]:text-emphasis  mx-auto mb-1 block h-5 w-5 shrink-0 text-center text-inherit"
+          className="[&[aria-current='page']]:text-cal-accent mx-auto mb-1 block h-5 w-5 shrink-0 text-center text-inherit"
           aria-hidden="true"
           aria-current={current ? "page" : undefined}
         />

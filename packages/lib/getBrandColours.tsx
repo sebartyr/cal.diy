@@ -165,6 +165,29 @@ export function checkWCAGContrastColor(background: string, target: string) {
   return contrastRadio >= MIN_CONTRAST_RATIO;
 }
 
+// Brand colors that were the platform defaults before the Clever Cloud palette. Users who saved the
+// appearance form back then have them persisted, but they never picked them on purpose.
+const LEGACY_DEFAULT_BRAND_COLORS = ["#292929", "#fafafa"];
+
+/**
+ * The accent (selected dates, slots, radios) defaults to the Clever Cloud red from the theme tokens,
+ * but an organizer who picked their own brand color expects their booking page to use it there too.
+ */
+export function isCustomBrandColor(hex: string, dark: boolean): boolean {
+  const normalizedHex = hex.toLowerCase();
+  const defaultHex = (dark ? DARK_BRAND_COLOR : BRAND_COLOR).toLowerCase();
+  return normalizedHex !== defaultHex && !LEGACY_DEFAULT_BRAND_COLORS.includes(normalizedHex);
+}
+
+function getAccentVariables(colourMap: Record<string, string>, emphasisLevel: string): Record<string, string> {
+  return {
+    "cal-accent": colourMap["500"],
+    "cal-accent-emphasis": colourMap[emphasisLevel],
+    "cal-accent-subtle": colourMap["200"],
+    "cal-accent-contrast": getWCAGContrastColor(colourMap["500"]),
+  };
+}
+
 /**
  * Given a light and dark brand color value, update the css variables
  * within the document to reflect the new brand colors.
@@ -195,6 +218,7 @@ const useGetBrandingColours = ({
       "cal-brand-subtle": lightColourMap["200"],
       "cal-brand-text": getWCAGContrastColor(lightColourMap["500"]),
       "cal-brand-accent": getWCAGContrastColor(lightColourMap["500"]),
+      ...(isCustomBrandColor(lightColourMap["500"], false) ? getAccentVariables(lightColourMap, "400") : {}),
     },
     dark: {
       "cal-brand": darkColourMap["500"],
@@ -202,6 +226,7 @@ const useGetBrandingColours = ({
       "cal-brand-subtle": darkColourMap["800"],
       "cal-brand-text": getWCAGContrastColor(darkColourMap["500"]),
       "cal-brand-accent": getWCAGContrastColor(darkColourMap["500"]),
+      ...(isCustomBrandColor(darkColourMap["500"], true) ? getAccentVariables(darkColourMap, "600") : {}),
     },
   };
   return theme;
