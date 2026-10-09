@@ -1,4 +1,3 @@
-import dayjs from "@calcom/dayjs";
 import { sendOrganizerRequestReminderEmail } from "@calcom/emails/email-manager";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
 import { getTranslation } from "@calcom/i18n/server";
@@ -21,137 +20,151 @@ async function postHandler(request: NextRequest) {
   }
 
   const reminderIntervalMinutes = [48 * 60, 24 * 60, 3 * 60];
+  const shortestIntervalMinutes = Math.min(...reminderIntervalMinutes);
   let notificationsSent = 0;
 
-  for (const interval of reminderIntervalMinutes) {
-    const bookings = await prisma.booking.findMany({
-      where: {
-        status: BookingStatus.PENDING,
-        createdAt: {
-          lte: dayjs().add(-interval, "minutes").toDate(),
-        },
-        // Only send reminders if the event hasn't finished
-        endTime: { gte: new Date() },
-        OR: [
-          // no payment required
-          {
-            payment: { none: {} },
-          },
-          // paid but awaiting approval
-          {
-            payment: { some: {} },
-            paid: true,
-          },
-        ],
+  const nowMs = Date.now();
+  // Bookings past a longer interval are a subset of those past the shortest one, so a single read covers every tier
+  const bookings = await prisma.booking.findMany({
+    where: {
+      status: BookingStatus.PENDING,
+      createdAt: {
+        lte: new Date(nowMs - shortestIntervalMinutes * 60_000),
       },
-      select: {
-        ...bookingMinimalSelect,
-        location: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            username: true,
-            locale: true,
-            timeZone: true,
-            destinationCalendar: true,
-            isPlatformManaged: true,
-            platformOAuthClients: { select: { id: true, areEmailsEnabled: true } },
-          },
+      // Only send reminders if the event hasn't finished
+      endTime: { gte: new Date(nowMs) },
+      OR: [
+        // no payment required
+        {
+          payment: { none: {} },
         },
-        eventType: {
-          select: {
-            recurringEvent: true,
-            bookingFields: true,
-            metadata: true,
-          },
+        // paid but awaiting approval
+        {
+          payment: { some: {} },
+          paid: true,
         },
-        responses: true,
-        uid: true,
-        destinationCalendar: true,
-      },
-    });
-
-    const bookingsToRemind = bookings.filter(
-      (booking) =>
-        !booking.user ||
-        !booking.user.isPlatformManaged ||
-        (booking.user.isPlatformManaged && Boolean(booking.user.platformOAuthClients?.[0]?.areEmailsEnabled))
-    );
-
-    const reminders = await prisma.reminderMail.findMany({
-      where: {
-        reminderType: ReminderType.PENDING_BOOKING_CONFIRMATION,
-        referenceId: {
-          in: bookingsToRemind.map((b) => b.id),
-        },
-        elapsedMinutes: {
-          gte: interval,
+      ],
+    },
+    select: {
+      ...bookingMinimalSelect,
+      location: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          username: true,
+          locale: true,
+          timeZone: true,
+          destinationCalendar: true,
+          isPlatformManaged: true,
+          platformOAuthClients: { select: { id: true, areEmailsEnabled: true } },
         },
       },
-    });
-
-    for (const booking of bookingsToRemind.filter((b) => !reminders.some((r) => r.referenceId == b.id))) {
-      const { user } = booking;
-      const name = user?.name || user?.username;
-      if (!user || !name || !user.timeZone) {
-        console.error(`Booking ${booking.id} is missing required properties for booking reminder`, { user });
-        continue;
-      }
-
-      const tOrganizer = await getTranslation(user.locale ?? "en", "common");
-
-      const attendeesListPromises = booking.attendees.map(async (attendee) => {
-        return {
-          name: attendee.name,
-          email: attendee.email,
-          timeZone: attendee.timeZone,
-          language: {
-            translate: await getTranslation(attendee.locale ?? "en", "common"),
-            locale: attendee.locale ?? "en",
-          },
-        };
-      });
-
-      const attendeesList = await Promise.all(attendeesListPromises);
-      const selectedDestinationCalendar = booking.destinationCalendar || user.destinationCalendar;
-      const evt: CalendarEvent = {
-        type: booking.title,
-        title: booking.title,
-        description: booking.description || undefined,
-        customInputs: isPrismaObjOrUndefined(booking.customInputs),
-        ...getCalEventResponses({
-          bookingFields: booking.eventType?.bookingFields ?? null,
-          booking,
-        }),
-        location: booking.location ?? "",
-        startTime: booking.startTime.toISOString(),
-        endTime: booking.endTime.toISOString(),
-        organizer: {
-          id: user.id,
-          email: booking?.userPrimaryEmail ?? user.email,
-          name,
-          timeZone: user.timeZone,
-          language: { translate: tOrganizer, locale: user.locale ?? "en" },
+      eventType: {
+        select: {
+          recurringEvent: true,
+          bookingFields: true,
+          metadata: true,
         },
-        attendees: attendeesList,
-        uid: booking.uid,
-        recurringEvent: parseRecurringEvent(booking.eventType?.recurringEvent),
-        destinationCalendar: selectedDestinationCalendar ? [selectedDestinationCalendar] : [],
-      };
+      },
+      responses: true,
+      uid: true,
+      destinationCalendar: true,
+    },
+  });
 
-      await sendOrganizerRequestReminderEmail(evt, booking?.eventType?.metadata as EventTypeMetadata);
+  const bookingsToRemind = bookings.filter(
+    (booking) =>
+      !booking.user ||
+      !booking.user.isPlatformManaged ||
+      (booking.user.isPlatformManaged && Boolean(booking.user.platformOAuthClients?.[0]?.areEmailsEnabled))
+  );
 
-      await prisma.reminderMail.create({
-        data: {
-          referenceId: booking.id,
-          reminderType: ReminderType.PENDING_BOOKING_CONFIRMATION,
-          elapsedMinutes: interval,
-        },
-      });
-      notificationsSent++;
+  const reminders = await prisma.reminderMail.findMany({
+    where: {
+      reminderType: ReminderType.PENDING_BOOKING_CONFIRMATION,
+      referenceId: {
+        in: bookingsToRemind.map((b) => b.id),
+      },
+      elapsedMinutes: {
+        gte: shortestIntervalMinutes,
+      },
+    },
+    select: { referenceId: true, elapsedMinutes: true },
+  });
+
+  const maxRemindedMinutesByBookingId = new Map<number, number>();
+  for (const reminder of reminders) {
+    const current = maxRemindedMinutesByBookingId.get(reminder.referenceId) ?? 0;
+    maxRemindedMinutesByBookingId.set(reminder.referenceId, Math.max(current, reminder.elapsedMinutes));
+  }
+
+  for (const booking of bookingsToRemind) {
+    const bookingAgeMs = nowMs - booking.createdAt.getTime();
+    // Only the longest reached tier is sent per run: a reminder for a longer tier covers the shorter ones
+    const interval = reminderIntervalMinutes.find((minutes) => bookingAgeMs >= minutes * 60_000);
+    if (interval === undefined) continue;
+    if ((maxRemindedMinutesByBookingId.get(booking.id) ?? 0) >= interval) continue;
+
+    const { user } = booking;
+    const name = user?.name || user?.username;
+    if (!user || !name || !user.timeZone) {
+      console.error(`Booking ${booking.id} is missing required properties for booking reminder`, { user });
+      continue;
     }
+
+    const tOrganizer = await getTranslation(user.locale ?? "en", "common");
+
+    const attendeesListPromises = booking.attendees.map(async (attendee) => {
+      return {
+        name: attendee.name,
+        email: attendee.email,
+        timeZone: attendee.timeZone,
+        language: {
+          translate: await getTranslation(attendee.locale ?? "en", "common"),
+          locale: attendee.locale ?? "en",
+        },
+      };
+    });
+
+    const attendeesList = await Promise.all(attendeesListPromises);
+    const selectedDestinationCalendar = booking.destinationCalendar || user.destinationCalendar;
+    const evt: CalendarEvent = {
+      type: booking.title,
+      title: booking.title,
+      description: booking.description || undefined,
+      customInputs: isPrismaObjOrUndefined(booking.customInputs),
+      ...getCalEventResponses({
+        bookingFields: booking.eventType?.bookingFields ?? null,
+        booking,
+      }),
+      location: booking.location ?? "",
+      startTime: booking.startTime.toISOString(),
+      endTime: booking.endTime.toISOString(),
+      organizer: {
+        id: user.id,
+        email: booking?.userPrimaryEmail ?? user.email,
+        name,
+        timeZone: user.timeZone,
+        language: { translate: tOrganizer, locale: user.locale ?? "en" },
+      },
+      attendees: attendeesList,
+      uid: booking.uid,
+      recurringEvent: parseRecurringEvent(booking.eventType?.recurringEvent),
+      destinationCalendar: selectedDestinationCalendar ? [selectedDestinationCalendar] : [],
+    };
+
+    await sendOrganizerRequestReminderEmail(evt, booking?.eventType?.metadata as EventTypeMetadata);
+
+    await prisma.reminderMail.create({
+      data: {
+        referenceId: booking.id,
+        reminderType: ReminderType.PENDING_BOOKING_CONFIRMATION,
+        elapsedMinutes: interval,
+      },
+    });
+    notificationsSent++;
   }
 
   return NextResponse.json({ notificationsSent });
