@@ -6,7 +6,7 @@ describe("BookingRepository", () => {
   let repository: BookingRepository;
   let mockPrismaClient: {
     $queryRaw: ReturnType<typeof vi.fn>;
-    booking: { findFirst: ReturnType<typeof vi.fn> };
+    booking: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
   };
 
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe("BookingRepository", () => {
 
     mockPrismaClient = {
       $queryRaw: vi.fn(),
-      booking: { findFirst: vi.fn() },
+      booking: { findFirst: vi.fn(), findUnique: vi.fn() },
     };
 
     repository = new BookingRepository(mockPrismaClient as unknown as PrismaClient);
@@ -117,6 +117,32 @@ describe("BookingRepository", () => {
         status: "PENDING",
       });
       expect(args.include).toMatchObject({ attendees: true, references: true, payment: true });
+    });
+  });
+
+  describe("findBookingByUidWithEventType", () => {
+    it("selects only the fields read by the calendar sync instead of full rows", async () => {
+      mockPrismaClient.booking.findUnique.mockResolvedValue(null);
+
+      await repository.findBookingByUidWithEventType({ bookingUid: "booking-uid" });
+
+      const [args] = mockPrismaClient.booking.findUnique.mock.calls[0];
+      expect(args.where).toEqual({ uid: "booking-uid" });
+      expect(args).not.toHaveProperty("include");
+      expect(args.select).toEqual({
+        uid: true,
+        userId: true,
+        userPrimaryEmail: true,
+        eventTypeId: true,
+        startTime: true,
+        endTime: true,
+        title: true,
+        description: true,
+        location: true,
+        responses: true,
+        smsReminderNumber: true,
+        eventType: { select: { id: true } },
+      });
     });
   });
 });

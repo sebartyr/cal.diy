@@ -5,7 +5,6 @@ import { getUsernameList } from "@calcom/features/eventtypes/lib/defaultEvents";
 import type { getPublicEvent } from "@calcom/features/eventtypes/lib/getPublicEvent";
 import { EventRepository } from "@calcom/features/eventtypes/repositories/EventRepository";
 import { shouldHideBrandingForUserEvent } from "@calcom/features/profile/lib/hideBranding";
-import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import slugify from "@calcom/lib/slugify";
 import { prisma } from "@calcom/prisma";
 import { BookingStatus, RedirectType } from "@calcom/prisma/enums";
@@ -112,7 +111,6 @@ async function processSeatedEvent({
 }
 
 async function getDynamicGroupPageProps(context: GetServerSidePropsContext) {
-  const session = await getServerSession({ req: context.req });
   const { user: usernames, type: slug } = paramsSchema.parse(context.params);
   const { rescheduleUid, bookingUid } = context.query;
   const allowRescheduleForCancelledBooking = context.query.allowRescheduleForCancelledBooking === "true";
@@ -120,35 +118,23 @@ async function getDynamicGroupPageProps(context: GetServerSidePropsContext) {
   const isValidOrgDomain = false;
   const org = isValidOrgDomain ? currentOrgDomain : null;
 
-  const redirect = await handleOrgRedirect({
-    slugs: usernames,
-    redirectType: RedirectType.User,
-    eventTypeSlug: slug,
-    context,
-    currentOrgDomain: org,
-  });
+  const [session, redirect] = await Promise.all([
+    getServerSession({ req: context.req }),
+    handleOrgRedirect({
+      slugs: usernames,
+      redirectType: RedirectType.User,
+      eventTypeSlug: slug,
+      context,
+      currentOrgDomain: org,
+    }),
+  ]);
 
   if (redirect) {
     return redirect;
   }
 
-  const userRepo = new UserRepository(prisma);
-  const usersInOrgContext = await userRepo.findUsersByUsername({
-    usernameList: usernames,
-    orgSlug: isValidOrgDomain ? currentOrgDomain : null,
-  });
-
-  const users = usersInOrgContext;
-
-  if (!users.length) {
-    return {
-      notFound: true,
-    } as const;
-  }
-
-  // We use this to both prefetch the query on the server,
-  // as well as to check if the event exist, so we c an show a 404 otherwise.
-
+  // getPublicEvent looks the group members up itself and returns null when none of them exist,
+  // so this both prefetches the query and decides the 404.
   const eventData = await EventRepository.getPublicEvent(
     {
       username: usernames.join("+"),
@@ -210,27 +196,49 @@ async function getDynamicGroupPageProps(context: GetServerSidePropsContext) {
 }
 
 async function getUserPageProps(context: GetServerSidePropsContext) {
-  const session = await getServerSession({ req: context.req });
   const { user: usernames, type: slug } = paramsSchema.parse(context.params);
   const username = usernames[0];
   const { rescheduleUid, bookingUid } = context.query;
   const allowRescheduleForCancelledBooking = context.query.allowRescheduleForCancelledBooking === "true";
   const currentOrgDomain = null;
   const isValidOrgDomain = false;
+  const org = isValidOrgDomain ? currentOrgDomain : null;
 
-  const redirect = await handleOrgRedirect({
-    slugs: usernames,
-    redirectType: RedirectType.User,
-    eventTypeSlug: slug,
-    context,
-    currentOrgDomain: isValidOrgDomain ? currentOrgDomain : null,
-  });
+  const [session, redirect] = await Promise.all([
+    getServerSession({ req: context.req }),
+    handleOrgRedirect({
+      slugs: usernames,
+      redirectType: RedirectType.User,
+      eventTypeSlug: slug,
+      context,
+      currentOrgDomain: org,
+    }),
+  ]);
 
   if (redirect) {
     return redirect;
   }
 
-  const [user] = await getUsersInOrgContext([username], isValidOrgDomain ? currentOrgDomain : null);
+  // The event lookup also prefetches the query and decides the 404. It runs alongside the user
+  // lookup, but its failure only surfaces once the user is known to exist, as when both ran in turn.
+  const [userResult, eventDataResult] = await Promise.allSettled([
+    getUsersInOrgContext([username], org),
+    EventRepository.getPublicEvent(
+      {
+        username,
+        eventSlug: slug,
+        org,
+        fromRedirectOfNonOrgLink: context.query.orgRedirection === "true",
+      },
+      session?.user?.id
+    ),
+  ]);
+
+  if (userResult.status === "rejected") {
+    throw userResult.reason;
+  }
+
+  const [user] = userResult.value;
 
   if (!user) {
     return {
@@ -238,19 +246,11 @@ async function getUserPageProps(context: GetServerSidePropsContext) {
     } as const;
   }
 
-  const org = isValidOrgDomain ? currentOrgDomain : null;
+  if (eventDataResult.status === "rejected") {
+    throw eventDataResult.reason;
+  }
 
-  // We use this to both prefetch the query on the server,
-  // as well as to check if the event exist, so we can show a 404 otherwise.
-  const eventData = await EventRepository.getPublicEvent(
-    {
-      username,
-      eventSlug: slug,
-      org,
-      fromRedirectOfNonOrgLink: context.query.orgRedirection === "true",
-    },
-    session?.user?.id
-  );
+  const eventData = eventDataResult.value;
 
   if (!eventData) {
     return {

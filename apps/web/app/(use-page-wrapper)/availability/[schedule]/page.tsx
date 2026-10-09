@@ -2,7 +2,7 @@ import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { availabilityRouter } from "@calcom/trpc/server/routers/viewer/availability/_router";
 import { travelSchedulesRouter } from "@calcom/trpc/server/routers/viewer/travelSchedules/_router";
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
-import { createRouterCaller } from "app/_trpc/context";
+import { createRouterCaller, getTRPCContext } from "app/_trpc/context";
 import type { PageProps } from "app/_types";
 import { _generateMetadata } from "app/_utils";
 import { cookies, headers } from "next/headers";
@@ -41,9 +41,10 @@ const Page = async ({ params }: PageProps) => {
     redirect(`/auth/login?callbackUrl=/availability/${scheduleId}`);
   }
 
+  const trpcContext = await getTRPCContext();
   const [availabilityCaller, travelSchedulesCaller] = await Promise.all([
-    createRouterCaller(availabilityRouter),
-    createRouterCaller(travelSchedulesRouter),
+    createRouterCaller(availabilityRouter, trpcContext),
+    createRouterCaller(travelSchedulesRouter, trpcContext),
   ]);
 
   const [scheduleData, travelSchedulesData] = await Promise.all([

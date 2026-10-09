@@ -1,6 +1,6 @@
 import { ENABLE_PROFILE_SWITCHER } from "@calcom/lib/constants";
 import { useRefreshData } from "@calcom/lib/hooks/useRefreshData";
-import { trpc } from "@calcom/trpc/react";
+import useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
 import classNames from "@calcom/ui/classNames";
 import { Avatar } from "@calcom/ui/components/avatar";
 import {
@@ -17,7 +17,7 @@ import { useState } from "react";
 
 export function ProfileDropdown() {
   const { update, data: sessionData } = useSession();
-  const { data } = trpc.viewer.me.get.useQuery();
+  const { data } = useMeQuery();
   const [menuOpen, setMenuOpen] = useState(false);
   const refreshData = useRefreshData();
 

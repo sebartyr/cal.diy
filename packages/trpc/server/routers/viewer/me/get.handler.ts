@@ -17,61 +17,80 @@ type MeOptions = {
   input: TGetInputSchema;
 };
 
-export const getHandler = async ({ ctx, input }: MeOptions) => {
+type SessionUser = MeOptions["ctx"]["user"];
+
+const hasPasswordAdded = async (user: SessionUser) => {
+  if (user.identityProvider === IdentityProvider.CAL) return false;
+  const userWithPassword = await prisma.user.findUnique({
+    where: {
+      id: user.id,
+    },
+    select: {
+      password: true,
+    },
+  });
+  return Boolean(userWithPassword?.password?.hash);
+};
+
+const findIdentityProviderEmail = async (user: SessionUser) => {
+  if (!user.identityProviderId) return "";
+  const account = await prisma.account.findUnique({
+    where: {
+      provider_providerAccountId: {
+        provider:
+          user.identityProvider === IdentityProvider.AZUREAD
+            ? "azure-ad"
+            : user.identityProvider.toLowerCase(),
+        providerAccountId: user.identityProviderId,
+      },
+    },
+    select: { providerEmail: true },
+  });
+  return account?.providerEmail || "";
+};
+
+export const getHandler = async ({ ctx }: MeOptions) => {
   const crypto = await import("node:crypto");
 
   const { user: sessionUser, session } = ctx;
 
-  const allUserEnrichedProfiles =
-    await ProfileRepository.findAllProfilesForUserIncludingMovedUser(sessionUser);
+  // getUserFromSession already enriched ctx.user with the profile of the raw session upId, while
+  // ctx.session.upId may carry a fallback: only reload the profile when the two disagree.
+  const resolveUser = async () => {
+    if (sessionUser.profile?.upId === session.upId) return sessionUser;
+    return new UserRepository(prisma).enrichUserWithTheProfile({ user: sessionUser, upId: session.upId });
+  };
 
-  const user = await new UserRepository(prisma).enrichUserWithTheProfile({
-    user: sessionUser,
-    upId: session.upId,
-  });
-
-  const secondaryEmails = await prisma.secondaryEmail.findMany({
-    where: {
-      userId: user.id,
-    },
-    select: {
-      id: true,
-      email: true,
-      emailVerified: true,
-    },
-  });
-
-  let passwordAdded = false;
-  if (user.identityProvider !== IdentityProvider.CAL && input?.includePasswordAdded) {
-    const userWithPassword = await prisma.user.findUnique({
+  // passwordAdded is computed for every caller (not only with includePasswordAdded) so that all views
+  // share a single me.get cache entry instead of running the whole handler twice per settings page.
+  const [
+    user,
+    allUserEnrichedProfiles,
+    secondaryEmails,
+    passwordAdded,
+    identityProviderEmail,
+    teamsWithWritePermission,
+  ] = await Promise.all([
+    resolveUser(),
+    ProfileRepository.findAllProfilesForUserIncludingMovedUser(sessionUser),
+    prisma.secondaryEmail.findMany({
       where: {
-        id: user.id,
+        userId: sessionUser.id,
       },
       select: {
-        password: true,
+        id: true,
+        email: true,
+        emailVerified: true,
       },
-    });
-    if (userWithPassword?.password?.hash) {
-      passwordAdded = true;
-    }
-  }
-
-  let identityProviderEmail = "";
-  if (user.identityProviderId) {
-    const account = await prisma.account.findUnique({
-      where: {
-        provider_providerAccountId: {
-          provider:
-            user.identityProvider === IdentityProvider.AZUREAD
-              ? "azure-ad"
-              : user.identityProvider.toLowerCase(),
-          providerAccountId: user.identityProviderId,
-        },
-      },
-      select: { providerEmail: true },
-    });
-    identityProviderEmail = account?.providerEmail || "";
-  }
+    }),
+    hasPasswordAdded(sessionUser),
+    findIdentityProviderEmail(sessionUser),
+    getTeamRolePermissionService().getTeamIdsWithPermission({
+      userId: sessionUser.id,
+      permission: "team.update",
+      fallbackRoles: [MembershipRole.ADMIN, MembershipRole.OWNER],
+    }),
+  ]);
 
   const userMetadataPrased = userMetadata.parse(user.metadata);
 
@@ -95,11 +114,6 @@ export const getHandler = async ({ ctx, input }: MeOptions) => {
         organizationSettings: user?.profile?.organization?.organizationSettings,
       };
 
-  const teamsWithWritePermission = await getTeamRolePermissionService().getTeamIdsWithPermission({
-    userId: user.id,
-    permission: "team.update",
-    fallbackRoles: [MembershipRole.ADMIN, MembershipRole.OWNER],
-  });
   const canUpdateTeams = teamsWithWritePermission.length > 0;
 
   return {

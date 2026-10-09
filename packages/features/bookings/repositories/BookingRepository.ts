@@ -851,8 +851,23 @@ export class BookingRepository implements IBookingRepository {
       where: {
         uid: bookingUid,
       },
-      include: {
-        eventType: true,
+      select: {
+        uid: true,
+        userId: true,
+        userPrimaryEmail: true,
+        eventTypeId: true,
+        startTime: true,
+        endTime: true,
+        title: true,
+        description: true,
+        location: true,
+        responses: true,
+        smsReminderNumber: true,
+        eventType: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
   }
