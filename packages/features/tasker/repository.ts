@@ -1,22 +1,7 @@
-import { prisma } from "@calcom/prisma";
 import type { PrismaClient } from "@calcom/prisma";
+import { prisma } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
-
-import { type TaskTypes } from "./tasker";
-
-const whereSucceeded: Prisma.TaskWhereInput = {
-  succeededAt: { not: null },
-};
-
-const whereMaxAttemptsReached: Prisma.TaskWhereInput = {
-  attempts: {
-    equals: {
-      // @ts-expect-error prisma is tripping: '_ref' does not exist in type 'FieldRef<"Task", "Int">'
-      _ref: "maxAttempts",
-      _container: "Task",
-    },
-  },
-};
+import type { TaskTypes } from "./tasker";
 
 /** This is a function to ensure new Date is always fresh */
 const makeWhereUpcomingTasks = (): Prisma.TaskWhereInput => ({
@@ -35,6 +20,12 @@ const makeWhereUpcomingTasks = (): Prisma.TaskWhereInput => ({
     },
   },
 });
+
+const TASK_BATCH_SIZE = 200;
+const CLEANUP_BATCH_SIZE = 5000;
+// Bounds a single cleanup run so the first purge of a large backlog doesn't exceed the cron timeout;
+// the remaining rows are picked up by the next runs.
+const CLEANUP_MAX_BATCHES = 20;
 
 type Dependencies = {
   prismaClient: PrismaClient;
@@ -69,41 +60,7 @@ export class TaskRepository {
       orderBy: {
         scheduledAt: "asc",
       },
-      take: 1000,
-    });
-  }
-
-  async getFailed() {
-    return this.deps.prismaClient.task.findMany({
-      where: whereMaxAttemptsReached,
-    });
-  }
-
-  async getSucceeded() {
-    return this.deps.prismaClient.task.findMany({
-      where: whereSucceeded,
-    });
-  }
-
-  async count() {
-    return this.deps.prismaClient.task.count();
-  }
-
-  async countUpcoming() {
-    return this.deps.prismaClient.task.count({
-      where: makeWhereUpcomingTasks(),
-    });
-  }
-
-  async countFailed() {
-    return this.deps.prismaClient.task.count({
-      where: whereMaxAttemptsReached,
-    });
-  }
-
-  async countSucceeded() {
-    return this.deps.prismaClient.task.count({
-      where: whereSucceeded,
+      take: TASK_BATCH_SIZE,
     });
   }
 
@@ -197,20 +154,41 @@ export class TaskRepository {
     }
   }
 
-  async cleanup() {
-    // TODO: Uncomment this later
-    // return this.deps.prismaClient.task.deleteMany({
-    //   where: {
-    //     OR: [
-    //       // Get tasks that have succeeded
-    //       whereSucceeded,
-    //       // Get tasks where maxAttemps has been reached
-    //       whereMaxAttemptsReached,
-    //     ],
-    //   },
-    // });
-  }
+  async cleanup({
+    succeededBefore,
+    failedBefore,
+  }: {
+    succeededBefore: Date;
+    failedBefore: Date;
+  }): Promise<number> {
+    const where: Prisma.TaskWhereInput = {
+      OR: [
+        { succeededAt: { lt: succeededBefore } },
+        {
+          succeededAt: null,
+          attempts: { gte: this.deps.prismaClient.task.fields.maxAttempts },
+          lastFailedAttemptAt: { lt: failedBefore },
+        },
+      ],
+    };
 
+    let deletedCount = 0;
+    for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch++) {
+      const tasks = await this.deps.prismaClient.task.findMany({
+        where,
+        select: { id: true },
+        take: CLEANUP_BATCH_SIZE,
+      });
+      if (tasks.length === 0) break;
+
+      const { count } = await this.deps.prismaClient.task.deleteMany({
+        where: { id: { in: tasks.map((task) => task.id) } },
+      });
+      deletedCount += count;
+      if (tasks.length < CLEANUP_BATCH_SIZE) break;
+    }
+    return deletedCount;
+  }
 }
 
 // Export singleton instance for backward compatibility
