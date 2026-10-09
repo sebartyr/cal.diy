@@ -9,12 +9,14 @@ const {
   mockFindMany,
   mockUserFindUnique,
   mockGetTeamIdsWithPermission,
+  mockEnrichUserWithTheProfile,
 } = vi.hoisted(() => ({
   mockFindAllProfilesForUserIncludingMovedUser: vi.fn(),
   mockFindUnique: vi.fn(),
   mockFindMany: vi.fn(),
   mockUserFindUnique: vi.fn(),
   mockGetTeamIdsWithPermission: vi.fn(),
+  mockEnrichUserWithTheProfile: vi.fn(),
 }));
 
 vi.mock("@calcom/features/profile/repositories/ProfileRepository", () => ({
@@ -22,6 +24,14 @@ vi.mock("@calcom/features/profile/repositories/ProfileRepository", () => ({
     findAllProfilesForUserIncludingMovedUser: (...args: unknown[]) =>
       mockFindAllProfilesForUserIncludingMovedUser(...args),
     buildPersonalProfileFromUser: vi.fn(() => ({ upId: "usr_1" })),
+  },
+}));
+
+vi.mock("@calcom/features/users/repositories/UserRepository", () => ({
+  UserRepository: class {
+    enrichUserWithTheProfile(...args: unknown[]) {
+      return mockEnrichUserWithTheProfile(...args);
+    }
   },
 }));
 
@@ -84,7 +94,11 @@ describe("getHandler - identity provider email lookup", () => {
     identityProvider: IdentityProvider.CAL,
     identityProviderId: null as string | null,
     organization: null,
-    profile: null as { organizationId: number | null; username: string | null } | null,
+    profile: { upId: "usr_1", organizationId: null, username: null } as {
+      upId: string;
+      organizationId: number | null;
+      username: string | null;
+    } | null,
     teams: [],
   };
 
@@ -201,12 +215,28 @@ describe("getHandler - identity provider email lookup", () => {
 
   it("uses the profile already loaded on ctx.user instead of reloading it", async () => {
     const result = await getHandler({
-      ctx: createCtx({ profile: { organizationId: null, username: "profile-username" } }),
+      ctx: createCtx({ profile: { upId: "usr_1", organizationId: null, username: "profile-username" } }),
       input: {},
     });
 
+    expect(mockEnrichUserWithTheProfile).not.toHaveBeenCalled();
     expect(result.username).toBe("profile-username");
-    expect(result.profile).toEqual({ organizationId: null, username: "profile-username" });
+    expect(result.profile).toEqual({ upId: "usr_1", organizationId: null, username: "profile-username" });
+  });
+
+  it("reloads the profile when session.upId differs from the one on ctx.user", async () => {
+    const orgProfile = { upId: "42", organizationId: 7, username: "org-username" };
+    mockEnrichUserWithTheProfile.mockImplementation(({ user }: { user: object }) =>
+      Promise.resolve({ ...user, profile: orgProfile })
+    );
+    const ctx = { ...createCtx(), session: { upId: "42" } as unknown as Session };
+
+    const result = await getHandler({ ctx, input: {} });
+
+    expect(mockEnrichUserWithTheProfile).toHaveBeenCalledWith({ user: ctx.user, upId: "42" });
+    expect(result.organizationId).toBe(7);
+    expect(result.username).toBe("org-username");
+    expect(result.profile).toEqual(orgProfile);
   });
 
   it("computes passwordAdded for non-CAL users even without includePasswordAdded", async () => {

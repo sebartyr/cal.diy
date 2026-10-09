@@ -1,5 +1,6 @@
 import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
+import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { getUserAvatarUrl } from "@calcom/lib/getAvatarUrl";
 import prisma from "@calcom/prisma";
 import { IdentityProvider, MembershipRole } from "@calcom/prisma/enums";
@@ -51,22 +52,30 @@ const findIdentityProviderEmail = async (user: SessionUser) => {
 export const getHandler = async ({ ctx }: MeOptions) => {
   const crypto = await import("node:crypto");
 
-  // ctx.user is already enriched with the profile matching session.upId by getUserFromSession.
-  const { user } = ctx;
+  const { user: sessionUser, session } = ctx;
+
+  // getUserFromSession already enriched ctx.user with the profile of the raw session upId, while
+  // ctx.session.upId may carry a fallback: only reload the profile when the two disagree.
+  const resolveUser = async () => {
+    if (sessionUser.profile?.upId === session.upId) return sessionUser;
+    return new UserRepository(prisma).enrichUserWithTheProfile({ user: sessionUser, upId: session.upId });
+  };
 
   // passwordAdded is computed for every caller (not only with includePasswordAdded) so that all views
   // share a single me.get cache entry instead of running the whole handler twice per settings page.
   const [
+    user,
     allUserEnrichedProfiles,
     secondaryEmails,
     passwordAdded,
     identityProviderEmail,
     teamsWithWritePermission,
   ] = await Promise.all([
-    ProfileRepository.findAllProfilesForUserIncludingMovedUser(user),
+    resolveUser(),
+    ProfileRepository.findAllProfilesForUserIncludingMovedUser(sessionUser),
     prisma.secondaryEmail.findMany({
       where: {
-        userId: user.id,
+        userId: sessionUser.id,
       },
       select: {
         id: true,
@@ -74,10 +83,10 @@ export const getHandler = async ({ ctx }: MeOptions) => {
         emailVerified: true,
       },
     }),
-    hasPasswordAdded(user),
-    findIdentityProviderEmail(user),
+    hasPasswordAdded(sessionUser),
+    findIdentityProviderEmail(sessionUser),
     getTeamRolePermissionService().getTeamIdsWithPermission({
-      userId: user.id,
+      userId: sessionUser.id,
       permission: "team.update",
       fallbackRoles: [MembershipRole.ADMIN, MembershipRole.OWNER],
     }),
