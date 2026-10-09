@@ -18,7 +18,6 @@ import type { UpId, UserProfile } from "@calcom/types/UserProfile";
 import type { z } from "zod";
 
 const whereClauseForOrgWithSlugOrRequestedSlug = (..._args: unknown[]) => ({});
-const getParsedTeam = <T>(team: T): T => team;
 
 export type { UserWithLegacySelectedCalendars } from "@calcom/lib/server/withSelectedCalendars";
 export { withSelectedCalendars };
@@ -266,15 +265,10 @@ export class UserRepository {
   }) {
     // Lookup in profiles because that's where the organization usernames exist
     const profiles = orgSlug
-      ? (
-          await ProfileRepository.findManyByOrgSlugOrRequestedSlug({
-            orgSlug: orgSlug,
-            usernames: usernameList,
-          })
-        ).map((profile) => ({
-          ...profile,
-          organization: getParsedTeam(profile.organization),
-        }))
+      ? await ProfileRepository.findManyByOrgSlugOrRequestedSlug({
+          orgSlug: orgSlug,
+          usernames: usernameList,
+        })
       : null;
     const where =
       profiles && profiles.length > 0
@@ -868,15 +862,14 @@ export class UserRepository {
     if ("profile" in entity) {
       const { profile, ...entityWithoutProfile } = entity;
       const { organization, ...profileWithoutOrganization } = profile || {};
-      const parsedOrg = organization ? getParsedTeam(organization) : null;
 
       const ret = {
         ...entityWithoutProfile,
         profile: {
           ...profileWithoutOrganization,
-          ...(parsedOrg
+          ...(organization
             ? {
-                organization: parsedOrg,
+                organization,
               }
             : {
                 organization: null,

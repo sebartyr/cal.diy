@@ -13,24 +13,6 @@ import type { GetServerSidePropsContext, NextApiRequest } from "next";
 import type { AuthOptions, Session } from "next-auth";
 import { getToken } from "next-auth/jwt";
 
-class LicenseKeySingleton {
-  static async getInstance(..._args: unknown[]) {
-    return new LicenseKeySingleton();
-  }
-  async checkLicense() {
-    return true;
-  }
-  async validateLicenseKey() {
-    return true;
-  }
-}
-class DeploymentRepository {
-  constructor(_prisma?: unknown) {}
-  async findFirst(..._args: unknown[]) {
-    return null;
-  }
-}
-
 const log = logger.getSubLogger({ prefix: ["getServerSession"] });
 /**
  * Stores the session in memory using the stringified token as the key.
@@ -108,10 +90,6 @@ export async function getServerSession(options: {
     return null;
   }
 
-  const deploymentRepo = new DeploymentRepository(prisma);
-  const licenseKeyService = await LicenseKeySingleton.getInstance(deploymentRepo);
-  const hasValidLicense = await licenseKeyService.checkLicense();
-
   let upId = token.upId;
 
   if (!upId) {
@@ -130,7 +108,7 @@ export async function getServerSession(options: {
   });
 
   const session: Session = {
-    hasValidLicense,
+    hasValidLicense: true,
     expires: new Date(typeof token.exp === "number" ? token.exp * 1000 : Date.now()).toISOString(),
     user: {
       id: user.id,

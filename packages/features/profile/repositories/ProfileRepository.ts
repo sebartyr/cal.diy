@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from "uuid";
 import type { IProfileRepository } from "./IProfileRepository";
 
 const whereClauseForOrgWithSlugOrRequestedSlug = (..._args: unknown[]) => ({});
-const getParsedTeam = <T>(team: T): T => team;
 
 const userSelect = {
   name: true,
@@ -438,13 +437,12 @@ export class ProfileRepository implements IProfileRepository {
       return null;
     }
 
-    const organization = getParsedTeam(profile.organization);
     return normalizeProfile({
       ...profile,
       organization: {
-        ...organization,
+        ...profile.organization,
         requestedSlug: null,
-        metadata: organization.metadata,
+        metadata: profile.organization.metadata,
       },
     });
   }
@@ -846,19 +844,19 @@ export class ProfileRepository implements IProfileRepository {
     });
 
     return profiles.map((profile) => {
-      const parsedOrganization = getParsedTeam(profile.organization);
+      const { organization } = profile;
 
       return normalizeProfile({
         username: profile.username,
         id: profile.id,
         userId: profile.userId,
         uid: profile.uid,
-        name: parsedOrganization.name,
+        name: organization.name,
         organizationId: profile.organizationId,
         organization: {
-          ...parsedOrganization,
+          ...organization,
           requestedSlug: null,
-          metadata: parsedOrganization.metadata,
+          metadata: organization.metadata,
         },
       });
     });
@@ -876,28 +874,21 @@ export class ProfileRepository implements IProfileRepository {
           },
         },
       })
-    )
-      .map((profile) => {
-        return {
-          ...profile,
-          organization: getParsedTeam(profile.organization),
-        };
-      })
-      .map((profile) => {
-        return normalizeProfile({
-          username: profile.username,
-          id: profile.id,
-          userId: profile.userId,
-          uid: profile.uid,
-          name: profile.organization.name,
-          organizationId: profile.organizationId,
-          organization: {
-            ...profile.organization,
-            requestedSlug: null,
-            metadata: profile.organization.metadata,
-          },
-        });
+    ).map((profile) => {
+      return normalizeProfile({
+        username: profile.username,
+        id: profile.id,
+        userId: profile.userId,
+        uid: profile.uid,
+        name: profile.organization.name,
+        organizationId: profile.organizationId,
+        organization: {
+          ...profile.organization,
+          requestedSlug: null,
+          metadata: profile.organization.metadata,
+        },
       });
+    });
     return profiles;
   }
 
@@ -1046,7 +1037,6 @@ export const normalizeProfile = <
   return {
     ...profile,
     upId: `prof-${profile.uid}`,
-    organization: getParsedTeam(profile.organization),
     // Make these ↓ props ISO strings so that they can be returned from getServerSideProps as is without any issues
     ...(profile.createdAt ? { createdAt: profile.createdAt.toISOString() } : null),
     ...(profile.updatedAt ? { updatedAt: profile.updatedAt.toISOString() } : null),
