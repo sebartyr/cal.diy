@@ -3,7 +3,6 @@ import { buildCredentialPayloadForPrisma } from "@calcom/lib/server/buildCredent
 import type { PrismaClient } from "@calcom/prisma";
 import { prisma } from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
-import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
 import type { SelectedCalendarEventTypeIds } from "@calcom/types/Calendar";
 
 export type UpdateArguments = {
@@ -32,10 +31,6 @@ export type FindManyArgs = {
     userId?: "asc" | "desc";
   };
   select?: Prisma.SelectedCalendarSelect;
-};
-
-const ensureUserLevelWhere = {
-  eventTypeId: null,
 };
 
 const MAX_SUBSCRIBE_ERRORS = 3;
@@ -240,97 +235,6 @@ export class SelectedCalendarRepository implements ISelectedCalendarRepository {
     });
   }
 
-  static async getNextBatchToWatch(limit = 100) {
-    const oneDayInMS = 24 * 60 * 60 * 1000;
-    const tomorrowTimestamp = String(new Date().getTime() + oneDayInMS);
-    const nextBatch = await prisma.selectedCalendar.findMany({
-      take: limit,
-      where: {
-        user: {
-          teams: {
-            some: {
-              team: {
-                features: {
-                  some: {
-                    featureId: "calendar-cache",
-                    enabled: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        integration: "google_calendar",
-        AND: [
-          {
-            OR: [
-              { error: null },
-              {
-                error: { not: null },
-                watchAttempts: {
-                  lt: {
-                    // @ts-expect-error - _ref is a Prisma extension field
-                    _ref: "maxAttempts",
-                    _container: "SelectedCalendar",
-                  },
-                },
-              },
-            ],
-          },
-          {
-            OR: [{ googleChannelExpiration: null }, { googleChannelExpiration: { lt: tomorrowTimestamp } }],
-          },
-        ],
-      },
-    });
-    return nextBatch;
-  }
-
-  static async getNextBatchToUnwatch(limit = 100) {
-    const where: Prisma.SelectedCalendarWhereInput = {
-      integration: "google_calendar",
-      googleChannelExpiration: { not: null },
-      AND: [
-        {
-          OR: [
-            { error: null },
-            {
-              error: { not: null },
-              unwatchAttempts: {
-                lt: {
-                  // @ts-expect-error - _ref is a Prisma extension field
-                  _ref: "maxAttempts",
-                  _container: "SelectedCalendar",
-                },
-              },
-            },
-          ],
-        },
-        {
-          user: {
-            teams: {
-              every: {
-                team: {
-                  features: {
-                    none: {
-                      featureId: "calendar-cache",
-                      enabled: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      ],
-    };
-    const nextBatch = await prisma.selectedCalendar.findMany({
-      take: limit,
-      where,
-    });
-    return nextBatch;
-  }
-
   static async findMany({ where, select, orderBy }: FindManyArgs) {
     const args = {
       where,
@@ -346,26 +250,6 @@ export class SelectedCalendarRepository implements ISelectedCalendarRepository {
       throw new Error("SelectedCalendar not found");
     }
     return calendars[0];
-  }
-
-  static async findFirstByGoogleChannelId(googleChannelId: string) {
-    return await prisma.selectedCalendar.findFirst({
-      where: {
-        googleChannelId,
-      },
-      select: {
-        credential: {
-          select: {
-            ...credentialForCalendarServiceSelect,
-            selectedCalendars: {
-              orderBy: {
-                externalId: "asc",
-              },
-            },
-          },
-        },
-      },
-    });
   }
 
   static async findFirst({ where }: { where: Prisma.SelectedCalendarWhereInput }) {
@@ -403,49 +287,6 @@ export class SelectedCalendarRepository implements ISelectedCalendarRepository {
     });
   }
 
-  static async findUserLevelUniqueOrThrow({ where }: { where: Prisma.SelectedCalendarWhereInput }) {
-    const calendars = await SelectedCalendarRepository.findUniqueOrThrow({
-      where: {
-        ...where,
-        ...ensureUserLevelWhere,
-      },
-    });
-
-    if (!calendars) {
-      throw new Error("SelectedCalendar not found");
-    }
-    return calendars;
-  }
-
-  static async findManyUserLevel(args: FindManyArgs) {
-    return SelectedCalendarRepository.findMany({
-      ...args,
-      where: {
-        ...args.where,
-        ...ensureUserLevelWhere,
-      },
-    });
-  }
-
-  static async updateUserLevel(args: UpdateArguments) {
-    return SelectedCalendarRepository.update({
-      where: {
-        ...args.where,
-        ...ensureUserLevelWhere,
-      },
-      data: args.data,
-    });
-  }
-
-  static async deleteUserLevel({ where }: { where: Prisma.SelectedCalendarUncheckedCreateInput }) {
-    return await SelectedCalendarRepository.delete({
-      where: {
-        ...where,
-        ...ensureUserLevelWhere,
-      },
-    });
-  }
-
   static async upsertManyForEventTypeIds({
     data,
     eventTypeIds,
@@ -466,51 +307,5 @@ export class SelectedCalendarRepository implements ISelectedCalendarRepository {
         })
       )
     );
-  }
-
-  static async updateById(id: string, data: Prisma.SelectedCalendarUpdateInput) {
-    return await prisma.selectedCalendar.update({
-      where: { id },
-      data,
-    });
-  }
-
-  static async updateManyByCredentialId(credentialId: number, data: Prisma.SelectedCalendarUpdateInput) {
-    return await prisma.selectedCalendar.updateMany({
-      where: { credentialId },
-      data,
-    });
-  }
-
-  static async setErrorInWatching({ id, error }: { id: string; error: string }) {
-    await SelectedCalendarRepository.updateById(id, {
-      error,
-      lastErrorAt: new Date(),
-      watchAttempts: { increment: 1 },
-    });
-  }
-
-  static async setErrorInUnwatching({ id, error }: { id: string; error: string }) {
-    await SelectedCalendarRepository.updateById(id, {
-      error,
-      lastErrorAt: new Date(),
-      unwatchAttempts: { increment: 1 },
-    });
-  }
-
-  static async removeWatchingError({ id }: { id: string }) {
-    await SelectedCalendarRepository.updateById(id, {
-      error: null,
-      lastErrorAt: null,
-      watchAttempts: 0,
-    });
-  }
-
-  static async removeUnwatchingError({ id }: { id: string }) {
-    await SelectedCalendarRepository.updateById(id, {
-      error: null,
-      lastErrorAt: null,
-      unwatchAttempts: 0,
-    });
   }
 }

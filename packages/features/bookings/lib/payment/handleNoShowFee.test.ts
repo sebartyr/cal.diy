@@ -30,7 +30,6 @@ vi.mock("@calcom/i18n/server", () => ({
 vi.mock("@calcom/features/credentials/repositories/CredentialRepository", () => ({
   CredentialRepository: {
     findPaymentCredentialByAppIdAndUserIdOrTeamId: vi.fn(),
-    findPaymentCredentialByAppIdAndTeamId: vi.fn(),
   },
 }));
 
@@ -209,10 +208,8 @@ describe("handleNoShowFee", () => {
 
     it("should throw error when no payment credential is found", async () => {
       vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndUserIdOrTeamId).mockReset();
-      vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndTeamId).mockReset();
 
       vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndUserIdOrTeamId).mockResolvedValue(null);
-      vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndTeamId).mockResolvedValue(null);
 
       const bookingWithoutCredential = {
         ...mockBooking,

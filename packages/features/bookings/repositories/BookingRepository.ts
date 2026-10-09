@@ -68,13 +68,6 @@ export type ManagedEventReassignmentCreatedBooking = {
   }[];
 };
 
-export type ManagedEventCancellationResult = {
-  id: number;
-  uid: string;
-  metadata: Prisma.JsonValue;
-  status: BookingStatus;
-};
-
 type TeamBookingsParamsBase = {
   user: { id: number; email: string };
   teamId: number;
@@ -391,22 +384,6 @@ export class BookingRepository implements IBookingRepository {
     return await this.prismaClient.attendee.findMany({
       where: {
         bookingId,
-      },
-    });
-  }
-
-  async getBookingWithEventTypeTeamId({ bookingId }: { bookingId: number }) {
-    return await this.prismaClient.booking.findUnique({
-      where: {
-        id: bookingId,
-      },
-      select: {
-        userId: true,
-        eventType: {
-          select: {
-            teamId: true,
-          },
-        },
       },
     });
   }
@@ -1025,67 +1002,6 @@ export class BookingRepository implements IBookingRepository {
     });
   }
 
-  async findBookingByUidAndUserId({ bookingUid, userId }: { bookingUid: string; userId: number }) {
-    return await this.prismaClient.booking.findFirst({
-      where: {
-        uid: bookingUid,
-        OR: [
-          { userId: userId },
-          {
-            eventType: {
-              hosts: {
-                some: {
-                  userId,
-                },
-              },
-            },
-          },
-          {
-            eventType: {
-              users: {
-                some: {
-                  id: userId,
-                },
-              },
-            },
-          },
-          {
-            eventType: {
-              team: {
-                members: {
-                  some: {
-                    userId,
-                    accepted: true,
-                    role: {
-                      in: ["ADMIN", "OWNER"],
-                    },
-                  },
-                },
-              },
-            },
-          },
-          {
-            eventType: {
-              parent: {
-                team: {
-                  members: {
-                    some: {
-                      userId,
-                      accepted: true,
-                      role: {
-                        in: ["ADMIN", "OWNER"],
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        ],
-      },
-    });
-  }
-
   async updateLocationById({
     where: { id },
     data: { location, metadata, referencesToCreate, responses, iCalSequence },
@@ -1421,25 +1337,6 @@ export class BookingRepository implements IBookingRepository {
     return Number(totalBookingTime.totalMinutes ?? 0);
   }
 
-  async findOriginalRescheduledBookingUserId({ rescheduleUid }: { rescheduleUid: string }) {
-    return await this.prismaClient.booking.findFirst({
-      where: {
-        uid: rescheduleUid,
-        status: {
-          in: [BookingStatus.ACCEPTED, BookingStatus.CANCELLED, BookingStatus.PENDING],
-        },
-      },
-      select: {
-        userId: true,
-        attendees: {
-          select: {
-            email: true,
-          },
-        },
-      },
-    });
-  }
-
   async getBookingForPaymentProcessing(bookingId: number) {
     return await this.prismaClient.booking.findUnique({
       where: {
@@ -1643,87 +1540,6 @@ export class BookingRepository implements IBookingRepository {
     });
   }
 
-  async findByIdForReassignment(bookingId: number) {
-    return await this.prismaClient.booking.findUnique({
-      where: {
-        id: bookingId,
-      },
-      select: {
-        id: true,
-        uid: true,
-        eventTypeId: true,
-        userId: true,
-        startTime: true,
-        endTime: true,
-      },
-    });
-  }
-
-  async findByIdWithAttendeesPaymentAndReferences(bookingId: number) {
-    return await this.prismaClient.booking.findUnique({
-      where: { id: bookingId },
-      select: {
-        id: true,
-        uid: true,
-        title: true,
-        description: true,
-        customInputs: true,
-        responses: true,
-        startTime: true,
-        endTime: true,
-        metadata: true,
-        status: true,
-        location: true,
-        smsReminderNumber: true,
-        iCalUID: true,
-        iCalSequence: true,
-        eventTypeId: true,
-        userId: true,
-        attendees: {
-          select: {
-            name: true,
-            email: true,
-            timeZone: true,
-            locale: true,
-            phoneNumber: true,
-          },
-          orderBy: {
-            id: "asc",
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            name: true,
-            timeZone: true,
-            locale: true,
-            timeFormat: true,
-          },
-        },
-        payment: {
-          select: {
-            id: true,
-          },
-        },
-        references: {
-          select: {
-            uid: true,
-            type: true,
-            meetingUrl: true,
-            meetingId: true,
-            meetingPassword: true,
-            externalCalendarId: true,
-            credentialId: true,
-            thirdPartyRecurringEventId: true,
-            delegationCredentialId: true,
-          },
-        },
-      },
-    });
-  }
-
   async updateBookingAttendees({
     bookingId,
     newAttendees,
@@ -1839,38 +1655,6 @@ export class BookingRepository implements IBookingRepository {
   }
 
   /**
-   * Cancels a booking as part of the Managed Event reassignment flow.
-   * Callers only pass domain data; repository handles persistence details.
-   */
-  async cancelBookingForManagedEventReassignment({
-    bookingId,
-    cancellationReason,
-    metadata,
-    tx,
-  }: {
-    bookingId: number;
-    cancellationReason: string;
-    metadata?: Record<string, unknown> | null;
-    tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
-  }): Promise<ManagedEventCancellationResult> {
-    const client = tx ?? this.prismaClient;
-    return client.booking.update({
-      where: { id: bookingId },
-      data: {
-        cancellationReason,
-        metadata: metadata as unknown as Prisma.InputJsonValue,
-        status: BookingStatus.CANCELLED,
-      },
-      select: {
-        id: true,
-        uid: true,
-        metadata: true,
-        status: true,
-      },
-    });
-  }
-
-  /**
    * Creates a booking specifically for Managed Event reassignment flows.
    * Encapsulates the select shape so callers don't deal with Prisma selections.
    */
@@ -1960,76 +1744,6 @@ export class BookingRepository implements IBookingRepository {
             id: "asc" as const,
           },
         },
-      },
-    });
-  }
-
-  /**
-   * Wraps the cancel+create operations for managed events in a single transaction.
-   */
-  async managedEventReassignmentTransaction({
-    bookingId,
-    cancellationReason,
-    metadata,
-    newBookingPlan,
-  }: {
-    bookingId: number;
-    cancellationReason: string;
-    metadata?: Record<string, unknown> | null;
-    newBookingPlan: Omit<ManagedEventReassignmentCreateParams, "tx">;
-  }): Promise<{
-    newBooking: ManagedEventReassignmentCreatedBooking;
-    cancelledBooking: ManagedEventCancellationResult;
-  }> {
-    return this.prismaClient.$transaction(async (tx) => {
-      const cancelledBooking = await this.cancelBookingForManagedEventReassignment({
-        bookingId,
-        cancellationReason,
-        metadata,
-        tx,
-      });
-
-      const newBooking = await this.createBookingForManagedEventReassignment({
-        ...newBookingPlan,
-        tx,
-      });
-
-      return { newBooking, cancelledBooking };
-    });
-  }
-
-  async findByIdForTargetEventTypeSearch(bookingId: number) {
-    return this.prismaClient.booking.findUnique({
-      where: { id: bookingId },
-      select: {
-        eventTypeId: true,
-        userId: true,
-        startTime: true,
-        endTime: true,
-      },
-    });
-  }
-
-  async findByIdForWithUserIdAndEventTypeId(bookingId: number) {
-    return this.prismaClient.booking.findUnique({
-      where: { id: bookingId },
-      select: {
-        id: true,
-        eventTypeId: true,
-        userId: true,
-      },
-    });
-  }
-
-  async findByIdForReassignmentValidation(bookingId: number) {
-    return this.prismaClient.booking.findUnique({
-      where: { id: bookingId },
-      select: {
-        id: true,
-        status: true,
-        recurringEventId: true,
-        startTime: true,
-        endTime: true,
       },
     });
   }
