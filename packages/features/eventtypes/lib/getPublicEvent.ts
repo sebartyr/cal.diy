@@ -27,16 +27,20 @@ import type { UserProfile } from "@calcom/types/UserProfile";
 
 // Cal.diy has no PBAC: private team members are only visible to accepted
 // ADMIN/OWNER members of the team or of its parent organization.
-const isAcceptedTeamAdminOrOwner = async (
+const isAcceptedAdminOrOwnerOfAnyTeam = async (
   prisma: PrismaClient,
-  { userId, teamId }: { userId: number; teamId: number }
+  { userId, teamIds }: { userId: number; teamIds: number[] }
 ): Promise<boolean> => {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_teamId: { userId, teamId } },
-    select: { role: true, accepted: true },
+  const membership = await prisma.membership.findFirst({
+    where: {
+      userId,
+      teamId: { in: teamIds },
+      accepted: true,
+      role: { in: [MembershipRole.ADMIN, MembershipRole.OWNER] },
+    },
+    select: { teamId: true },
   });
-  if (!membership?.accepted) return false;
-  return membership.role === MembershipRole.ADMIN || membership.role === MembershipRole.OWNER;
+  return membership !== null;
 };
 const getSlugOrRequestedSlug = (slug: string) => ({ slug });
 const getBookerBaseUrlSync = (_orgSlug?: string | number | null): string =>
@@ -308,6 +312,7 @@ export const getPublicEvent = async (
     const users = [...usersInOrgContext].sort(
       (a, b) => usernameList.indexOf(a.username ?? "") - usernameList.indexOf(b.username ?? "")
     );
+    if (!users.length) return null;
 
     const defaultEvent = getDefaultEvent(eventSlug);
     let locations = defaultEvent.locations ? (defaultEvent.locations as LocationObject[]) : [];
@@ -470,24 +475,18 @@ export const getPublicEvent = async (
 
   const eventMetaData = eventTypeMetaDataSchemaWithTypedApps.parse(event.metadata || {});
   const teamMetadata = teamMetadataSchema.parse(event.team?.metadata || {});
-  const usersAsHosts = event.hosts.map((host) => host.user);
-
-  // Enrich users in a single batch call
-  const enrichedUsers = await new UserRepository(prisma).enrichUsersWithTheirProfiles(usersAsHosts);
-
-  // Map enriched users back to the hosts
-  const hosts = event.hosts.map((host, index) => ({
+  const enrichUserWithItsProfile = await new UserRepository(prisma).buildProfileEnricher([
+    ...event.hosts.map((host) => host.user.id),
+    ...(event.owner ? [event.owner.id] : []),
+  ]);
+  const hosts = event.hosts.map((host) => ({
     ...host,
-    user: enrichedUsers[index],
+    user: enrichUserWithItsProfile(host.user),
   }));
 
   const eventWithUserProfiles = {
     ...event,
-    owner: event.owner
-      ? await new UserRepository(prisma).enrichUserWithItsProfile({
-          user: event.owner,
-        })
-      : null,
+    owner: event.owner ? enrichUserWithItsProfile(event.owner) : null,
     subsetOfHosts: hosts,
     hosts: fetchAllUsers ? hosts : undefined,
   };
@@ -499,60 +498,48 @@ export const getPublicEvent = async (
   if (users === null) {
     throw new Error(`EventType ${event.id} has no owner or users.`);
   }
-  //In case the event schedule is not defined ,use the event owner's default schedule
-  if (!eventWithUserProfiles.schedule && eventWithUserProfiles.owner?.defaultScheduleId) {
-    const eventOwnerDefaultSchedule = await prisma.schedule.findUnique({
-      where: {
-        id: eventWithUserProfiles.owner?.defaultScheduleId,
-      },
-      select: {
-        id: true,
-        timeZone: true,
-      },
-    });
+
+  const ownerDefaultScheduleId = eventWithUserProfiles.owner?.defaultScheduleId;
+  const instantMeetingSchedule = eventWithUserProfiles.isInstantEvent
+    ? eventWithUserProfiles.instantMeetingSchedule
+    : null;
+  const privateTeamAdminTeamIds = event.teamId
+    ? [event.teamId, ...(event.team?.parentId ? [event.team.parentId] : [])]
+    : [];
+
+  const [eventOwnerDefaultSchedule, orgDetails, isInstantMeetingAvailable, canViewPrivateTeamMembers] =
+    await Promise.all([
+      //In case the event schedule is not defined ,use the event owner's default schedule
+      !eventWithUserProfiles.schedule && ownerDefaultScheduleId
+        ? prisma.schedule.findUnique({
+            where: { id: ownerDefaultScheduleId },
+            select: { id: true, timeZone: true },
+          })
+        : undefined,
+      org
+        ? prisma.team.findFirst({
+            where: { slug: org, parentId: null },
+            select: { logoUrl: true, name: true },
+          })
+        : undefined,
+      instantMeetingSchedule?.id
+        ? isCurrentlyAvailable({
+            prisma,
+            instantMeetingScheduleId: instantMeetingSchedule.id,
+            availabilityTimezone: instantMeetingSchedule.timeZone ?? "Europe/London",
+            length: eventWithUserProfiles.length,
+          })
+        : undefined,
+      currentUserId && privateTeamAdminTeamIds.length
+        ? isAcceptedAdminOrOwnerOfAnyTeam(prisma, { userId: currentUserId, teamIds: privateTeamAdminTeamIds })
+        : false,
+    ]);
+
+  if (eventOwnerDefaultSchedule !== undefined) {
     eventWithUserProfiles.schedule = eventOwnerDefaultSchedule;
   }
 
-  let orgDetails: Pick<Team, "logoUrl" | "name"> | undefined | null;
-  if (org) {
-    orgDetails = await prisma.team.findFirst({
-      where: {
-        slug: org,
-        parentId: null,
-      },
-      select: {
-        logoUrl: true,
-        name: true,
-      },
-    });
-  }
-
-  let showInstantEventConnectNowModal = eventWithUserProfiles.isInstantEvent;
-
-  if (eventWithUserProfiles.isInstantEvent && eventWithUserProfiles.instantMeetingSchedule?.id) {
-    const { id, timeZone } = eventWithUserProfiles.instantMeetingSchedule;
-
-    showInstantEventConnectNowModal = await isCurrentlyAvailable({
-      prisma,
-      instantMeetingScheduleId: id,
-      availabilityTimezone: timeZone ?? "Europe/London",
-      length: eventWithUserProfiles.length,
-    });
-  }
-  let canViewPrivateTeamMembers = false;
-  if (currentUserId && event.teamId) {
-    canViewPrivateTeamMembers = await isAcceptedTeamAdminOrOwner(prisma, {
-      userId: currentUserId,
-      teamId: event.teamId,
-    });
-
-    if (!canViewPrivateTeamMembers && event.team?.parentId) {
-      canViewPrivateTeamMembers = await isAcceptedTeamAdminOrOwner(prisma, {
-        userId: currentUserId,
-        teamId: event.team.parentId,
-      });
-    }
-  }
+  const showInstantEventConnectNowModal = isInstantMeetingAvailable ?? eventWithUserProfiles.isInstantEvent;
 
   if (event.team?.isPrivate && !canViewPrivateTeamMembers) {
     users = [];
