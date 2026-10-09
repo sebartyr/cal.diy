@@ -14,7 +14,9 @@ import type { TUpdateInputSchema } from "./types";
 
 type PermissionString = string;
 
-type EventType = Awaited<ReturnType<EventTypeRepository["findAllByUpId"]>>[number];
+type EventType =
+  | Awaited<ReturnType<EventTypeRepository["findAllByUpId"]>>[number]
+  | Awaited<ReturnType<EventTypeRepository["findTeamEventTypes"]>>[number];
 
 export const eventOwnerProcedure = authedProcedure
   .input(

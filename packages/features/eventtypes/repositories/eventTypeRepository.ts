@@ -446,8 +446,10 @@ export class EventTypeRepository implements IEventTypesRepository {
       ...eventTypeSelect,
       hashedLink: hashedLinkSelect,
       users: { select: userSelect, take: 5 },
+      // The listing only renders the avatars of managed event children, so loading their full rows is wasted work
       children: {
-        include: {
+        select: {
+          id: true,
           users: { select: userSelect, take: 5 },
         },
       },
