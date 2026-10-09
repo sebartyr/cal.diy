@@ -1,12 +1,10 @@
-import Link from "next/link";
-
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { useUrlMatchesCurrentUrl } from "@calcom/lib/hooks/useUrlMatchesCurrentUrl";
 import classNames from "@calcom/ui/classNames";
-
+import Link from "next/link";
 import { Avatar } from "../../avatar";
-import { Icon } from "../../icon";
 import type { IconName } from "../../icon";
+import { Icon } from "../../icon";
 
 export type HorizontalTabItemProps = {
   name: string;
@@ -50,7 +48,9 @@ const HorizontalTabItem = function ({
       scroll={linkScroll}
       aria-disabled={props.disabled ? "true" : undefined}
       className={classNames(
-        isCurrent ? "bg-subtle text-emphasis" : "hover:bg-cal-muted hover:text-default text-subtle",
+        isCurrent
+          ? "bg-subtle text-emphasis shadow-[inset_0_-2px_0_0_var(--cal-accent)]"
+          : "hover:bg-cal-muted hover:text-default text-subtle",
         "inline-flex h-fit items-center justify-center whitespace-nowrap rounded-md p-2 text-sm font-medium leading-none transition md:mb-0",
         props.disabled && "pointer-events-none opacity-30!",
         props.className

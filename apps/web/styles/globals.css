@@ -5,13 +5,13 @@
 @import "./raqb.css";
 
 ::-moz-selection {
-  color: var(--cal-brand-text);
-  background: var(--cal-brand);
+  color: var(--cal-text-emphasis);
+  background: var(--cal-accent-subtle);
 }
 
 ::selection {
-  color: var(--cal-brand-text);
-  background: var(--cal-brand);
+  color: var(--cal-text-emphasis);
+  background: var(--cal-accent-subtle);
 }
 
 body {

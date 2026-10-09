@@ -170,7 +170,7 @@ export const NavigationItem: React.FC<{
                 <Icon
                   name={item.isLoading ? "rotate-cw" : item.icon}
                   className={classNames(
-                    "todesktop:!text-blue-500 h-4 w-4 shrink-0 lg:ltr:mr-2 lg:rtl:ml-2",
+                    "todesktop:!text-blue-500 group-aria-[current=page]:text-cal-accent h-4 w-4 shrink-0 lg:ltr:mr-2 lg:rtl:ml-2",
                     item.isLoading && "animate-spin"
                   )}
                   aria-hidden="true"
@@ -213,7 +213,7 @@ export const NavigationItem: React.FC<{
               "todesktop:py-[7px] text-default group flex items-center rounded-md px-2 py-1.5 text-sm font-medium transition",
               item.child
                 ? `aria-[aria-current='page']:bg-transparent!`
-                : `[&[aria-current='page']]:bg-emphasis`,
+                : `[&[aria-current='page']]:bg-emphasis [&[aria-current='page']]:shadow-[inset_2px_0_0_0_var(--cal-accent)]`,
               isChild
                 ? `[&[aria-current='page']]:text-emphasis [&[aria-current='page']]:bg-emphasis hidden h-8 pl-16 lg:flex lg:pl-11 ${
                     props.index === 0 ? "mt-0" : "mt-1  hover:mt-1 [&[aria-current='page']]:mt-1"
@@ -228,7 +228,7 @@ export const NavigationItem: React.FC<{
               <Icon
                 name={item.isLoading ? "rotate-cw" : item.icon}
                 className={classNames(
-                  "todesktop:!text-blue-500 h-4 w-4 shrink-0 aria-[aria-current='page']:text-inherit lg:ltr:mr-2 lg:rtl:ml-2",
+                  "todesktop:!text-blue-500 h-4 w-4 shrink-0 [&[aria-current='page']]:text-cal-accent lg:ltr:mr-2 lg:rtl:ml-2",
                   item.isLoading && "animate-spin"
                 )}
                 aria-hidden="true"
@@ -289,7 +289,7 @@ export const MobileNavigationItem: React.FC<{
       {item.icon && (
         <Icon
           name={item.icon}
-          className="[&[aria-current='page']]:text-emphasis  mx-auto mb-1 block h-5 w-5 shrink-0 text-center text-inherit"
+          className="[&[aria-current='page']]:text-cal-accent mx-auto mb-1 block h-5 w-5 shrink-0 text-center text-inherit"
           aria-hidden="true"
           aria-current={current ? "page" : undefined}
         />

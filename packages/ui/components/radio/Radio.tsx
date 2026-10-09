@@ -1,8 +1,7 @@
+import classNames from "@calcom/ui/classNames";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import type { ReactNode } from "react";
 import React from "react";
-
-import classNames from "@calcom/ui/classNames";
 
 export const Root = RadioGroupPrimitive.Root;
 
@@ -13,7 +12,7 @@ export const Radio = (props: RadioGroupPrimitive.RadioGroupItemProps & { childre
   <RadioGroupPrimitive.Item
     {...props}
     className={classNames(
-      "hover:bg-subtle border-default dark:checked:bg-brand-default dark:hover:bg-subtle dark:checked:hover:bg-brand-default focus:ring-brand-default hover:border-emphasis me-1.5 mt-0.5 h-4 w-4 shrink-0 rounded-full border text-(--cal-brand) transition focus:border-0 focus:ring-1 data-[state=checked]:border-brand-default",
+      "hover:bg-subtle border-default dark:checked:bg-cal-accent dark:hover:bg-subtle dark:checked:hover:bg-cal-accent focus:ring-cal-accent hover:border-emphasis me-1.5 mt-0.5 h-4 w-4 shrink-0 rounded-full border text-(--cal-accent) transition focus:border-0 focus:ring-1 data-[state=checked]:border-cal-accent",
       props.disabled && "opacity-60"
     )}>
     {props.children}
@@ -22,8 +21,8 @@ export const Radio = (props: RadioGroupPrimitive.RadioGroupItemProps & { childre
 export const Indicator = ({ disabled }: { disabled?: boolean }) => (
   <RadioGroupPrimitive.Indicator
     className={classNames(
-      "after:bg-default dark:after:bg-brand-accent relative flex h-full w-full items-center justify-center rounded-full bg-black after:h-[6px] after:w-[6px] after:rounded-full after:content-['']",
-      disabled ? "after:bg-cal-muted" : "bg-brand-default"
+      "after:bg-default dark:after:bg-cal-accent-contrast relative flex h-full w-full items-center justify-center rounded-full bg-black after:h-[6px] after:w-[6px] after:rounded-full after:content-['']",
+      disabled ? "after:bg-cal-muted" : "bg-cal-accent"
     )}
   />
 );

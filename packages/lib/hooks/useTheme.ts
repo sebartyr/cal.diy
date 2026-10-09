@@ -1,8 +1,6 @@
+import { useEmbedTheme } from "@calcom/embed-core/embed-iframe";
 import { useTheme as useNextTheme } from "next-themes";
 import { useEffect } from "react";
-
-import { useEmbedTheme } from "@calcom/embed-core/embed-iframe";
-import { localStorage } from "@calcom/lib/webstorage";
 
 /**
  * It should be called once per route if you intend to use a theme different from `system` theme. `system` theme is automatically supported using <ThemeProvider />
@@ -12,9 +10,10 @@ import { localStorage } from "@calcom/lib/webstorage";
  */
 // eslint-disable-next-line @typescript-eslint/ban-types
 export default function useTheme(themeToSet: "system" | (string & {}) | undefined | null, getOnly = false) {
-  if (typeof window !== "undefined") {
-    const themeFromLocalStorage = localStorage.getItem("app-theme");
-    themeToSet = themeToSet ?? themeFromLocalStorage ?? "system";
+  // A null preference means "follow the system". Falling back to the persisted next-themes value here
+  // would keep the previously forced light/dark theme after the user switches back to automatic.
+  if (themeToSet === null) {
+    themeToSet = "system";
   }
   const { resolvedTheme, setTheme, forcedTheme, theme: activeTheme } = useNextTheme();
   const embedTheme = useEmbedTheme();
