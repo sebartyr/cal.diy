@@ -1368,7 +1368,18 @@ export class BookingRepository implements IBookingRepository {
       include: {
         attendees: true,
         references: true,
-        user: true,
+        // The result is returned to the public booker as-is, so only expose the organizer
+        // fields the regular booking creation path already returns (see createBooking.ts).
+        user: {
+          select: {
+            uuid: true,
+            email: true,
+            name: true,
+            timeZone: true,
+            username: true,
+            isPlatformManaged: true,
+          },
+        },
         payment: true,
       },
     });
