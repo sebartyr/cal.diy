@@ -2,8 +2,7 @@ import { buildNonDelegationCredential } from "@calcom/lib/delegationCredential";
 import logger from "@calcom/lib/logger";
 import { prisma } from "@calcom/prisma";
 import type { Prisma, PrismaClient } from "@calcom/prisma/client";
-import { safeCredentialSelect } from "@calcom/prisma/selects/credential";
-import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
+import { credentialForCalendarServiceSelect, safeCredentialSelect } from "@calcom/prisma/selects/credential";
 
 const log = logger.getSubLogger({ prefix: ["CredentialRepository"] });
 
@@ -70,17 +69,6 @@ export class CredentialRepository {
   }
 
   /**
-   * Doesn't retrieve key field as that has credentials
-   */
-  static async findFirstByIdWithUser({ id }: { id: number }) {
-    const credential = await prisma.credential.findUnique({
-      where: { id },
-      select: safeCredentialSelect,
-    });
-    return buildNonDelegationCredential(credential);
-  }
-
-  /**
    * Includes 'key' field which is sensitive data.
    */
   static async findFirstByIdWithKeyAndUser({ id }: { id: number }) {
@@ -118,14 +106,6 @@ export class CredentialRepository {
     });
   }
 
-  static async deleteAllByDelegationCredentialId({
-    delegationCredentialId,
-  }: {
-    delegationCredentialId: string;
-  }) {
-    return prisma.credential.deleteMany({ where: { delegationCredentialId } });
-  }
-
   static async findCredentialForCalendarServiceById({ id }: { id: number }) {
     const dbCredential = await prisma.credential.findUnique({
       where: { id },
@@ -137,41 +117,6 @@ export class CredentialRepository {
     }
 
     return buildNonDelegationCredential(dbCredential);
-  }
-
-  static async findByIdIncludeDelegationCredential({ id }: { id: number }) {
-    const dbCredential = await prisma.credential.findUnique({
-      where: { id },
-      select: {
-        ...credentialForCalendarServiceSelect,
-        delegationCredential: true,
-      },
-    });
-
-    return dbCredential;
-  }
-
-  static async findAllDelegationByUserIdsListAndDelegationCredentialIdAndType({
-    userIds,
-    delegationCredentialId,
-    type,
-  }: {
-    userIds: number[];
-    delegationCredentialId: string;
-    type: string;
-  }) {
-    return prisma.credential.findMany({
-      where: {
-        userId: {
-          in: userIds,
-        },
-        delegationCredentialId,
-        type,
-      },
-      select: {
-        userId: true,
-      },
-    });
   }
 
   static async findAllDelegationByTypeIncludeUserAndTake({ type, take }: { type: string; take: number }) {
@@ -270,42 +215,6 @@ export class CredentialRepository {
     return prisma.credential.update({ where: { id }, data });
   }
 
-  static async findPaymentCredentialByAppIdAndTeamId({
-    appId,
-    teamId,
-  }: {
-    appId: string | null;
-    teamId: number;
-  }) {
-    return await prisma.credential.findFirst({
-      where: {
-        teamId,
-        appId,
-      },
-      include: {
-        app: true,
-      },
-    });
-  }
-
-  static async findPaymentCredentialByAppIdAndUserId({
-    appId,
-    userId,
-  }: {
-    appId: string | null;
-    userId: number;
-  }) {
-    return await prisma.credential.findFirst({
-      where: {
-        userId,
-        appId,
-      },
-      include: {
-        app: true,
-      },
-    });
-  }
-
   static async findPaymentCredentialByAppIdAndUserIdOrTeamId({
     appId,
     userId,
@@ -323,35 +232,6 @@ export class CredentialRepository {
       },
       include: {
         app: true,
-      },
-    });
-  }
-
-  findByTeamIdAndSlugs({ teamId, slugs }: { teamId: number; slugs: string[] }) {
-    return this.prismaClient.credential.findMany({
-      where: {
-        teamId,
-        appId: {
-          in: slugs,
-        },
-      },
-      select: { ...safeCredentialSelect, team: { select: { name: true } } },
-    });
-  }
-
-  findByIdAndTeamId({ id, teamId }: { id: number; teamId: number }) {
-    return this.prismaClient.credential.findFirst({
-      where: {
-        id,
-        teamId,
-      },
-      select: {
-        ...safeCredentialSelect,
-        app: {
-          select: {
-            slug: true,
-          },
-        },
       },
     });
   }

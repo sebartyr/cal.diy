@@ -1,9 +1,9 @@
 import { PaymentServiceMap } from "@calcom/app-store/payment.services.generated";
 import { sendNoShowFeeChargedEmail } from "@calcom/emails/billing-email-service";
 import { CredentialRepository } from "@calcom/features/credentials/repositories/CredentialRepository";
+import { getTranslation } from "@calcom/i18n/server";
 import { ErrorCode } from "@calcom/lib/errorCodes";
 import { ErrorWithCode } from "@calcom/lib/errors";
-import { getTranslation } from "@calcom/i18n/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { handleNoShowFee } from "./handleNoShowFee";
 
@@ -30,10 +30,8 @@ vi.mock("@calcom/i18n/server", () => ({
 vi.mock("@calcom/features/credentials/repositories/CredentialRepository", () => ({
   CredentialRepository: {
     findPaymentCredentialByAppIdAndUserIdOrTeamId: vi.fn(),
-    findPaymentCredentialByAppIdAndTeamId: vi.fn(),
   },
 }));
-
 
 vi.mock("@calcom/prisma", () => ({
   default: {},
@@ -218,10 +216,8 @@ describe("handleNoShowFee", () => {
 
     it("should throw error when no payment credential is found", async () => {
       vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndUserIdOrTeamId).mockReset();
-      vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndTeamId).mockReset();
 
       vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndUserIdOrTeamId).mockResolvedValue(null);
-      vi.mocked(CredentialRepository.findPaymentCredentialByAppIdAndTeamId).mockResolvedValue(null);
 
       const bookingWithoutCredential = {
         ...mockBooking,
