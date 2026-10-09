@@ -8,6 +8,7 @@ import { getRoutedTeamMemberIdsFromSearchParams } from "@calcom/lib/bookings/get
 import { PUBLIC_QUERY_AVAILABLE_SLOTS_INTERVAL_SECONDS } from "@calcom/lib/constants";
 import { trpc } from "@calcom/trpc/react";
 import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { useApiV2AvailableSlots } from "./useApiV2AvailableSlots";
 
 export type UseScheduleWithCacheArgs = {
@@ -153,15 +154,24 @@ export const useSchedule = ({
     enabled: options.enabled && !isCallingApiV2Slots,
   });
 
-  if (isCallingApiV2Slots && !teamScheduleV2.failureReason) {
+  const isUsingApiV2Result = isCallingApiV2Slots && !teamScheduleV2.failureReason;
+  const activeSchedule = isUsingApiV2Result ? teamScheduleV2 : schedule;
+  const isActiveScheduleSuccess = activeSchedule.isSuccess;
+  const activeScheduleUpdatedAt = activeSchedule.dataUpdatedAt;
+
+  // Embeds relay availabilityLoaded to the parent page, so it must fire once per loaded slots response,
+  // not on every re-render of the Booker.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeScheduleUpdatedAt re-fires the event for every new slots response
+  useEffect(() => {
+    if (!isActiveScheduleSuccess || !eventId || !eventSlug) return;
+    sdkActionManager?.fire("availabilityLoaded", getAvailabilityLoadedEventPayload({ eventId, eventSlug }));
+  }, [isActiveScheduleSuccess, activeScheduleUpdatedAt, eventId, eventSlug]);
+
+  if (isUsingApiV2Result) {
     updateEmbedBookerState({
       bookerState,
       slotsQuery: teamScheduleV2,
     });
-
-    if (teamScheduleV2.isSuccess && eventId && eventSlug) {
-      sdkActionManager?.fire("availabilityLoaded", getAvailabilityLoadedEventPayload({ eventId, eventSlug }));
-    }
 
     return {
       ...teamScheduleV2,
@@ -178,10 +188,6 @@ export const useSchedule = ({
     bookerState,
     slotsQuery: schedule,
   });
-
-  if (schedule.isSuccess && eventId && eventSlug) {
-    sdkActionManager?.fire("availabilityLoaded", getAvailabilityLoadedEventPayload({ eventId, eventSlug }));
-  }
 
   return {
     ...schedule,
