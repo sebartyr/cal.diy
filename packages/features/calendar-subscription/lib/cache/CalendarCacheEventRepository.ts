@@ -81,9 +81,12 @@ export class CalendarCacheEventRepository implements ICalendarCacheEventReposito
   }
 
   async deleteStale() {
+    const now = new Date();
     return this.prismaClient.calendarCacheEvent.deleteMany({
       where: {
-        end: { lte: new Date() },
+        // start <= end, so the redundant start bound lets Postgres use the (start, end, status) index
+        start: { lte: now },
+        end: { lte: now },
       },
     });
   }
