@@ -44,7 +44,7 @@ import { handleAnalyticsEvents } from "@calcom/features/tasker/tasks/analytics/h
 import type { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { UsersRepository } from "@calcom/features/users/users.repository";
 import type { GetSubscriberOptions } from "@calcom/features/webhooks/lib/getWebhooks";
-import getWebhooks from "@calcom/features/webhooks/lib/getWebhooks";
+import { getWebhooksForTriggers } from "@calcom/features/webhooks/lib/getWebhooks";
 import type { IWebhookProducerService } from "@calcom/features/webhooks/lib/interface/WebhookProducerService";
 import {
   cancelNoShowTasksForBooking,
@@ -1431,24 +1431,6 @@ async function handler(
 
   subscriberOptions.triggerEvent = eventTrigger;
 
-  const subscriberOptionsMeetingEnded = {
-    userId: organizerUser.id,
-    eventTypeId,
-    triggerEvent: WebhookTriggerEvents.MEETING_ENDED,
-    teamId: null,
-    orgId: null,
-    oAuthClientId: platformClientId,
-  };
-
-  const subscriberOptionsMeetingStarted = {
-    userId: organizerUser.id,
-    eventTypeId,
-    triggerEvent: WebhookTriggerEvents.MEETING_STARTED,
-    teamId: null,
-    orgId: null,
-    oAuthClientId: platformClientId,
-  };
-
   const spamCheckResult = await spamCheckService.waitForCheck();
 
   if (spamCheckResult.isBlocked) {
@@ -2321,8 +2303,13 @@ async function handler(
 
   // We are here so, booking doesn't require payment and booking is also created in DB already, through createBooking call
   if (isConfirmedByDefault) {
-    const subscribersMeetingEnded = await getWebhooks(subscriberOptionsMeetingEnded);
-    const subscribersMeetingStarted = await getWebhooks(subscriberOptionsMeetingStarted);
+    const subscribersByTrigger = await getWebhooksForTriggers(subscriberOptions, [
+      WebhookTriggerEvents.MEETING_ENDED,
+      WebhookTriggerEvents.MEETING_STARTED,
+      eventTrigger,
+    ]);
+    const subscribersMeetingEnded = subscribersByTrigger[WebhookTriggerEvents.MEETING_ENDED];
+    const subscribersMeetingStarted = subscribersByTrigger[WebhookTriggerEvents.MEETING_STARTED];
 
     const deleteWebhookScheduledTriggerPromises: Promise<unknown>[] = [];
     const scheduleTriggerPromises = [];
@@ -2394,6 +2381,7 @@ async function handler(
       webhookData,
       isDryRun,
       traceContext,
+      subscribers: subscribersByTrigger[eventTrigger],
     });
   }
 

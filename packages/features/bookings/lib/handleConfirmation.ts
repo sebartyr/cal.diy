@@ -2,7 +2,7 @@ import { eventTypeAppMetadataOptionalSchema } from "@calcom/app-store/zod-utils"
 import { sendScheduledEmailsAndSMS } from "@calcom/emails/email-manager";
 import type { EventManagerUser } from "@calcom/features/bookings/lib/EventManager";
 import EventManager from "@calcom/features/bookings/lib/EventManager";
-import getWebhooks from "@calcom/features/webhooks/lib/getWebhooks";
+import { getWebhooksForTriggers } from "@calcom/features/webhooks/lib/getWebhooks";
 import { scheduleTrigger } from "@calcom/features/webhooks/lib/scheduleTrigger";
 import sendPayload from "@calcom/features/webhooks/lib/sendOrSchedulePayload";
 import type { EventPayloadType, EventTypeInfo } from "@calcom/features/webhooks/lib/sendPayload";
@@ -312,30 +312,23 @@ export async function handleConfirmation(args: {
   const userId = booking.userId;
 
   try {
-    const subscribersBookingCreated = await getWebhooks({
-      userId,
-      eventTypeId: booking.eventTypeId,
-      triggerEvent: WebhookTriggerEvents.BOOKING_CREATED,
-      teamId: null,
-      orgId: null,
-      oAuthClientId: platformClientParams?.platformClientId,
-    });
-    const subscribersMeetingStarted = await getWebhooks({
-      userId,
-      eventTypeId: booking.eventTypeId,
-      triggerEvent: WebhookTriggerEvents.MEETING_STARTED,
-      teamId: null,
-      orgId: null,
-      oAuthClientId: platformClientParams?.platformClientId,
-    });
-    const subscribersMeetingEnded = await getWebhooks({
-      userId,
-      eventTypeId: booking.eventTypeId,
-      triggerEvent: WebhookTriggerEvents.MEETING_ENDED,
-      teamId: null,
-      orgId: null,
-      oAuthClientId: platformClientParams?.platformClientId,
-    });
+    const subscribersByTrigger = await getWebhooksForTriggers(
+      {
+        userId,
+        eventTypeId: booking.eventTypeId,
+        teamId: null,
+        orgId: null,
+        oAuthClientId: platformClientParams?.platformClientId,
+      },
+      [
+        WebhookTriggerEvents.BOOKING_CREATED,
+        WebhookTriggerEvents.MEETING_STARTED,
+        WebhookTriggerEvents.MEETING_ENDED,
+      ]
+    );
+    const subscribersBookingCreated = subscribersByTrigger[WebhookTriggerEvents.BOOKING_CREATED];
+    const subscribersMeetingStarted = subscribersByTrigger[WebhookTriggerEvents.MEETING_STARTED];
+    const subscribersMeetingEnded = subscribersByTrigger[WebhookTriggerEvents.MEETING_ENDED];
 
     const scheduleTriggerPromises: Promise<unknown>[] = [];
 
