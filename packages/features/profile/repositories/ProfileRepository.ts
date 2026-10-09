@@ -550,7 +550,18 @@ export class ProfileRepository implements IProfileRepository {
         include: {
           user: { select: userSelect },
           organization: {
-            select: organizationWithSettingsAndMembersSelect,
+            select: {
+              ...organizationWithSettingsAndMembersSelect,
+              // Only the profile owner's membership: isOrgAdmin is derived from these rows,
+              // so loading every member would make any member look like an admin.
+              members: {
+                select: membershipSelect,
+                where: {
+                  accepted: true,
+                  user: { profiles: { some: { uid: lookupTarget.uid } } },
+                },
+              },
+            },
           },
         },
       });
@@ -605,7 +616,7 @@ export class ProfileRepository implements IProfileRepository {
     if (profileId && organizationId) {
       const hasAccess = await ProfileRepository.checkUserAccessToProfile({
         userId,
-        profileId,
+        profileOwnerId: rawProfile.userId,
         organizationId,
       });
 
@@ -693,24 +704,14 @@ export class ProfileRepository implements IProfileRepository {
 
   private static async checkUserAccessToProfile({
     userId,
-    profileId,
+    profileOwnerId,
     organizationId,
   }: {
     userId: number;
-    profileId: number | null;
-    organizationId: number | null;
+    profileOwnerId: number;
+    organizationId: number;
   }): Promise<boolean> {
-    if (!profileId || !organizationId) {
-      return false;
-    }
-
-    // Check if user owns the profile
-    const profile = await prisma.profile.findUnique({
-      where: { id: profileId },
-      select: { userId: true },
-    });
-
-    if (profile?.userId === userId) {
+    if (profileOwnerId === userId) {
       return true;
     }
 
