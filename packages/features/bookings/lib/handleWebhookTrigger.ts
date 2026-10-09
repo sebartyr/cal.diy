@@ -1,5 +1,6 @@
-import getWebhooks from "@calcom/features/webhooks/lib/getWebhooks";
+import type { WebhookSubscriber } from "@calcom/features/webhooks/lib/dto/types";
 import type { GetSubscriberOptions } from "@calcom/features/webhooks/lib/getWebhooks";
+import getWebhooks from "@calcom/features/webhooks/lib/getWebhooks";
 import sendPayload from "@calcom/features/webhooks/lib/sendOrSchedulePayload";
 import { isEventPayload, type WebhookPayloadType } from "@calcom/features/webhooks/lib/sendPayload";
 import { safeStringify } from "@calcom/lib/safeStringify";
@@ -13,6 +14,8 @@ async function _handleWebhookTrigger(args: {
   webhookData: WebhookPayloadType;
   isDryRun?: boolean;
   traceContext: TraceContext;
+  /** Already resolved for subscriberOptions; skips the lookup when the caller batched it. */
+  subscribers?: WebhookSubscriber[];
 }) {
   const spanContext = distributedTracing.createSpan(args.traceContext, "webhook_trigger", {
     eventTrigger: args.eventTrigger || "unknown",
@@ -22,7 +25,7 @@ async function _handleWebhookTrigger(args: {
   try {
     if (args.isDryRun) return;
 
-    const subscribers = await getWebhooks(args.subscriberOptions);
+    const subscribers = args.subscribers ?? (await getWebhooks(args.subscriberOptions));
 
     const promises = subscribers.map((sub) =>
       sendPayload(sub.secret, args.eventTrigger, new Date().toISOString(), sub, args.webhookData).catch(
