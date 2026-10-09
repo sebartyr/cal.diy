@@ -1,5 +1,4 @@
 import { useBrandColors } from "@calcom/embed-core/embed-iframe";
-
 import { DEFAULT_DARK_BRAND_COLOR, DEFAULT_LIGHT_BRAND_COLOR } from "./constants";
 
 const BRAND_COLOR = DEFAULT_LIGHT_BRAND_COLOR;
@@ -179,7 +178,26 @@ export function isCustomBrandColor(hex: string, dark: boolean): boolean {
   return normalizedHex !== defaultHex && !LEGACY_DEFAULT_BRAND_COLORS.includes(normalizedHex);
 }
 
-function getAccentVariables(colourMap: Record<string, string>, emphasisLevel: string): Record<string, string> {
+// Mirrors the accent tokens in packages/config/theme/tokens.css. useCalcomTheme writes inline styles and never
+// removes them, so the defaults must be written explicitly or a previous custom accent would stick around.
+const DEFAULT_ACCENT_VARIABLES = {
+  light: {
+    "cal-accent": "#cb1c42",
+    "cal-accent-emphasis": "#a51050",
+    "cal-accent-subtle": "#fbe3ec",
+    "cal-accent-contrast": "#ffffff",
+  },
+  dark: {
+    "cal-accent": "#f2546a",
+    "cal-accent-emphasis": "#f57461",
+    "cal-accent-subtle": "#3d1a2e",
+    "cal-accent-contrast": "#13172e",
+  },
+};
+
+type AccentVariables = (typeof DEFAULT_ACCENT_VARIABLES)["light"];
+
+function getAccentVariables(colourMap: Record<string, string>, emphasisLevel: string): AccentVariables {
   return {
     "cal-accent": colourMap["500"],
     "cal-accent-emphasis": colourMap[emphasisLevel],
@@ -218,7 +236,9 @@ const useGetBrandingColours = ({
       "cal-brand-subtle": lightColourMap["200"],
       "cal-brand-text": getWCAGContrastColor(lightColourMap["500"]),
       "cal-brand-accent": getWCAGContrastColor(lightColourMap["500"]),
-      ...(isCustomBrandColor(lightColourMap["500"], false) ? getAccentVariables(lightColourMap, "400") : {}),
+      ...(isCustomBrandColor(lightColourMap["500"], false)
+        ? getAccentVariables(lightColourMap, "400")
+        : DEFAULT_ACCENT_VARIABLES.light),
     },
     dark: {
       "cal-brand": darkColourMap["500"],
@@ -226,7 +246,9 @@ const useGetBrandingColours = ({
       "cal-brand-subtle": darkColourMap["800"],
       "cal-brand-text": getWCAGContrastColor(darkColourMap["500"]),
       "cal-brand-accent": getWCAGContrastColor(darkColourMap["500"]),
-      ...(isCustomBrandColor(darkColourMap["500"], true) ? getAccentVariables(darkColourMap, "600") : {}),
+      ...(isCustomBrandColor(darkColourMap["500"], true)
+        ? getAccentVariables(darkColourMap, "600")
+        : DEFAULT_ACCENT_VARIABLES.dark),
     },
   };
   return theme;

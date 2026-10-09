@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react-hooks";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_DARK_BRAND_COLOR, DEFAULT_LIGHT_BRAND_COLOR } from "./constants";
-import { createColorMap, isCustomBrandColor } from "./getBrandColours";
+import useGetBrandingColours, { createColorMap, isCustomBrandColor } from "./getBrandColours";
+
+vi.mock("@calcom/embed-core/embed-iframe", () => ({
+  useBrandColors: () => ({}),
+}));
 
 describe("useGetBrandingColours", () => {
   it("should return the correct color values for given lightVal and darkVal", () => {
@@ -54,5 +59,51 @@ describe("isCustomBrandColor", () => {
   it("treats any other color as custom", () => {
     expect(isCustomBrandColor("#ff1616", false)).toBe(true);
     expect(isCustomBrandColor(DEFAULT_LIGHT_BRAND_COLOR, true)).toBe(true);
+  });
+});
+
+describe("useGetBrandingColours accent variables", () => {
+  const defaultLightAccent = {
+    "cal-accent": "#cb1c42",
+    "cal-accent-emphasis": "#a51050",
+    "cal-accent-subtle": "#fbe3ec",
+    "cal-accent-contrast": "#ffffff",
+  };
+  const defaultDarkAccent = {
+    "cal-accent": "#f2546a",
+    "cal-accent-emphasis": "#f57461",
+    "cal-accent-subtle": "#3d1a2e",
+    "cal-accent-contrast": "#13172e",
+  };
+
+  it("writes the default accent explicitly for both modes when no custom color is set", () => {
+    const { result } = renderHook(() =>
+      useGetBrandingColours({ lightVal: DEFAULT_LIGHT_BRAND_COLOR, darkVal: DEFAULT_DARK_BRAND_COLOR })
+    );
+
+    expect(result.current.light).toMatchObject(defaultLightAccent);
+    expect(result.current.dark).toMatchObject(defaultDarkAccent);
+  });
+
+  it("uses the custom color as accent only for the mode where it is set", () => {
+    const { result } = renderHook(() =>
+      useGetBrandingColours({ lightVal: "#0040ff", darkVal: DEFAULT_DARK_BRAND_COLOR })
+    );
+
+    expect(result.current.light["cal-accent"]).toBe("#0040ff");
+    expect(result.current.light["cal-accent-contrast"]).toBe("#FFFFFF");
+    expect(result.current.dark).toMatchObject(defaultDarkAccent);
+  });
+
+  it("falls back to the default accent when going back from a custom color", () => {
+    const { result, rerender } = renderHook((props) => useGetBrandingColours(props), {
+      initialProps: { lightVal: "#0040ff" as string | null, darkVal: "#ff1616" as string | null },
+    });
+    expect(result.current.dark["cal-accent"]).toBe("#ff1616");
+
+    rerender({ lightVal: null, darkVal: null });
+
+    expect(result.current.light).toMatchObject(defaultLightAccent);
+    expect(result.current.dark).toMatchObject(defaultDarkAccent);
   });
 });

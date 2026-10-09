@@ -9803,6 +9803,44 @@
   .transition-max-width {
     transition-property: max-width;
   }
+  .border-cal-accent {
+    border-color: var(--cal-accent);
+  }
+  .bg-cal-accent {
+    background-color: var(--cal-accent);
+  }
+  .bg-cal-accent-contrast {
+    background-color: var(--cal-accent-contrast);
+  }
+  .text-\(--cal-accent\) {
+    color: var(--cal-accent);
+  }
+  .text-cal-accent-contrast {
+    color: var(--cal-accent-contrast);
+  }
+  @media (hover: hover) {
+    .hover\:border-cal-accent:hover {
+      border-color: var(--cal-accent);
+    }
+  }
+  .focus\:ring-cal-accent:focus {
+    --tw-ring-color: var(--cal-accent);
+  }
+  .data-\[state\=checked\]\:border-cal-accent[data-state="checked"] {
+    border-color: var(--cal-accent);
+  }
+  .dark\:after\:bg-cal-accent-contrast:is(.dark *):after {
+    content: var(--tw-content);
+    background-color: var(--cal-accent-contrast);
+  }
+  .dark\:checked\:bg-cal-accent:is(.dark *):checked {
+    background-color: var(--cal-accent);
+  }
+  @media (hover: hover) {
+    .dark\:checked\:hover\:bg-cal-accent:is(.dark *):checked:hover {
+      background-color: var(--cal-accent);
+    }
+  }
 }
 :root {
   --radius: 0.625rem;
@@ -10056,6 +10094,10 @@
   --cal-brand: #111827;
   --cal-brand-emphasis: #0f0f0f;
   --cal-brand-text: #fff;
+  --cal-accent: var(--cal-brand);
+  --cal-accent-emphasis: var(--cal-brand-emphasis);
+  --cal-accent-subtle: var(--cal-brand-subtle, #9ca3af);
+  --cal-accent-contrast: var(--cal-brand-accent, white);
   --shadow-dropdown: 0px 5px 20px 0px #0000001a, 0px 10px 40px 0px #00000008;
   --shadow-switch-thumb: 0px 0.8px 0.8px 0px #0000001a, 0px 0.8px 3.2px 0px #00000014;
   --shadow-solid-gray-rested: 0px 2px 3px 0px #0000000f, 0px 1px 1px 0px #00000014, 1px 4px 8px 0px #0000001f,
@@ -10162,6 +10204,10 @@
   --cal-brand: #fff;
   --cal-brand-emphasis: #9ca3b0;
   --cal-brand-text: #000;
+  --cal-accent: var(--cal-brand);
+  --cal-accent-emphasis: var(--cal-brand-emphasis);
+  --cal-accent-subtle: var(--cal-brand-subtle, #9ca3af);
+  --cal-accent-contrast: var(--cal-brand-accent, white);
   --fill-emphasis: var(--cal-text-emphasis);
   --fill-default: var(--cal-text);
   --fill-subtle: var(--cal-text-subtle);
