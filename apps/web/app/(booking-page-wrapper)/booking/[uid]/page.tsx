@@ -1,23 +1,20 @@
+import process from "node:process";
 import { loadTranslations } from "@calcom/i18n/server";
 import { BookingStatus } from "@calcom/prisma/enums";
-import { buildLegacyCtx } from "@lib/buildLegacyCtx";
 import type { PageProps as _PageProps } from "app/_types";
 import { _generateMetadata } from "app/_utils";
 import { CustomI18nProvider } from "app/CustomI18nProvider";
-import { withAppDirSsr } from "app/WithAppDirSsr";
-import { cookies, headers } from "next/headers";
+import { withCachedAppDirSsr } from "app/WithAppDirSsr";
 import OldPage from "~/bookings/views/bookings-single-view";
 import {
   type PageProps as ClientPageProps,
   getServerSideProps,
 } from "~/bookings/views/bookings-single-view.getServerSideProps";
 
-const getData = withAppDirSsr<ClientPageProps>(getServerSideProps);
+const getData = withCachedAppDirSsr<ClientPageProps>(getServerSideProps);
 
 export const generateMetadata = async ({ params, searchParams }: _PageProps) => {
-  const { bookingInfo, eventType, recurringBookings, orgSlug } = await getData(
-    buildLegacyCtx(await headers(), await cookies(), await params, await searchParams)
-  );
+  const { bookingInfo, eventType, recurringBookings, orgSlug } = await getData({ params, searchParams });
   const needsConfirmation = bookingInfo.status === BookingStatus.PENDING && eventType.requiresConfirmation;
 
   const metadata = await _generateMetadata(
@@ -40,8 +37,7 @@ export const generateMetadata = async ({ params, searchParams }: _PageProps) => 
 };
 
 const ServerPage = async ({ params, searchParams }: _PageProps) => {
-  const context = buildLegacyCtx(await headers(), await cookies(), await params, await searchParams);
-  const props = await getData(context);
+  const props = await getData({ params, searchParams });
 
   const eventLocale = props.eventType?.interfaceLanguage;
   if (eventLocale) {
