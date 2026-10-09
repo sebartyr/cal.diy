@@ -6,6 +6,81 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [7.8.0] — 2026-10-09
+
+Performance release: findings of a performance audit of the fork (database
+round trips, redundant work, dead code), plus the bookings default segment fix
+(#52–#77).
+
+### Fixed
+
+- Bookings page: on a URL without query, "My bookings" showed as selected but
+  no filter was applied, so system admins listed every booking. The default
+  segment was written to the URL from a client mount effect, a write the
+  Next.js router could drop. Blank bookings URLs now redirect on the server to
+  the "My bookings" segment and its filters; explicit filters, "All bookings"
+  and shared links are kept as is (#76).
+- Bookings list: the total count ignored the created/updated date filters, so
+  the total and the next page were wrong when they were used (#69).
+- Event types list: personal and managed event types were paginated by two
+  queries sharing one cursor, so pages could exceed the page size and skip
+  rows (#59).
+- Tasks: the daily cleanup was a no-op and the `Task` table grew forever. It
+  now deletes succeeded tasks older than 30 days and definitively failed tasks
+  older than 90 days, in bounded batches (#72).
+- Scheduled webhooks cron (`MEETING_STARTED`/`MEETING_ENDED`): requests were
+  not awaited, so serverless runtimes could drop them, and overlapping runs
+  could send the same webhook twice. Due triggers are now claimed atomically
+  (`DELETE ... RETURNING`) and each one is sent once (#73, #77).
+- Public dynamic group pages with no existing member return a 404 instead of
+  throwing (#60).
+
+### Security
+
+- Profiles looked up by `prof-<uid>` loaded every member of the organization,
+  so `isOrgAdmin` was true for any member of an org that had one admin (#53).
+- When an attendee booked a slot they had already booked, the response
+  returned the organizer's full user row (including 2FA secret and backup
+  codes) to the booker; it now returns the same fields as a new booking (#62).
+
+### Changed (performance)
+
+- tRPC: the session user is loaded once per HTTP request instead of once per
+  batched procedure (about 5 queries per procedure), and App Router pages
+  share one tRPC context; `perfMiddleware` no longer leaks global
+  performance marks (#52).
+- Public booking pages run their server-side props once per request instead
+  of twice (page and metadata), and avoid sequential and duplicate lookups
+  (#57, #60).
+- Event types list and editor enrich profiles in one query instead of one per
+  host, child or member (#58).
+- Slots (`getSchedule`): no more discarded, repeated or per-host queries for
+  booking limits, seats, blocked hosts and expired reserved slots; team
+  booking limits and out-of-office lookups are narrowed (#66–#68).
+- Booking creation, reschedule and cancellation: credentials refreshed in one
+  query, webhook subscribers resolved in one query for all triggers, fewer
+  re-reads of the organizer, profile and original booking (#63–#65).
+- Bookings list: redundant seat branches removed from the union, the count
+  runs in parallel, no per-booking query for `rescheduledBy`, attendee users
+  loaded in the main query; admin user pickers skip the total count
+  (#69–#71).
+- `viewer.me.get` runs its lookups in parallel and the settings pages share
+  one cache entry; `useMeQuery` retries transient errors as intended (#54).
+- Removed `unstable_cache` calls keyed on request headers that never hit
+  (#55), session and banner stubs (#56), duplicated event type queries (#61)
+  and about 60 repository methods without callers (#75).
+- Background jobs: the task queue processes at most 200 tasks per run with
+  bounded concurrency; the booking reminder cron reads pending bookings once;
+  the calendar cache cleanup uses its index (#72, #74).
+
+### Upgrade notes
+
+- The first run of `/api/tasks/cleanup` after upgrading may delete a large
+  backlog of old tasks (at most 100,000 rows per run).
+- The task queue now drains at most 200 tasks per cron run (1,000 were
+  fetched before): a large backlog after an outage drains more slowly.
+- No schema change and no migration.
+
 ## [7.7.1] — 2026-10-08
 
 ### Added
