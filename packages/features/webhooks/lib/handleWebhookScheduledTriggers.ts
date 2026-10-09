@@ -85,14 +85,18 @@ export async function handleWebhookScheduledTriggers(prisma: PrismaClient) {
 
   if (jobsToRun.length === 0) return;
 
-  // Jobs are removed before sending to keep the existing at-most-once delivery: a failed or slow send is
-  // never retried, and an overlapping cron run cannot pick the same job up again.
-  await prisma.webhookScheduledTriggers.deleteMany({
-    where: { id: { in: jobsToRun.map((job) => job.id) } },
-  });
+  // Jobs are claimed by deleting them before sending (at-most-once: a failed or slow send is never
+  // retried). Overlapping cron runs can read the same jobs, so only the rows this run's DELETE returned
+  // are sent: PostgreSQL never returns a row from two concurrent deletes.
+  const jobIds = jobsToRun.map((job) => job.id);
+  const claimedRows = await prisma.$queryRaw<{ id: number }[]>`
+    DELETE FROM "WebhookScheduledTriggers" WHERE "id" = ANY(${jobIds}::int[]) RETURNING "id"
+  `;
+  const claimedIds = new Set(claimedRows.map((row) => row.id));
+  const claimedJobs = jobsToRun.filter((job) => claimedIds.has(job.id));
 
   // Every request goes out at once, as before, so a slow subscriber cannot delay the others. The batch is
   // awaited so the cron response is only sent once every request is done, otherwise serverless runtimes
   // may freeze the function and drop the in-flight requests.
-  await Promise.allSettled(jobsToRun.map((job) => sendScheduledJob(prisma, job)));
+  await Promise.allSettled(claimedJobs.map((job) => sendScheduledJob(prisma, job)));
 }
