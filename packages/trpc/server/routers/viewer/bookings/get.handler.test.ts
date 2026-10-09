@@ -2,7 +2,7 @@ import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
 import getAllUserBookings from "@calcom/features/bookings/lib/getAllUserBookings";
 import type { DB } from "@calcom/kysely";
 import type { PrismaClient } from "@calcom/prisma";
-import type { CompiledQuery } from "kysely";
+import type { CompiledQuery, DatabaseConnection } from "kysely";
 import { DummyDriver, Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from "kysely";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getBookings, getHandler } from "./get.handler";
@@ -472,8 +472,8 @@ describe("getBookings - team booking permissions", () => {
       const membershipScopes = sql.match(/"Membership"\."teamId" in \(/g) ?? [];
       const acceptedChecks = [...sql.matchAll(/"Membership"\."accepted" = \$(\d+)/g)];
 
-      // Attendee, seat attendee and organizer scopes all go through Membership.
-      expect(membershipScopes).toHaveLength(3);
+      // Attendee and organizer scopes both go through Membership.
+      expect(membershipScopes).toHaveLength(2);
       expect(acceptedChecks).toHaveLength(membershipScopes.length);
       for (const [, index] of acceptedChecks) {
         expect(parameters[Number(index) - 1]).toBe(true);
@@ -775,5 +775,214 @@ describe("getHandler - system admin detection", () => {
     });
 
     expect(getAllUserBookings).toHaveBeenCalledWith(expect.objectContaining({ isSystemAdmin: expected }));
+  });
+});
+
+describe("getBookings - page, count and hydration queries", () => {
+  const me = { id: 1, email: "me@example.com", orgId: null };
+
+  type Row = Record<string, unknown>;
+
+  class RespondingDriver extends DummyDriver {
+    constructor(private readonly respond: (query: CompiledQuery) => Row[]) {
+      super();
+    }
+
+    override async acquireConnection(): Promise<DatabaseConnection> {
+      return {
+        executeQuery: async <R>(query: CompiledQuery) => ({ rows: this.respond(query) as R[] }),
+        streamQuery: async function* () {},
+      };
+    }
+  }
+
+  const isCountQuery = (q: CompiledQuery) => q.sql.includes('"bookingCount"');
+  const isPageQuery = (q: CompiledQuery) =>
+    q.sql.includes("union_subquery") && q.sql.includes("limit") && !isCountQuery(q);
+  const isHydrationQuery = (q: CompiledQuery) => q.sql.includes('as "rescheduler"');
+
+  const hydratedBooking = (id: number, overrides: Row = {}): Row => ({
+    id,
+    uid: `booking-${id}`,
+    startTime: new Date("2030-01-01T10:00:00Z"),
+    endTime: new Date("2030-01-01T10:30:00Z"),
+    recurringEventId: null,
+    fromReschedule: null,
+    rescheduler: null,
+    eventType: null,
+    user: null,
+    attendees: [],
+    seatsReferences: [],
+    ...overrides,
+  });
+
+  const createDb = ({ hydrated = [] as Row[], count = 0 } = {}) => {
+    const queries: CompiledQuery[] = [];
+    const db = new Kysely<DB>({
+      dialect: {
+        createAdapter: () => new PostgresAdapter(),
+        createDriver: () =>
+          new RespondingDriver((q) => {
+            queries.push(q);
+            if (isCountQuery(q)) return [{ bookingCount: String(count) }];
+            if (isPageQuery(q)) return hydrated.map((b) => ({ id: b.id }));
+            if (isHydrationQuery(q)) return hydrated;
+            return [];
+          }),
+        createIntrospector: (k) => new PostgresIntrospector(k),
+        createQueryCompiler: () => new PostgresQueryCompiler(),
+      },
+    });
+    return { db, queries };
+  };
+
+  let prisma: PrismaClient;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetTeamIdsWithPermission.mockResolvedValue([]);
+    prisma = {
+      user: { findMany: vi.fn().mockResolvedValue([]) },
+      eventType: { findMany: vi.fn().mockResolvedValue([]) },
+      booking: { findUnique: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
+      $queryRaw: vi.fn().mockResolvedValue([]),
+    } as unknown as PrismaClient;
+  });
+
+  const run = (
+    db: Kysely<DB>,
+    filters: Parameters<typeof getBookings>[0]["filters"] = {},
+    isSystemAdmin = false
+  ) =>
+    getBookings({
+      user: me,
+      prisma,
+      kysely: db,
+      bookingListingByStatus: ["upcoming"],
+      filters,
+      take: 10,
+      skip: 0,
+      isSystemAdmin,
+    });
+
+  it("applies the created and updated date filters to the count as well as to the page", async () => {
+    const { db, queries } = createDb({ count: 4 });
+
+    const result = await run(db, {
+      afterCreatedDate: "2030-01-01T00:00:00.000Z",
+      beforeCreatedDate: "2030-02-01T00:00:00.000Z",
+      afterUpdatedDate: "2030-01-05T00:00:00.000Z",
+      beforeUpdatedDate: "2030-01-20T00:00:00.000Z",
+    });
+
+    const countQuery = queries.find(isCountQuery);
+    const pageQuery = queries.find(isPageQuery);
+    for (const query of [countQuery, pageQuery]) {
+      const sql = query?.sql ?? "";
+      expect(sql).toContain('"union_subquery"."createdAt" >= $');
+      expect(sql).toContain('"union_subquery"."createdAt" <= $');
+      expect(sql).toContain('"union_subquery"."updatedAt" >= $');
+      expect(sql).toContain('"union_subquery"."updatedAt" <= $');
+    }
+    expect(countQuery?.parameters).toEqual(pageQuery?.parameters.slice(0, countQuery?.parameters.length));
+    expect(result.totalCount).toBe(4);
+  });
+
+  it("counts distinct ids when the union can return the same booking twice", async () => {
+    const { db, queries } = createDb();
+
+    await run(db);
+
+    expect(queries.find(isCountQuery)?.sql).toContain('count(distinct "union_subquery"."id")');
+  });
+
+  it("counts rows without DISTINCT when an admin lists every booking", async () => {
+    const { db, queries } = createDb();
+
+    await run(db, { scope: "all" }, true);
+
+    const sql = queries.find(isCountQuery)?.sql ?? "";
+    expect(sql).toContain("count(*)");
+    expect(sql).not.toContain("distinct");
+  });
+
+  it("keeps DISTINCT in the count of every booking when an attendee filter joins attendees", async () => {
+    const { db, queries } = createDb();
+
+    await run(db, { scope: "all", attendeeEmail: "jane@example.com" }, true);
+
+    expect(queries.find(isCountQuery)?.sql).toContain('count(distinct "union_subquery"."id")');
+  });
+
+  // A seated attendee has their own Attendee row on the booking, which the attendee scopes match.
+  it.each([
+    ["the default scope", {}, [], '"Attendee"."email" = $'],
+    ["a team admin", {}, [10], '"Attendee"."email" = $'],
+    ["a userIds filter", { userIds: [1] }, [], '"Attendee"."email" in ($'],
+  ] as const)("finds seated attendees through their Attendee row with %s", async (_label, filters, teamIds, attendeeMatch) => {
+    mockGetTeamIdsWithPermission.mockResolvedValue([...teamIds]);
+    prisma.user.findMany = vi
+      .fn()
+      .mockResolvedValue([{ id: 1, email: me.email }]) as unknown as typeof prisma.user.findMany;
+    const { db, queries } = createDb();
+
+    await run(db, filters);
+
+    for (const query of [queries.find(isPageQuery), queries.find(isCountQuery)]) {
+      const sql = query?.sql ?? "";
+      expect(sql).toContain(attendeeMatch);
+      expect(sql).not.toContain('"BookingSeat"');
+    }
+    expect(queries.find(isPageQuery)?.parameters).toContain(me.email);
+  });
+
+  it("reads the rescheduler in the hydration query instead of one lookup per booking", async () => {
+    const { db, queries } = createDb({
+      count: 2,
+      hydrated: [
+        hydratedBooking(1, { fromReschedule: "original-1", rescheduler: "host@example.com" }),
+        hydratedBooking(2),
+      ],
+    });
+
+    const result = await run(db);
+
+    expect(queries.find(isHydrationQuery)?.sql).toContain(
+      '"originalBooking"."uid" = "Booking"."fromReschedule"'
+    );
+    expect(prisma.booking.findUnique).not.toHaveBeenCalled();
+    expect(result.bookings.map((b) => [b.id, b.rescheduler])).toEqual([
+      [1, "host@example.com"],
+      [2, null],
+    ]);
+    expect(result.totalCount).toBe(2);
+  });
+
+  it("looks up the caller's own recurring series outside an admin view", async () => {
+    const { db } = createDb({ hydrated: [hydratedBooking(1, { recurringEventId: "series-1" })] });
+
+    await run(db);
+
+    expect(prisma.booking.groupBy).toHaveBeenCalledTimes(2);
+    expect(prisma.booking.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { recurringEventId: { not: { equals: null } }, userId: me.id } })
+    );
+  });
+
+  it("looks up the recurring series of the page in an admin view", async () => {
+    const { db } = createDb({
+      hydrated: [
+        hydratedBooking(1, { recurringEventId: "series-1" }),
+        hydratedBooking(2, { recurringEventId: "series-1" }),
+        hydratedBooking(3),
+      ],
+    });
+
+    await run(db, { scope: "all" }, true);
+
+    expect(prisma.booking.groupBy).toHaveBeenCalledTimes(2);
+    expect(prisma.booking.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { recurringEventId: { in: ["series-1"] } } })
+    );
   });
 });

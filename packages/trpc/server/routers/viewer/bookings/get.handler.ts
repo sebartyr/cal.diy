@@ -246,23 +246,6 @@ export async function getBookings({
         tables: ["Booking", "Attendee"],
       });
     }
-
-    // 3. Seat reference attendee email matches one of the filtered users' emails
-    if (attendeeEmailsFromUserIdsFilter?.length) {
-      bookingQueries.push({
-        query: kysely
-          .selectFrom("Booking")
-          .select("Booking.id")
-          .select("Booking.startTime")
-          .select("Booking.endTime")
-          .select("Booking.createdAt")
-          .select("Booking.updatedAt")
-          .innerJoin("Attendee", "Attendee.bookingId", "Booking.id")
-          .innerJoin("BookingSeat", "Attendee.id", "BookingSeat.attendeeId")
-          .where("Attendee.email", "in", attendeeEmailsFromUserIdsFilter),
-        tables: ["Booking", "Attendee", "BookingSeat"],
-      });
-    }
   } else {
     // 1. Current user created bookings
     bookingQueries.push({
@@ -276,7 +259,8 @@ export async function getBookings({
         .where("Booking.userId", "=", user.id),
       tables: ["Booking"],
     });
-    // 2. Current user is an attendee
+    // 2. Current user is an attendee. A seated attendee is an Attendee row of the booking too, so seats
+    // need no branch of their own.
     bookingQueries.push({
       query: kysely
         .selectFrom("Booking")
@@ -289,21 +273,7 @@ export async function getBookings({
         .where("Attendee.email", "=", user.email),
       tables: ["Booking", "Attendee"],
     });
-    // 3. Current user is an attendee via seats reference
-    bookingQueries.push({
-      query: kysely
-        .selectFrom("Booking")
-        .select("Booking.id")
-        .select("Booking.startTime")
-        .select("Booking.endTime")
-        .select("Booking.createdAt")
-        .select("Booking.updatedAt")
-        .innerJoin("BookingSeat", "BookingSeat.bookingId", "Booking.id")
-        .innerJoin("Attendee", "Attendee.bookingId", "Booking.id")
-        .where("Attendee.email", "=", user.email),
-      tables: ["Booking", "Attendee", "BookingSeat"],
-    });
-    // 4. Scope depends on `user.orgId`:
+    // 3. Scope depends on `user.orgId`:
     // - If Current user is ORG_OWNER/ADMIN or has booking.read permission, get bookings where organization/team members are attendees
     // PERFORMANCE: Use subquery with team membership instead of materializing all emails (can be 400+ for large orgs)
     if (teamIdsWithBookingPermission?.length) {
@@ -327,33 +297,7 @@ export async function getBookings({
         tables: ["Booking", "Attendee"],
       });
     }
-    // 5. Scope depends on `user.orgId`:
-    // - If Current user is ORG_OWNER/ADMIN or has booking.read permission, get bookings where organization/team members are attendees via seatsReference
-    // PERFORMANCE: Use subquery with team membership instead of materializing all emails
-    if (teamIdsWithBookingPermission?.length) {
-      bookingQueries.push({
-        query: kysely
-          .selectFrom("Booking")
-          .select("Booking.id")
-          .select("Booking.startTime")
-          .select("Booking.endTime")
-          .select("Booking.createdAt")
-          .select("Booking.updatedAt")
-          .innerJoin("Attendee", "Attendee.bookingId", "Booking.id")
-          .innerJoin("BookingSeat", "Attendee.id", "BookingSeat.attendeeId")
-          .where("Attendee.email", "in", (eb) =>
-            eb
-              .selectFrom("users")
-              .select("users.email")
-              .innerJoin("Membership", "Membership.userId", "users.id")
-              .where("Membership.teamId", "in", teamIdsWithBookingPermission)
-              .where("Membership.accepted", "=", true)
-          ),
-        tables: ["Booking", "Attendee", "BookingSeat"],
-      });
-    }
-
-    // 6. Scope depends on `user.orgId`:
+    // 4. Scope depends on `user.orgId`:
     // - If Current user is ORG_OWNER/ADMIN or has booking.read permission, get booking created for an event type within the organization/team
     // PERFORMANCE: Use subquery to get event type IDs instead of materializing them
     if (teamIdsWithBookingPermission?.length) {
@@ -375,7 +319,7 @@ export async function getBookings({
       });
     }
 
-    // 7. Scope depends on `user.orgId`:
+    // 5. Scope depends on `user.orgId`:
     // - If Current user is ORG_OWNER/ADMIN or has booking.read permission, get bookings created by users within the same organization/team
     // PERFORMANCE: Use subquery with team membership instead of materializing all user IDs
     if (teamIdsWithBookingPermission?.length) {
@@ -477,11 +421,9 @@ export async function getBookings({
   // Each scope query can return the same booking, and attendee joins duplicate rows. Listing every
   // booking uses a single query on Booking, where a DISTINCT would make PostgreSQL sort the whole
   // table before applying the page limit.
-  const unionSubquery = kysely.selectFrom(queryUnion.as("union_subquery"));
-  const needsDistinct = !listsEveryBooking || !!filters?.attendeeName || !!filters?.attendeeEmail;
-
-  const getBookingsUnionCompiled = (needsDistinct ? unionSubquery.distinct() : unionSubquery)
-    .selectAll("union_subquery")
+  // The created/updated filters apply to the union as a whole, so the page and the count must share them.
+  const filteredUnion = kysely
+    .selectFrom(queryUnion.as("union_subquery"))
     .$if(Boolean(filters?.afterUpdatedDate), (eb) =>
       eb.where("union_subquery.updatedAt", ">=", dayjs.utc(filters.afterUpdatedDate).toDate())
     )
@@ -493,24 +435,40 @@ export async function getBookings({
     )
     .$if(Boolean(filters?.beforeCreatedDate), (eb) =>
       eb.where("union_subquery.createdAt", "<=", dayjs.utc(filters.beforeCreatedDate).toDate())
-    )
+    );
+  // Each scope query can return the same booking, and attendee joins duplicate rows. Listing every
+  // booking uses a single query on Booking, where a DISTINCT would make PostgreSQL sort the whole
+  // table before applying the page limit.
+  const needsDistinct = !listsEveryBooking || !!filters?.attendeeName || !!filters?.attendeeEmail;
+
+  const getBookingsUnionCompiled = (needsDistinct ? filteredUnion.distinct() : filteredUnion)
+    .selectAll("union_subquery")
     .orderBy(orderBy.key, orderBy.order)
     .limit(take)
     .offset(skip)
     .compile();
 
-  const bookingsFromUnion = (await kysely.executeQuery(getBookingsUnionCompiled)).rows;
-
   log.debug(`Get bookings for user ${user.id} SQL:`, getBookingsUnionCompiled.sql);
 
-  const totalCount = Number(
-    (
-      await kysely
-        .selectFrom(queryUnion.as("union_subquery"))
-        .select(({ fn }) => fn.count("union_subquery.id").distinct().as("bookingCount"))
-        .executeTakeFirst()
-    )?.bookingCount ?? 0
-  );
+  // Outside an admin view the recurring series come from the caller's own bookings, so they don't
+  // depend on the page and can be fetched alongside it.
+  const [{ rows: bookingsFromUnion }, countResult, ownRecurringInfo] = await Promise.all([
+    kysely.executeQuery(getBookingsUnionCompiled),
+    filteredUnion
+      .select(({ fn }) =>
+        (needsDistinct ? fn.count("union_subquery.id").distinct() : fn.countAll()).as("bookingCount")
+      )
+      .executeTakeFirst(),
+    isAdminView
+      ? null
+      : getRecurringInfo(prisma, {
+          recurringEventId: {
+            not: { equals: null },
+          },
+          userId: user.id,
+        }),
+  ]);
+  const totalCount = Number(countResult?.bookingCount ?? 0);
 
   const plainBookings = !(bookingsFromUnion?.length === 0)
     ? await kysely
@@ -564,6 +522,11 @@ export async function getBookings({
           "Booking.fromReschedule",
           "Booking.rescheduled",
           "Booking.rescheduledBy",
+          eb
+            .selectFrom("Booking as originalBooking")
+            .select("originalBooking.rescheduledBy")
+            .whereRef("originalBooking.uid", "=", "Booking.fromReschedule")
+            .as("rescheduler"),
           "Booking.cancelledBy",
           "Booking.isRecorded",
           "Booking.cancellationReason",
@@ -714,79 +677,17 @@ export async function getBookings({
 
   // In an admin view the bookings belong to other users, so the recurring series are looked up from
   // the page itself rather than from the caller's own bookings.
-  const recurringInfoWhere: Prisma.BookingWhereInput = isAdminView
-    ? {
-        recurringEventId: {
-          in: Array.from(
-            new Set(
-              plainBookings
-                .map((booking) => booking.recurringEventId)
-                .filter((id): id is string => id !== null)
-            )
-          ),
-        },
-      }
-    : {
-        recurringEventId: {
-          not: { equals: null },
-        },
-        userId: user.id,
-      };
-
-  const [
-    recurringInfoBasic,
-    recurringInfoExtended,
-    // We need all promises to be successful, so we are not using Promise.allSettled
-  ] = await Promise.all([
-    prisma.booking.groupBy({
-      by: ["recurringEventId"],
-      _min: {
-        startTime: true,
+  const recurringInfo =
+    ownRecurringInfo ??
+    (await getRecurringInfo(prisma, {
+      recurringEventId: {
+        in: Array.from(
+          new Set(
+            plainBookings.map((booking) => booking.recurringEventId).filter((id): id is string => id !== null)
+          )
+        ),
       },
-      _count: {
-        recurringEventId: true,
-      },
-      where: recurringInfoWhere,
-    }),
-    prisma.booking.groupBy({
-      by: ["recurringEventId", "status", "startTime"],
-      _min: {
-        startTime: true,
-      },
-      where: recurringInfoWhere,
-    }),
-  ]);
-
-  const recurringInfo = recurringInfoBasic.map(
-    (
-      info: (typeof recurringInfoBasic)[number]
-    ): {
-      recurringEventId: string | null;
-      count: number;
-      firstDate: Date | null;
-      bookings: {
-        [key: string]: Date[];
-      };
-    } => {
-      const bookings = recurringInfoExtended.reduce(
-        (prev, curr) => {
-          if (curr.recurringEventId === info.recurringEventId) {
-            prev[curr.status].push(curr.startTime);
-          }
-          return prev;
-        },
-        { ACCEPTED: [], CANCELLED: [], REJECTED: [], PENDING: [], AWAITING_HOST: [] } as {
-          [key in BookingStatus]: Date[];
-        }
-      );
-      return {
-        recurringEventId: info.recurringEventId,
-        count: info._count.recurringEventId,
-        firstDate: info._min.startTime,
-        bookings,
-      };
-    }
-  );
+    }));
 
   // Now enrich bookings with relation data. We could have queried the relation data along with the bookings, but that would cause unnecessary queries to the database.
   // Because Prisma is also going to query the select relation data sequentially, we are fine querying it separately here as it would be just 1 query instead of 4
@@ -817,55 +718,94 @@ export async function getBookings({
     });
   };
 
-  const bookings = await Promise.all(
-    plainBookings.map(async (booking) => {
-      // If seats are enabled, the event is not set to show attendees, and the current user is not the host, filter out attendees who are not the current user.
-      // A system admin acting on someone else's booking needs every attendee, as its host would.
-      if (
-        !isAdminView &&
-        booking.seatsReferences.length &&
-        !booking.eventType?.seatsShowAttendees &&
-        !checkIfUserIsHost(user.id, booking)
-      ) {
-        booking.attendees = booking.attendees.filter((attendee) => attendee.email === user.email);
-      }
+  const bookings = plainBookings.map((booking) => {
+    // If seats are enabled, the event is not set to show attendees, and the current user is not the host, filter out attendees who are not the current user.
+    // A system admin acting on someone else's booking needs every attendee, as its host would.
+    if (
+      !isAdminView &&
+      booking.seatsReferences.length &&
+      !booking.eventType?.seatsShowAttendees &&
+      !checkIfUserIsHost(user.id, booking)
+    ) {
+      booking.attendees = booking.attendees.filter((attendee) => attendee.email === user.email);
+    }
 
-      let rescheduler = null;
-      if (booking.fromReschedule) {
-        const rescheduledBooking = await prisma.booking.findUnique({
-          where: {
-            uid: booking.fromReschedule,
-          },
-          select: {
-            rescheduledBy: true,
-          },
-        });
-        if (rescheduledBooking) {
-          rescheduler = rescheduledBooking.rescheduledBy;
-        }
-      }
-
-      return {
-        ...booking,
-        rescheduler,
-        eventType: {
-          ...booking.eventType,
-          recurringEvent: parseRecurringEvent(booking.eventType?.recurringEvent),
-          eventTypeColor: parseEventTypeColor(booking.eventType?.eventTypeColor),
-          price: booking.eventType?.price || 0,
-          currency: booking.eventType?.currency || "usd",
-          metadata: EventTypeMetaDataSchema.parse(booking.eventType?.metadata || {}),
-        },
-        startTime: booking.startTime.toISOString(),
-        endTime: booking.endTime.toISOString(),
-      };
-    })
-  );
+    return {
+      ...booking,
+      eventType: {
+        ...booking.eventType,
+        recurringEvent: parseRecurringEvent(booking.eventType?.recurringEvent),
+        eventTypeColor: parseEventTypeColor(booking.eventType?.eventTypeColor),
+        price: booking.eventType?.price || 0,
+        currency: booking.eventType?.currency || "usd",
+        metadata: EventTypeMetaDataSchema.parse(booking.eventType?.metadata || {}),
+      },
+      startTime: booking.startTime.toISOString(),
+      endTime: booking.endTime.toISOString(),
+    };
+  });
 
   // Enrich attendees with user data
   const enrichedBookings = await enrichAttendeesWithUserData(bookings, kysely);
 
   return { bookings: enrichedBookings, recurringInfo, totalCount };
+}
+
+async function getRecurringInfo(prisma: PrismaClient, where: Prisma.BookingWhereInput) {
+  const [
+    recurringInfoBasic,
+    recurringInfoExtended,
+    // We need all promises to be successful, so we are not using Promise.allSettled
+  ] = await Promise.all([
+    prisma.booking.groupBy({
+      by: ["recurringEventId"],
+      _min: {
+        startTime: true,
+      },
+      _count: {
+        recurringEventId: true,
+      },
+      where,
+    }),
+    prisma.booking.groupBy({
+      by: ["recurringEventId", "status", "startTime"],
+      _min: {
+        startTime: true,
+      },
+      where,
+    }),
+  ]);
+
+  return recurringInfoBasic.map(
+    (
+      info: (typeof recurringInfoBasic)[number]
+    ): {
+      recurringEventId: string | null;
+      count: number;
+      firstDate: Date | null;
+      bookings: {
+        [key: string]: Date[];
+      };
+    } => {
+      const bookings = recurringInfoExtended.reduce(
+        (prev, curr) => {
+          if (curr.recurringEventId === info.recurringEventId) {
+            prev[curr.status].push(curr.startTime);
+          }
+          return prev;
+        },
+        { ACCEPTED: [], CANCELLED: [], REJECTED: [], PENDING: [], AWAITING_HOST: [] } as {
+          [key in BookingStatus]: Date[];
+        }
+      );
+      return {
+        recurringEventId: info.recurringEventId,
+        count: info._count.recurringEventId,
+        firstDate: info._min.startTime,
+        bookings,
+      };
+    }
+  );
 }
 
 type EnrichedUserData = {
