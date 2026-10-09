@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.0.1] — 2026-10-09
+
+Patch release: the login card stands out from the background again with the
+Clever Cloud palette (#80).
+
+### Fixed
+
+- Login page: the card blended into the page (white card on a near-white
+  background, pale border) and the background grid used hardcoded neutral
+  grays with blurred shadows, giving a washed-out look. The page, card and
+  grid now use the theme tokens, the card gets a stronger border and shadow,
+  and the grid tiles lose their blurred shadows (#80).
+
+### Upgrade notes
+
+- No schema change, no migration.
+
 ## [8.0.0] — 2026-10-09
 
 Rebrand release: the app adopts a Clever Cloud inspired palette, the automatic
