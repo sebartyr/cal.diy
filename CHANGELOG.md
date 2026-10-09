@@ -6,6 +6,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.0.0] — 2026-10-09
+
+Rebrand release: the app adopts a Clever Cloud inspired palette, the automatic
+theme follows the system again, and the Radix primitives used by the web app
+are compatible with React 19 (#78, #79).
+
+### Changed
+
+- New palette inspired by Clever Cloud: lavender-tinted neutrals, navy text
+  and dark mode backgrounds, navy primary buttons (lavender in dark mode). The
+  default brand colors are now `#1c2045` (light) and `#deddee` (dark) (#78).
+- New accent tokens (`--cal-accent`, `-emphasis`, `-subtle`, `-contrast`,
+  exposed as `bg-cal-accent`, `text-cal-accent`…) in Clever Cloud red
+  (`#cb1c42`, `#f2546a` in dark mode). They color the booker selections
+  (selected day, today marker, selected slots), radio buttons, checked
+  checkboxes, focus rings, the loader, the active horizontal tab underline,
+  text selection, and the active sidebar item (icon and 2px bar). Organizers
+  with a custom brand color keep it as their accent (#78).
+- Info semantic colors move to Clever violet, errors to raspberry, and four
+  visualization colors use Clever accents (#78).
+- Radix primitives upgraded off the 1.0 line: popover 1.1.15, radio-group
+  1.3.8, checkbox 1.3.3, collapsible 1.1.12, hover-card 1.1.15. The unused
+  `@radix-ui/react-select` and `@radix-ui/react-portal` are removed from
+  `packages/ui`, and `@radix-ui/react-label` 2.1.7 is declared explicitly
+  (#79).
+
+### Fixed
+
+- Appearance: switching the app theme from light or dark back to automatic
+  kept the forced theme instead of following the system; booking pages set to
+  automatic could also pick up the dashboard's stored theme (#78).
+- A custom accent no longer sticks in inline styles after switching mode or
+  going back to the default brand colors (#78).
+- Development console errors "Accessing element.ref was removed in React 19"
+  on the appearance settings (color picker, booker layout selector) and in the
+  other components using the upgraded Radix primitives (#79).
+
+### Upgrade notes
+
+- Users who never customized their brand color switch to the new navy default
+  and Clever red accent. Users who saved the previous defaults (`#292929`,
+  `#fafafa`) through the appearance settings keep them as brand color but get
+  the Clever red accent; any other saved brand color is kept and also used as
+  accent on their pages.
+- `@calcom/atoms`: the prebuilt `globals.css` gains the accent utilities,
+  mapped to the brand colors, so atoms rendering is unchanged.
+- `cmdk` 0.2.0 and the atoms-specific Radix aliases are not upgraded and may
+  still log the React 19 `element.ref` warning in development.
+- No schema change, no migration.
+
 ## [7.8.0] — 2026-10-09
 
 Performance release: findings of a performance audit of the fork (database
