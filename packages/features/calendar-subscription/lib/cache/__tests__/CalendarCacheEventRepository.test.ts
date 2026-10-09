@@ -1,8 +1,6 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-
 import type { PrismaClient } from "@calcom/prisma";
 import type { CalendarCacheEvent } from "@calcom/prisma/client";
-
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { CalendarCacheEventRepository } from "../CalendarCacheEventRepository";
 
 const mockPrismaClient = {
@@ -239,9 +237,21 @@ describe("CalendarCacheEventRepository", () => {
 
       expect(mockPrismaClient.calendarCacheEvent.deleteMany).toHaveBeenCalledWith({
         where: {
+          start: { lte: expect.any(Date) },
           end: { lte: expect.any(Date) },
         },
       });
+    });
+
+    test("should bound start and end by the same instant", async () => {
+      vi.mocked(mockPrismaClient.calendarCacheEvent.deleteMany).mockResolvedValue({ count: 0 });
+
+      await repository.deleteStale();
+
+      const { where } = vi.mocked(mockPrismaClient.calendarCacheEvent.deleteMany).mock.calls[0][0] as {
+        where: { start: { lte: Date }; end: { lte: Date } };
+      };
+      expect(where.start.lte).toBe(where.end.lte);
     });
   });
 });
