@@ -27,7 +27,7 @@ const teamLabel = (team: { name: string; parent: { name: string } | null }) =>
 /** Every user of the instance, searched on the server, for the member filter of system admins. */
 export const useAdminUserFilterOptions: UseRemoteFilterOptions = ({ searchTerm }): RemoteFilterOptions => {
   const query = trpc.viewer.admin.listPaginated.useInfiniteQuery(
-    { limit: ADMIN_OPTIONS_PAGE_SIZE, searchTerm: searchTerm || undefined },
+    { limit: ADMIN_OPTIONS_PAGE_SIZE, searchTerm: searchTerm || undefined, withTotal: false },
     { getNextPageParam: (lastPage) => lastPage.nextCursor }
   );
   const options = useMemo(
@@ -78,7 +78,7 @@ function useAdminSelectedOptions(isSystemAdmin: boolean) {
   const selectedTeamIds = teamIds.slice(0, MAX_SELECTED_LABELS);
 
   const { data: users } = trpc.viewer.admin.listPaginated.useQuery(
-    { limit: MAX_SELECTED_LABELS, ids: selectedUserIds },
+    { limit: MAX_SELECTED_LABELS, ids: selectedUserIds, withTotal: false },
     { enabled: isSystemAdmin && selectedUserIds.length > 0 }
   );
   const { data: teams } = trpc.viewer.admin.listTeams.useQuery(
