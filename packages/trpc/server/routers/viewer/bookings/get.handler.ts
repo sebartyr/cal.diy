@@ -643,10 +643,10 @@ export async function getBookings({
               .select((eb) => {
                 const attendeeUser = eb.selectFrom("users").whereRef("users.email", "=", "Attendee.email");
                 return jsonBuildObject({
-                  name: attendeeUser.select("users.name"),
+                  name: attendeeUser.select("users.name").$asScalar(),
                   email: eb.ref("Attendee.email"),
-                  avatarUrl: attendeeUser.select("users.avatarUrl"),
-                  username: attendeeUser.select("users.username"),
+                  avatarUrl: attendeeUser.select("users.avatarUrl").$asScalar(),
+                  username: attendeeUser.select("users.username").$asScalar(),
                 }).as("user");
               })
               .whereRef("Attendee.bookingId", "=", "Booking.id")
