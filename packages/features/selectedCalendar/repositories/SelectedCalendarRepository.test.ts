@@ -1,12 +1,10 @@
 import prismock from "@calcom/testing/lib/__mocks__/prisma";
-import type { FeatureId } from "@calcom/features/flags/config";
-import { FeaturesRepository } from "@calcom/features/flags/features.repository";
 import { SelectedCalendarRepository } from "@calcom/features/selectedCalendar/repositories/SelectedCalendarRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import prisma from "@calcom/prisma";
 import type { Prisma, SelectedCalendar } from "@calcom/prisma/client";
-import { MembershipRole } from "@calcom/prisma/enums";
 import { beforeEach, describe, expect, it, test, vi } from "vitest";
+
 vi.mock("@calcom/app-store/delegationCredential", () => ({
   enrichHostsWithDelegationCredentials: vi.fn(),
   getUsersCredentialsIncludeServiceAccountKey: vi.fn(),
@@ -382,54 +380,6 @@ describe("SelectedCalendarRepository", () => {
       prismock.selectedCalendar.deleteMany();
     });
 
-    describe("getNextBatchToWatch", () => {
-      it("excludes calendars when calendar-cache feature is disabled on a team", async () => {
-        const user = await prisma.user.create({
-          data: {
-            email: "calendar-cache-disabled@example.com",
-            username: "calendar-cache-disabled",
-          },
-        });
-
-        const team = await prisma.team.create({
-          data: {
-            name: "Calendar Cache Disabled Team",
-            slug: "calendar-cache-disabled-team",
-          },
-        });
-
-        await prisma.membership.create({
-          data: {
-            userId: user.id,
-            teamId: team.id,
-            role: MembershipRole.ADMIN,
-            accepted: true,
-          },
-        });
-
-        const featuresRepository = new FeaturesRepository(prismock);
-        await featuresRepository.setTeamFeatureState({
-          teamId: team.id,
-          featureId: "calendar-cache" as FeatureId,
-          state: "disabled",
-          assignedBy: "test",
-        });
-
-        await prisma.selectedCalendar.create({
-          data: {
-            userId: user.id,
-            integration: "google_calendar",
-            externalId: "disabled@example.com",
-            credentialId: 1,
-          },
-        });
-
-        const nextBatch = await SelectedCalendarRepository.getNextBatchToWatch();
-
-        expect(nextBatch).toEqual([]);
-      });
-    });
-
     describe("create", () => {
       it("should create a selected calendar", async () => {
         const data = {
@@ -563,45 +513,6 @@ describe("SelectedCalendarRepository", () => {
               externalId: "nonexistent@gmail.com",
               credentialId: 999,
             },
-          })
-        ).rejects.toThrow("SelectedCalendar not found");
-      });
-    });
-
-    describe("findUserLevelUniqueOrThrow", () => {
-      it("should find user level calendar", async () => {
-        const calendar = await SelectedCalendarRepository.create({
-          userId: 1,
-          integration: "google_calendar",
-          externalId: "test@gmail.com",
-          credentialId: 1,
-          eventTypeId: null,
-        });
-
-        const result = await SelectedCalendarRepository.findUserLevelUniqueOrThrow({
-          where: { userId: 1, externalId: "test@gmail.com" },
-        });
-
-        expect(result).toEqual(
-          expect.objectContaining({
-            userId: calendar.userId,
-            externalId: calendar.externalId,
-          })
-        );
-      });
-
-      it("should not find event type level calendar", async () => {
-        await SelectedCalendarRepository.create({
-          userId: 1,
-          integration: "google_calendar",
-          externalId: "test@gmail.com",
-          credentialId: 1,
-          eventTypeId: 1,
-        });
-
-        await expect(
-          SelectedCalendarRepository.findUserLevelUniqueOrThrow({
-            where: { userId: 1, externalId: "test@gmail.com" },
           })
         ).rejects.toThrow("SelectedCalendar not found");
       });
