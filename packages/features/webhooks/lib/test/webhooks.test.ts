@@ -1,17 +1,22 @@
 import prismock from "@calcom/testing/lib/__mocks__/prisma";
-
-import { expectWebhookToHaveBeenCalledWith } from "@calcom/testing/lib/bookingScenario/expects";
-
-import { describe, expect, beforeEach } from "vitest";
-
 import dayjs from "@calcom/dayjs";
+import { expectWebhookToHaveBeenCalledWith } from "@calcom/testing/lib/bookingScenario/expects";
 import { test } from "@calcom/testing/lib/fixtures/fixtures";
-
+import { beforeEach, describe, expect, vi } from "vitest";
 import { handleWebhookScheduledTriggers } from "../handleWebhookScheduledTriggers";
 
 describe("Cron job handler", () => {
   beforeEach(async () => {
     await prismock.webhookScheduledTriggers.deleteMany();
+    // prismock cannot run the handler's raw claim (DELETE ... RETURNING): emulate it on the in-memory table.
+    vi.spyOn(prismock, "$queryRaw").mockImplementation((async (_sql: TemplateStringsArray, ids: number[]) => {
+      const claimed = await prismock.webhookScheduledTriggers.findMany({
+        where: { id: { in: ids } },
+        select: { id: true },
+      });
+      await prismock.webhookScheduledTriggers.deleteMany({ where: { id: { in: ids } } });
+      return claimed;
+    }) as unknown as typeof prismock.$queryRaw);
   });
   test(`should delete old webhook scheduled triggers`, async () => {
     const now = dayjs();
