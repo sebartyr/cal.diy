@@ -27,7 +27,7 @@ const teamLabel = (team: { name: string; parent: { name: string } | null }) =>
 /** Every user of the instance, searched on the server, for the member filter of system admins. */
 export const useAdminUserFilterOptions: UseRemoteFilterOptions = ({ searchTerm }): RemoteFilterOptions => {
   const query = trpc.viewer.admin.listPaginated.useInfiniteQuery(
-    { limit: ADMIN_OPTIONS_PAGE_SIZE, searchTerm: searchTerm || undefined },
+    { limit: ADMIN_OPTIONS_PAGE_SIZE, searchTerm: searchTerm || undefined, withTotal: false },
     { getNextPageParam: (lastPage) => lastPage.nextCursor }
   );
   const options = useMemo(
@@ -78,7 +78,7 @@ function useAdminSelectedOptions(isSystemAdmin: boolean) {
   const selectedTeamIds = teamIds.slice(0, MAX_SELECTED_LABELS);
 
   const { data: users } = trpc.viewer.admin.listPaginated.useQuery(
-    { limit: MAX_SELECTED_LABELS, ids: selectedUserIds },
+    { limit: MAX_SELECTED_LABELS, ids: selectedUserIds, withTotal: false },
     { enabled: isSystemAdmin && selectedUserIds.length > 0 }
   );
   const { data: teams } = trpc.viewer.admin.listTeams.useQuery(
@@ -103,8 +103,6 @@ export function useFacetedUniqueValues({
   columnId: string
 ) => () => Map<FacetedValue, number> {
   const eventTypes = useEventTypes();
-  const teams = undefined as { id: number; name: string }[] | undefined;
-  const members = undefined as { id: number; name: string | null }[] | undefined;
   const { data: currentUser } = useMeQuery();
   const adminSelectedOptions = useAdminSelectedOptions(isSystemAdmin);
 
@@ -117,12 +115,7 @@ export function useFacetedUniqueValues({
           if (isSystemAdmin) {
             return convertFacetedValuesToMap(adminSelectedOptions.teams);
           }
-          return convertFacetedValuesToMap(
-            (teams || []).map((team) => ({
-              label: team.name,
-              value: team.id,
-            }))
-          );
+          return new Map<FacetedValue, number>();
         } else if (columnId === "userId") {
           if (isSystemAdmin) {
             return convertFacetedValuesToMap(adminSelectedOptions.users);
@@ -138,17 +131,10 @@ export function useFacetedUniqueValues({
               },
             ]);
           }
-          return convertFacetedValuesToMap(
-            (members || [])
-              .map((member) => ({
-                label: member.name,
-                value: member.id,
-              }))
-              .filter((option): option is { label: string; value: number } => Boolean(option.label))
-          );
+          return new Map<FacetedValue, number>();
         }
         return new Map<FacetedValue, number>();
       },
-    [eventTypes, teams, members, canReadOthersBookings, currentUser, isSystemAdmin, adminSelectedOptions]
+    [eventTypes, canReadOthersBookings, currentUser, isSystemAdmin, adminSelectedOptions]
   );
 }

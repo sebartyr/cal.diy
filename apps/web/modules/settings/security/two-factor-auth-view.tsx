@@ -2,6 +2,7 @@
 
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { trpc } from "@calcom/trpc/react";
+import useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
 import { Alert } from "@calcom/ui/components/alert";
 import { Badge } from "@calcom/ui/components/badge";
 import { SettingsToggle } from "@calcom/ui/components/form";
@@ -29,7 +30,7 @@ const TwoFactorAuthView = () => {
   const { data: sessionData } = useSession();
 
   const { t } = useLocale();
-  const { data: user, isPending } = trpc.viewer.me.get.useQuery({ includePasswordAdded: true });
+  const { data: user, isPending } = useMeQuery();
 
   const [enableModalOpen, setEnableModalOpen] = useState<boolean>(false);
   const [disableModalOpen, setDisableModalOpen] = useState<boolean>(false);

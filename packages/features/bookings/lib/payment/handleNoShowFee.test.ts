@@ -99,17 +99,9 @@ describe("handleNoShowFee", () => {
     userId: 1,
     teamId: null,
     appId: "stripepayment",
-    invalid: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
     app: {
-      keys: { test: "key" },
       slug: "stripepayment",
-      createdAt: new Date(),
-      updatedAt: new Date(),
       dirName: "stripepayment",
-      categories: ["payment"],
-      enabled: true,
     },
   };
 

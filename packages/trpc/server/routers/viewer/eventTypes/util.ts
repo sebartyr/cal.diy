@@ -14,7 +14,9 @@ import type { TUpdateInputSchema } from "./types";
 
 type PermissionString = string;
 
-type EventType = Awaited<ReturnType<EventTypeRepository["findAllByUpId"]>>[number];
+type EventType =
+  | Awaited<ReturnType<EventTypeRepository["findAllByUpId"]>>[number]
+  | Awaited<ReturnType<EventTypeRepository["findTeamEventTypes"]>>[number];
 
 export const eventOwnerProcedure = authedProcedure
   .input(
@@ -300,28 +302,24 @@ export function ensureEmailOrPhoneNumberIsPresent(fields: TUpdateInputSchema["bo
   }
 }
 
-export const mapEventType = async (eventType: EventType) => ({
-  ...eventType,
-  safeDescription: eventType?.description ? markdownToSafeHTML(eventType.description) : undefined,
-  users: await Promise.all(
-    (eventType?.hosts?.length ? eventType.hosts.map((host) => host.user) : eventType.users).map(async (u) =>
-      new UserRepository(prisma).enrichUserWithItsProfile({
-        user: u,
-      })
-    )
-  ),
-  metadata: eventType.metadata ? EventTypeMetaDataSchema.parse(eventType.metadata) : null,
-  children: await Promise.all(
-    (eventType.children || []).map(async (c) => ({
-      ...c,
-      users: await Promise.all(
-        c.users.map(
-          async (u) =>
-            await new UserRepository(prisma).enrichUserWithItsProfile({
-              user: u,
-            })
-        )
-      ),
-    }))
-  ),
-});
+const getEventTypeUsers = (eventType: EventType) =>
+  eventType?.hosts?.length ? eventType.hosts.map((host) => host.user) : eventType.users;
+
+export const mapEventTypes = async (eventTypes: EventType[]) => {
+  const userIds = eventTypes.flatMap((eventType) => [
+    ...getEventTypeUsers(eventType).map((user) => user.id),
+    ...(eventType.children || []).flatMap((child) => child.users.map((user) => user.id)),
+  ]);
+  const enrichUserWithItsProfile = await new UserRepository(prisma).buildProfileEnricher(userIds);
+
+  return eventTypes.map((eventType) => ({
+    ...eventType,
+    safeDescription: eventType?.description ? markdownToSafeHTML(eventType.description) : undefined,
+    users: getEventTypeUsers(eventType).map(enrichUserWithItsProfile),
+    metadata: eventType.metadata ? EventTypeMetaDataSchema.parse(eventType.metadata) : null,
+    children: (eventType.children || []).map((child) => ({
+      ...child,
+      users: child.users.map(enrichUserWithItsProfile),
+    })),
+  }));
+};

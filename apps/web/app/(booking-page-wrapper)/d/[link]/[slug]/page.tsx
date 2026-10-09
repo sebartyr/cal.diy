@@ -1,18 +1,12 @@
-import { withAppDirSsr } from "app/WithAppDirSsr";
+import { getServerSideProps, type PageProps } from "@lib/d/[link]/[slug]/getServerSideProps";
 import type { PageProps as _PageProps } from "app/_types";
 import { _generateMetadata } from "app/_utils";
-import { cookies, headers } from "next/headers";
-
-import { buildLegacyCtx } from "@lib/buildLegacyCtx";
-import { getServerSideProps } from "@lib/d/[link]/[slug]/getServerSideProps";
-import { type PageProps } from "@lib/d/[link]/[slug]/getServerSideProps";
-
+import { withCachedAppDirSsr } from "app/WithAppDirSsr";
 import Type from "~/d/[link]/d-type-view";
 
 export const generateMetadata = async ({ params, searchParams }: _PageProps) => {
   const _params = await params;
-  const legacyCtx = buildLegacyCtx(await headers(), await cookies(), _params, await searchParams);
-  const pageProps = await getData(legacyCtx);
+  const pageProps = await getData({ params, searchParams });
 
   const { booking, eventData, isBrandingHidden } = pageProps;
   const rescheduleUid = booking?.uid;
@@ -28,10 +22,9 @@ export const generateMetadata = async ({ params, searchParams }: _PageProps) => 
   );
 };
 
-const getData = withAppDirSsr<PageProps>(getServerSideProps);
+const getData = withCachedAppDirSsr<PageProps>(getServerSideProps);
 const ServerPage = async ({ params, searchParams }: _PageProps) => {
-  const legacyCtx = buildLegacyCtx(await headers(), await cookies(), await params, await searchParams);
-  const pageProps = await getData(legacyCtx);
+  const pageProps = await getData({ params, searchParams });
 
   return <Type {...pageProps} />;
 };

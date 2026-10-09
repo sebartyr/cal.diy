@@ -1,18 +1,17 @@
-import { v4 } from "uuid";
-
 import { DailyLocationType, getHumanReadableLocationValue } from "@calcom/app-store/locations";
 import { selectOOOEntries } from "@calcom/app-store/zapier/api/subscriptions/listOOOEntries";
 import dayjs from "@calcom/dayjs";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
 import tasker from "@calcom/features/tasker";
+import { getTranslation } from "@calcom/i18n/server";
 import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { withReporting } from "@calcom/lib/sentryWrapper";
-import { getTranslation } from "@calcom/i18n/server";
 import { prisma } from "@calcom/prisma";
-import type { Prisma, Webhook, Booking, ApiKey } from "@calcom/prisma/client";
+import type { ApiKey, Booking, Prisma, Webhook } from "@calcom/prisma/client";
 import { BookingStatus, WebhookTriggerEvents } from "@calcom/prisma/enums";
 import { bookingMetadataSchema } from "@calcom/prisma/zod-utils";
+import { v4 } from "uuid";
 import { DEFAULT_WEBHOOK_VERSION, type WebhookVersion } from "./interface/IWebhookRepository";
 
 const SCHEDULING_TRIGGER: WebhookTriggerEvents[] = [
@@ -26,6 +25,48 @@ const NO_SHOW_TRIGGERS: WebhookTriggerEvents[] = [
 ];
 
 const log = logger.getSubLogger({ prefix: ["[node-scheduler]"] });
+
+const BULK_WRITE_BATCH_SIZE = 500;
+
+async function scheduleTriggersForBookings({
+  bookings,
+  subscriberUrl,
+  subscriber,
+  triggerEvent,
+}: {
+  bookings: { id: number; endTime: Date; startTime: Date }[];
+  subscriberUrl: string;
+  subscriber: { id: string; appId: string | null };
+  triggerEvent: WebhookTriggerEvents;
+}) {
+  for (let start = 0; start < bookings.length; start += BULK_WRITE_BATCH_SIZE) {
+    const data = bookings.slice(start, start + BULK_WRITE_BATCH_SIZE).map((booking) => ({
+      payload: JSON.stringify({ triggerEvent, ...booking }),
+      appId: subscriber.appId,
+      startAfter: triggerEvent === WebhookTriggerEvents.MEETING_ENDED ? booking.endTime : booking.startTime,
+      subscriberUrl,
+      webhookId: subscriber.id,
+      bookingId: booking.id,
+    }));
+    // Failures are logged and swallowed, like scheduleTrigger, so they never fail the webhook update itself.
+    try {
+      await prisma.webhookScheduledTriggers.createMany({ data });
+    } catch {
+      // One bad row (e.g. a booking deleted since it was read) fails the whole createMany, so the batch is
+      // retried row by row to keep the previous per-booking isolation.
+      for (const row of data) {
+        try {
+          await prisma.webhookScheduledTriggers.create({ data: row });
+        } catch (error) {
+          log.error(
+            `Error scheduling ${triggerEvent} trigger for booking ${row.bookingId} on webhook ${subscriber.id}`,
+            safeStringify(error)
+          );
+        }
+      }
+    }
+  }
+}
 
 export async function addSubscription({
   appApiKey,
@@ -104,17 +145,15 @@ export async function addSubscription({
         };
       });
 
-      for (const booking of bookingsWithCalEventResponses) {
-        scheduleTrigger({
-          booking,
-          subscriberUrl: createSubscription.subscriberUrl,
-          subscriber: {
-            id: createSubscription.id,
-            appId: createSubscription.appId,
-          },
-          triggerEvent,
-        });
-      }
+      await scheduleTriggersForBookings({
+        bookings: bookingsWithCalEventResponses,
+        subscriberUrl: createSubscription.subscriberUrl,
+        subscriber: {
+          id: createSubscription.id,
+          appId: createSubscription.appId,
+        },
+        triggerEvent,
+      });
     }
 
     return createSubscription;
@@ -415,37 +454,16 @@ async function fetchBookingsFromWebhook(
       });
       // checking if teamId is an org id
       if (org) {
-        const teamEvents = await prisma.eventType.findMany({
-          where: {
-            teamId: {
-              in: org.children.map((team) => team.id),
-            },
-          },
-          select: {
-            bookings: {
-              where,
-            },
-          },
-        });
-        const teamEventBookings = teamEvents.flatMap((event) => event.bookings);
-        const teamBookingsId = teamEventBookings.map((booking) => booking.id);
-        const orgMemberIds = org.members.map((member) => member.userId);
+        // org bookings are the bookings of its sub-teams' event types plus the bookings of its members
         where.AND.push({
-          userId: {
-            in: orgMemberIds,
-          },
+          OR: [
+            { eventType: { teamId: { in: org.children.map((team) => team.id) } } },
+            { userId: { in: org.members.map((member) => member.userId) } },
+          ],
         });
-        // don't want to get the team bookings again
-        where.AND.push({
-          id: {
-            notIn: teamBookingsId,
-          },
-        });
-        const userBookings = await prisma.booking.findMany({
+        bookings = await prisma.booking.findMany({
           where,
         });
-        // add teams bookings and users bookings to get total org bookings
-        bookings = teamEventBookings.concat(userBookings);
       } else {
         const teamEvents = await prisma.eventType.findMany({
           where: {
@@ -507,18 +525,18 @@ export async function updateTriggerForExistingBookings(
 
   if (bookings.length === 0) return;
 
-  if (addedEventTriggers.length > 0 || addedNoShowTriggers.length > 0 || removedNoShowTriggers.length > 0) {
+  for (const triggerEvent of addedEventTriggers) {
+    await scheduleTriggersForBookings({
+      bookings,
+      subscriberUrl: webhook.subscriberUrl,
+      subscriber: webhook,
+      triggerEvent,
+    });
+  }
+
+  if (addedNoShowTriggers.length > 0 || removedNoShowTriggers.length > 0) {
     const allPromises = bookings.flatMap((booking) => {
       return [
-        ...addedEventTriggers.map(async (triggerEvent) => {
-          if (NO_SHOW_TRIGGERS.includes(triggerEvent)) return;
-          await scheduleTrigger({
-            booking,
-            subscriberUrl: webhook.subscriberUrl,
-            subscriber: webhook,
-            triggerEvent,
-          });
-        }),
         ...addedNoShowTriggers.map(async (triggerEvent) => {
           await scheduleNoShowTaskForBooking(booking, webhook, triggerEvent);
         }),
@@ -622,15 +640,14 @@ export async function cancelNoShowTasksForBooking({
 
     if (bookings.length === 0) return;
 
-    const promises = bookings.map(async (booking) => {
-      return await prisma.task.deleteMany({
+    const bookingUids = bookings.map((booking) => booking.uid);
+    for (let start = 0; start < bookingUids.length; start += BULK_WRITE_BATCH_SIZE) {
+      await prisma.task.deleteMany({
         where: {
-          referenceUid: booking.uid,
+          referenceUid: { in: bookingUids.slice(start, start + BULK_WRITE_BATCH_SIZE) },
         },
       });
-    });
-
-    await Promise.all(promises);
+    }
   }
 }
 

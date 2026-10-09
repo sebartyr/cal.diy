@@ -1,7 +1,6 @@
 import { getDefaultEvent } from "@calcom/features/eventtypes/lib/defaultEvents";
 import { HttpError } from "@calcom/lib/http-error";
 import { withReporting } from "@calcom/lib/sentryWrapper";
-
 import { getBookingFieldsWithSystemFields } from "../getBookingFields";
 import { getEventTypesFromDB } from "./getEventTypesFromDB";
 
@@ -16,15 +15,17 @@ const _getEventType = async ({
     throw new HttpError({ statusCode: 400, message: "Either eventTypeId or eventTypeSlug must be provided" });
   }
 
-  // handle dynamic user
-  const eventType =
-    !eventTypeId && !!eventTypeSlug ? getDefaultEvent(eventTypeSlug) : await getEventTypesFromDB(eventTypeId);
+  // getEventTypesFromDB already returns bookingFields with system fields, only the dynamic event needs them added
+  if (eventTypeId || !eventTypeSlug) {
+    return getEventTypesFromDB(eventTypeId);
+  }
 
-  const isOrgTeamEvent = !!eventType?.team && !!eventType?.team?.parentId;
+  // A dynamic event never has a team, so it is never an org team event
+  const eventType = getDefaultEvent(eventTypeSlug);
 
   return {
     ...eventType,
-    bookingFields: getBookingFieldsWithSystemFields({ ...eventType, isOrgTeamEvent }),
+    bookingFields: getBookingFieldsWithSystemFields({ ...eventType, isOrgTeamEvent: false }),
   };
 };
 

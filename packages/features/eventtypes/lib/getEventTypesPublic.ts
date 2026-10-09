@@ -10,13 +10,10 @@ const log = logger.getSubLogger({ prefix: ["getEventTypesPublic"] });
 export type EventTypesPublic = Awaited<ReturnType<typeof getEventTypesPublic>>;
 
 export async function getEventTypesPublic(userId: number) {
-  const eventTypesWithHidden = await getEventTypesWithHiddenFromDB(userId);
+  const eventTypes = await getVisibleEventTypesFromDB(userId);
 
-  const eventTypesRaw = eventTypesWithHidden.filter((evt) => !evt.hidden);
-
-  return eventTypesRaw.map((eventType) => ({
+  return eventTypes.map((eventType) => ({
     ...eventType,
-    metadata: EventTypeMetaDataSchema.parse(eventType.metadata || {}),
     descriptionAsSafeHTML: markdownToSafeHTML(eventType.description),
   }));
 }
@@ -29,7 +26,7 @@ type RawEventType = BaseEventType & {
   metadata: Record<string, any> | null;
 };
 
-const getEventTypesWithHiddenFromDB = async (userId: number) => {
+const getVisibleEventTypesFromDB = async (userId: number) => {
   const eventTypes = await prisma.$queryRaw<RawEventType[]>`
     SELECT data."id", data."title", data."description", data."length", data."schedulingType"::text,
       data."recurringEvent", data."slug", data."hidden", data."price", data."currency",
@@ -45,6 +42,7 @@ const getEventTypesWithHiddenFromDB = async (userId: number) => {
           "EventType"."canSendCalVideoTranscriptionEmails", "EventType"."seatsPerTimeSlot"
         FROM "EventType"
         WHERE "EventType"."teamId" IS NULL AND "EventType"."userId" = ${userId}
+        AND "EventType"."hidden" = false
         UNION
         SELECT "EventType"."id", "EventType"."title", "EventType"."description",
         "EventType"."position", "EventType"."length", "EventType"."schedulingType"::text,
@@ -56,10 +54,10 @@ const getEventTypesWithHiddenFromDB = async (userId: number) => {
         FROM "EventType"
         WHERE "EventType"."teamId" IS NULL
         AND "EventType"."userId" IS NOT NULL
+        AND "EventType"."hidden" = false
         AND "EventType"."id" IN (
           SELECT "uet1"."A" FROM "_user_eventtype" AS "uet1"
-          INNER JOIN "users" AS "u1" ON "u1"."id" = "uet1"."B"
-          WHERE "u1"."id" = ${userId} AND "uet1"."A" IS NOT NULL
+          WHERE "uet1"."B" = ${userId} AND "uet1"."A" IS NOT NULL
       )
     ) data
     ORDER BY data."position" DESC, data."id" ASC`;
@@ -74,7 +72,7 @@ const getEventTypesWithHiddenFromDB = async (userId: number) => {
     }
     eventTypes.push({
       ...eventType,
-      metadata: parsedMetadata.data,
+      metadata: parsedMetadata.data ?? {},
     });
     return eventTypes;
   }, []);

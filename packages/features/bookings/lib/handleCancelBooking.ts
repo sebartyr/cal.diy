@@ -207,9 +207,7 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
 
   // If the booking is a seated event and there is no seatReferenceUid we should validate that logged in user is host
   if (bookingToDelete.eventType?.seatsPerTimeSlot && !seatReferenceUid) {
-    const userIsHost = bookingToDelete.eventType.hosts.find((host) => {
-      if (host.user.id === userId) return true;
-    });
+    const userIsHost = bookingToDelete.eventType.hosts.some((host) => host.userId === userId);
 
     const userIsOwnerOfEventType = bookingToDelete.eventType.owner?.id === userId;
 
@@ -244,9 +242,7 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
 
   const webhooks = await getWebhooks(subscriberOptions);
 
-  const organizer = await userRepository.findByIdOrThrow({
-    id: bookingToDelete.userId,
-  });
+  const organizer = bookingToDelete.user;
 
   const attendeesListPromises = [];
 

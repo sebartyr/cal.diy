@@ -1,6 +1,10 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-
-import { filterBlockedHosts, type HostWithEmail } from "./filter-blocked-hosts.controller";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { isUserBlocked } from "./check-user-blocking";
+import {
+  filterBlockedHosts,
+  getBlockingMapForHostGroups,
+  type HostWithEmail,
+} from "./filter-blocked-hosts.controller";
 
 vi.mock("@calcom/features/di/watchlist/containers/watchlist", () => ({
   getWatchlistFeature: vi.fn(),
@@ -205,5 +209,71 @@ describe("filterBlockedHosts", () => {
 
       expect(mockGlobalBlocking.areBlocked).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("getBlockingMapForHostGroups", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const { getWatchlistFeature } = await import("@calcom/features/di/watchlist/containers/watchlist");
+    vi.mocked(getWatchlistFeature).mockResolvedValue(mockWatchlistFeature as never);
+  });
+
+  test("does not query the watchlist when every group is empty", async () => {
+    const blockingMap = await getBlockingMapForHostGroups([[], []]);
+
+    expect(blockingMap.size).toBe(0);
+    expect(mockGlobalBlocking.areBlocked).not.toHaveBeenCalled();
+  });
+
+  test("queries the watchlist once for overlapping groups, with each host checked once", async () => {
+    const shared = createHost(1, "shared@example.com", false);
+    const fixed = createHost(2, "fixed@example.com", false);
+    const locked = createHost(3, "locked@example.com", true);
+    const blocked = createHost(4, "blocked@example.com", false);
+
+    mockGlobalBlocking.areBlocked.mockResolvedValue(
+      new Map([
+        ["shared@example.com", { isBlocked: false }],
+        ["fixed@example.com", { isBlocked: false }],
+        ["blocked@example.com", { isBlocked: true }],
+      ])
+    );
+
+    const blockingMap = await getBlockingMapForHostGroups([[shared], [fixed, locked], [shared, blocked]]);
+
+    expect(mockGlobalBlocking.areBlocked).toHaveBeenCalledTimes(1);
+    expect(mockGlobalBlocking.areBlocked).toHaveBeenCalledWith([
+      "shared@example.com",
+      "fixed@example.com",
+      "blocked@example.com",
+    ]);
+    expect(isUserBlocked(shared.user.email, blockingMap)).toBe(false);
+    expect(isUserBlocked(fixed.user.email, blockingMap)).toBe(false);
+    expect(isUserBlocked(locked.user.email, blockingMap)).toBe(true);
+    expect(isUserBlocked(blocked.user.email, blockingMap)).toBe(true);
+  });
+
+  test("filters each group the same way as separate filterBlockedHosts calls", async () => {
+    const groups = [
+      [createHost(1, "a@example.com", false), createHost(2, "b@example.com", true)],
+      [createHost(3, "c@example.com", false)],
+      [createHost(1, "a@example.com", false), createHost(4, "d@example.com", false)],
+    ];
+    mockGlobalBlocking.areBlocked.mockImplementation(async (emails: string[]) => {
+      return new Map(emails.map((email) => [email, { isBlocked: email === "d@example.com" }]));
+    });
+
+    const blockingMap = await getBlockingMapForHostGroups(groups, 7);
+    const batched = groups.map((hosts) =>
+      hosts.filter((host) => !isUserBlocked(host.user.email, blockingMap))
+    );
+    const separate = await Promise.all(groups.map((hosts) => filterBlockedHosts(hosts, 7)));
+
+    expect(batched).toEqual(separate.map((result) => result.eligibleHosts));
+    expect(mockOrgBlocking.areBlocked).toHaveBeenCalledWith(
+      ["a@example.com", "c@example.com", "d@example.com"],
+      7
+    );
   });
 });

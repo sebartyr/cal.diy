@@ -7,7 +7,7 @@ import { prisma } from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import type { TrpcSessionUser } from "../../../types";
 import type { TGetEventTypesFromGroupSchema } from "./getByViewer.schema";
-import { mapEventType } from "./util";
+import { mapEventTypes } from "./util";
 
 const log = logger.getSubLogger({ prefix: ["getEventTypesFromGroup"] });
 
@@ -19,8 +19,8 @@ type GetByViewerOptions = {
   input: TGetEventTypesFromGroupSchema;
 };
 
-type EventType = Awaited<ReturnType<EventTypeRepository["findAllByUpId"]>>[number];
-type MappedEventType = Awaited<ReturnType<typeof mapEventType>>;
+type EventType = Parameters<typeof mapEventTypes>[0][number];
+type MappedEventType = Awaited<ReturnType<typeof mapEventTypes>>[number];
 type MappedEventTypeWithHostFlag = MappedEventType & { isCurrentUserHost: boolean };
 
 export const getEventTypesFromGroup = async ({
@@ -55,64 +55,33 @@ export const getEventTypesFromGroup = async ({
       ...(searchQuery ? { title: { contains: searchQuery, mode: "insensitive" as Prisma.QueryMode } } : {}),
     };
 
-    const [nonChildEventTypes, childEventTypes] = await Promise.all([
-      eventTypeRepo.findAllByUpId(
-        {
-          upId: userProfile.upId,
-          userId: ctx.user.id,
+    // A single query keeps the cursor and page size consistent; querying parent and child event types
+    // separately returned up to 2×limit+1 rows per page. AND is required because findAllByUpId spreads
+    // `where` over its own profile OR, which a top-level OR here would overwrite.
+    const userEventTypes = await eventTypeRepo.findAllByUpId(
+      {
+        upId: userProfile.upId,
+        userId: ctx.user.id,
+      },
+      {
+        where: {
+          ...baseQueryConditions,
+          AND: [{ OR: [{ parentId: null }, { parentId: { not: null }, userId: ctx.user.id }] }],
         },
-        {
-          where: {
-            ...baseQueryConditions,
-            parentId: null,
+        orderBy: [
+          {
+            position: "desc",
           },
-          orderBy: [
-            {
-              position: "desc",
-            },
-            {
-              id: "desc",
-            },
-          ],
-          limit,
-          cursor,
-        }
-      ),
-      eventTypeRepo.findAllByUpId(
-        {
-          upId: userProfile.upId,
-          userId: ctx.user.id,
-        },
-        {
-          where: {
-            ...baseQueryConditions,
-            parentId: { not: null },
-            userId: ctx.user.id,
+          {
+            id: "desc",
           },
-          orderBy: [
-            {
-              position: "desc",
-            },
-            {
-              id: "desc",
-            },
-          ],
-          limit,
-          cursor,
-        }
-      ),
-    ]);
-
-    const userEventTypes = [...(nonChildEventTypes ?? []), ...(childEventTypes ?? [])].sort((a, b) => {
-      // First sort by position in descending order
-      if (a.position !== b.position) {
-        return b.position - a.position;
+        ],
+        limit,
+        cursor,
       }
-      // Then by id in descending order
-      return b.id - a.id;
-    });
+    );
 
-    eventTypes.push(...userEventTypes);
+    eventTypes.push(...(userEventTypes ?? []));
   }
 
   if (teamId) {
@@ -150,40 +119,43 @@ export const getEventTypesFromGroup = async ({
     nextCursor = nextItem?.id;
   }
 
-  const mappedEventTypes: MappedEventType[] = await Promise.all(eventTypes.map(mapEventType));
+  const mappedEventTypes: MappedEventType[] = await mapEventTypes(eventTypes);
 
   const eventTypeIds = mappedEventTypes.map((et) => et.id);
-  const userHostEntries = await prisma.host.findMany({
-    where: {
-      userId: ctx.user.id,
-      eventTypeId: { in: eventTypeIds },
-    },
-    select: {
-      eventTypeId: true,
-    },
-  });
+  const [userHostEntries, membership] = await Promise.all([
+    prisma.host.findMany({
+      where: {
+        userId: ctx.user.id,
+        eventTypeId: { in: eventTypeIds },
+      },
+      select: {
+        eventTypeId: true,
+      },
+    }),
+    teamId
+      ? prisma.membership.findFirst({
+          where: {
+            userId: ctx.user.id,
+            teamId,
+            accepted: true,
+            role: "MEMBER",
+          },
+          select: {
+            team: {
+              select: {
+                isPrivate: true,
+              },
+            },
+          },
+        })
+      : null,
+  ]);
   const eventTypeIdsWhereUserIsHost = new Set(userHostEntries.map((h) => h.eventTypeId));
 
   const eventTypesWithHostFlag = mappedEventTypes.map((eventType) => ({
     ...eventType,
     isCurrentUserHost: eventTypeIdsWhereUserIsHost.has(eventType.id),
   }));
-
-  const membership = await prisma.membership.findFirst({
-    where: {
-      userId: ctx.user.id,
-      teamId: teamId ?? 0,
-      accepted: true,
-      role: "MEMBER",
-    },
-    include: {
-      team: {
-        select: {
-          isPrivate: true,
-        },
-      },
-    },
-  });
 
   if (membership && membership.team.isPrivate)
     eventTypesWithHostFlag.forEach((evType) => {

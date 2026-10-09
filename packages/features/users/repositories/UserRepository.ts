@@ -17,7 +17,6 @@ import type { UpId, UserProfile } from "@calcom/types/UserProfile";
 import type { z } from "zod";
 
 const whereClauseForOrgWithSlugOrRequestedSlug = (..._args: unknown[]) => ({});
-const getParsedTeam = <T>(team: T): T => team;
 
 export type { UserWithLegacySelectedCalendars } from "@calcom/lib/server/withSelectedCalendars";
 export { withSelectedCalendars };
@@ -226,15 +225,10 @@ export class UserRepository {
   }) {
     // Lookup in profiles because that's where the organization usernames exist
     const profiles = orgSlug
-      ? (
-          await ProfileRepository.findManyByOrgSlugOrRequestedSlug({
-            orgSlug: orgSlug,
-            usernames: usernameList,
-          })
-        ).map((profile) => ({
-          ...profile,
-          organization: getParsedTeam(profile.organization),
-        }))
+      ? await ProfileRepository.findManyByOrgSlugOrRequestedSlug({
+          orgSlug: orgSlug,
+          usernames: usernameList,
+        })
       : null;
     const where =
       profiles && profiles.length > 0
@@ -533,30 +527,55 @@ export class UserRepository {
     }
   > {
     const profiles = await ProfileRepository.findManyForUser({ id: user.id });
-    if (profiles.length) {
-      const profile = profiles[0];
-      // platform org user doesn't need org profile
-      if (profile?.organization?.isPlatform) {
-        return {
-          ...user,
-          nonProfileUsername: user.username,
-          profile: ProfileRepository.buildPersonalProfileFromUser({ user }),
-        };
-      }
+    return UserRepository.withFirstProfile(user, profiles);
+  }
 
+  /**
+   * Fetches the profiles of all the given users in a single query and returns a synchronous enricher that
+   * behaves like `enrichUserWithItsProfile`. Prefer it over calling `enrichUserWithItsProfile` in a loop,
+   * and over `enrichUsersWithTheirProfiles` when the same user appears in lists of different shapes.
+   */
+  async buildProfileEnricher(userIds: number[]) {
+    const uniqueUserIds = Array.from(new Set(userIds));
+    const profiles = uniqueUserIds.length ? await ProfileRepository.findManyForUsers(uniqueUserIds) : [];
+
+    const profilesByUserId = new Map<number, UserProfile[]>();
+    for (const profile of profiles) {
+      const userProfiles = profilesByUserId.get(profile.userId);
+      if (userProfiles) {
+        userProfiles.push(profile);
+      } else {
+        profilesByUserId.set(profile.userId, [profile]);
+      }
+    }
+
+    return <T extends { id: number; username: string | null }>(user: T) =>
+      UserRepository.withFirstProfile(user, profilesByUserId.get(user.id) ?? []);
+  }
+
+  private static withFirstProfile<T extends { id: number; username: string | null }>(
+    user: T,
+    profiles: UserProfile[]
+  ): T & {
+    nonProfileUsername: string | null;
+    profile: UserProfile;
+  } {
+    const profile = profiles[0];
+    // platform org user doesn't need org profile
+    if (!profile || profile.organization?.isPlatform) {
+      // If no organization profile exists, use the personal profile so that the returned user is normalized to have a profile always
       return {
         ...user,
-        username: profile.username,
         nonProfileUsername: user.username,
-        profile,
+        profile: ProfileRepository.buildPersonalProfileFromUser({ user }),
       };
     }
 
-    // If no organization profile exists, use the personal profile so that the returned user is normalized to have a profile always
     return {
       ...user,
+      username: profile.username,
       nonProfileUsername: user.username,
-      profile: ProfileRepository.buildPersonalProfileFromUser({ user }),
+      profile,
     };
   }
 
@@ -737,15 +756,14 @@ export class UserRepository {
     if ("profile" in entity) {
       const { profile, ...entityWithoutProfile } = entity;
       const { organization, ...profileWithoutOrganization } = profile || {};
-      const parsedOrg = organization ? getParsedTeam(organization) : null;
 
       const ret = {
         ...entityWithoutProfile,
         profile: {
           ...profileWithoutOrganization,
-          ...(parsedOrg
+          ...(organization
             ? {
-                organization: parsedOrg,
+                organization,
               }
             : {
                 organization: null,
@@ -1132,9 +1150,9 @@ export class UserRepository {
           select: {
             team: {
               select: {
-                eventTypes: {
+                _count: {
                   select: {
-                    id: true,
+                    eventTypes: true,
                   },
                 },
               },
@@ -1406,11 +1424,13 @@ export class UserRepository {
     cursor,
     limit,
     ids,
+    withTotal = true,
   }: {
     searchTerm?: string | null;
     cursor: number | null | undefined;
     limit?: number | null;
     ids?: number[];
+    withTotal?: boolean;
   }) {
     const bothLockedAndUnlockedWhere: Prisma.UserWhereInput = {
       OR: [{ locked: false }, { locked: true }],
@@ -1471,9 +1491,9 @@ export class UserRepository {
       return { users, nextCursor: undefined, total: users.length };
     }
 
-    const total = await this.prismaClient.user.count({
-      where: searchFilters,
-    });
+    // The count repeats the case-insensitive search on every page, so callers that only need the
+    // cursor can skip it.
+    const total = withTotal ? await this.prismaClient.user.count({ where: searchFilters }) : undefined;
     const hasMore = users.length > limit;
     const items = hasMore ? users.slice(0, limit) : users;
     const nextCursor = hasMore ? items[items.length - 1].id : undefined;

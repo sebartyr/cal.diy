@@ -1,5 +1,3 @@
-import type { GetServerSideProps, GetServerSidePropsContext } from "next";
-
 import logger from "@calcom/lib/logger";
 import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
 import { stripMarkdown } from "@calcom/lib/stripMarkdown";
@@ -7,12 +5,13 @@ import { prisma } from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import { SchedulingType } from "@calcom/prisma/enums";
 import { teamMetadataSchema } from "@calcom/prisma/zod-utils";
+import type { GetServerSideProps, GetServerSidePropsContext } from "next";
 
 const log = logger.getSubLogger({ prefix: ["team/[slug]"] });
 
 function pickString(value: string | string[] | undefined): string | null {
   if (!value) return null;
-  return Array.isArray(value) ? value[value.length - 1] ?? null : value;
+  return Array.isArray(value) ? (value[value.length - 1] ?? null) : value;
 }
 
 const publicTeamSelect = {
@@ -61,7 +60,7 @@ export type TeamPagePublicProps = {
     safeBio: string;
     markdownStrippedBio: string;
   };
-  members: { id: number; name: string | null; username: string | null; avatarUrl: string | null }[];
+  memberCount: number;
   considerUnpublished: boolean;
   themeBasis: string | null;
   isSEOIndexable: boolean;
@@ -87,20 +86,14 @@ export const getTeamServerSideProps: GetServerSideProps<TeamPagePublicProps> = a
     const safeBio = (await markdownToSafeHTML(team.bio)) || "";
     const markdownStrippedBio = stripMarkdown(team.bio ?? "");
 
-    // Only fetch members when the team is not private — avoids leaking the
-    // list via __NEXT_DATA__ for private teams.
-    const memberUsers = team.isPrivate
-      ? []
-      : (
-          await prisma.membership.findMany({
-            where: { teamId: team.id, accepted: true },
-            select: { user: { select: { id: true, name: true, username: true, avatarUrl: true } } },
-          })
-        ).map((m) => m.user);
+    // The page only shows how many members the team has, and private teams must not reveal it.
+    const memberCount = team.isPrivate
+      ? 0
+      : await prisma.membership.count({ where: { teamId: team.id, accepted: true } });
 
     const props: TeamPagePublicProps = {
       team: { ...team, safeBio, markdownStrippedBio },
-      members: memberUsers,
+      memberCount,
       considerUnpublished: false,
       themeBasis: team.slug,
       isSEOIndexable: true,
@@ -117,7 +110,7 @@ export const getTeamServerSideProps: GetServerSideProps<TeamPagePublicProps> = a
   if (!unpublishedTeam) return { notFound: true } as const;
 
   const parsedMetadata = teamMetadataSchema.safeParse(unpublishedTeam.metadata);
-  const requestedSlug = parsedMetadata.success ? parsedMetadata.data?.requestedSlug ?? null : null;
+  const requestedSlug = parsedMetadata.success ? (parsedMetadata.data?.requestedSlug ?? null) : null;
 
   const props: TeamPagePublicProps = {
     team: {
@@ -126,10 +119,10 @@ export const getTeamServerSideProps: GetServerSideProps<TeamPagePublicProps> = a
       safeBio: "",
       markdownStrippedBio: "",
     },
-    members: [],
+    memberCount: 0,
     considerUnpublished: true,
     themeBasis: unpublishedTeam.slug,
     isSEOIndexable: false,
   };
   return { props } as const;
-}
+};

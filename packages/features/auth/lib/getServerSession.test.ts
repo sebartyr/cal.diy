@@ -99,6 +99,7 @@ describe("getServerSession", () => {
       const result = await getServerSession({ req: createMockRequest() });
 
       expect(result).toMatchObject({
+        hasValidLicense: true,
         user: {
           id: mockUser.id,
           email: mockUser.email,

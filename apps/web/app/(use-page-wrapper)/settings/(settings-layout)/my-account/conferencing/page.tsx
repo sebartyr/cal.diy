@@ -3,7 +3,7 @@ import { appsRouter } from "@calcom/trpc/server/routers/viewer/apps/_router";
 import { eventTypesRouter } from "@calcom/trpc/server/routers/viewer/eventTypes/_router";
 import { ConferencingAppsViewWebWrapper } from "@calcom/web/modules/apps/components/ConferencingAppsViewWebWrapper";
 import { buildLegacyRequest } from "@lib/buildLegacyCtx";
-import { createRouterCaller } from "app/_trpc/context";
+import { createRouterCaller, getTRPCContext } from "app/_trpc/context";
 import { _generateMetadata } from "app/_utils";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -23,9 +23,10 @@ const Page = async () => {
     redirect("/auth/login?callbackUrl=/settings/my-account/conferencing");
   }
 
+  const trpcContext = await getTRPCContext();
   const [appsCaller, eventTypesCaller] = await Promise.all([
-    createRouterCaller(appsRouter),
-    createRouterCaller(eventTypesRouter),
+    createRouterCaller(appsRouter, trpcContext),
+    createRouterCaller(eventTypesRouter, trpcContext),
   ]);
 
   const [integrations, defaultConferencingApp, eventTypesQueryData] = await Promise.all([

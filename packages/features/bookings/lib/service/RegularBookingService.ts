@@ -44,7 +44,7 @@ import { handleAnalyticsEvents } from "@calcom/features/tasker/tasks/analytics/h
 import type { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { UsersRepository } from "@calcom/features/users/users.repository";
 import type { GetSubscriberOptions } from "@calcom/features/webhooks/lib/getWebhooks";
-import getWebhooks from "@calcom/features/webhooks/lib/getWebhooks";
+import { getWebhooksForTriggers } from "@calcom/features/webhooks/lib/getWebhooks";
 import type { IWebhookProducerService } from "@calcom/features/webhooks/lib/interface/WebhookProducerService";
 import {
   cancelNoShowTasksForBooking,
@@ -108,11 +108,11 @@ import { scheduleNoShowTriggers } from "../handleNewBooking/scheduleNoShowTrigge
 import type { IEventTypePaymentCredentialType, Invitee, IsFixedAwareUser } from "../handleNewBooking/types";
 import { validateBookingTimeIsNotOutOfBounds } from "../handleNewBooking/validateBookingTimeIsNotOutOfBounds";
 import { validateEventLength } from "../handleNewBooking/validateEventLength";
+import { validateRescheduleRestrictions } from "../handleNewBooking/validateRescheduleRestrictions";
 import handleSeats from "../handleSeats/handleSeats";
 import type { IBookingService } from "../interfaces/IBookingService";
 import type { BookingEventHandlerService } from "../onBookingEvents/BookingEventHandlerService";
 import type { BookingRescheduledPayload } from "../onBookingEvents/types";
-import { isWithinMinimumRescheduleNotice } from "../reschedule/isWithinMinimumRescheduleNotice";
 
 const translator = short();
 
@@ -432,57 +432,6 @@ export interface IBookingServiceDependencies {
   webhookProducer: IWebhookProducerService;
 }
 
-async function validateRescheduleRestrictions({
-  rescheduleUid,
-  userId,
-  eventType,
-}: {
-  rescheduleUid: string | null | undefined;
-  userId: number | null;
-  eventType: { seatsPerTimeSlot: number | null; minimumRescheduleNotice: number | null } | null;
-}): Promise<void> {
-  if (!rescheduleUid || !eventType) {
-    return; // Not a reschedule, skip validation
-  }
-
-  const bookingSeat = rescheduleUid ? await getSeatedBooking(rescheduleUid) : null;
-  const actualRescheduleUid = bookingSeat ? bookingSeat.booking.uid : rescheduleUid;
-
-  if (!actualRescheduleUid) {
-    return; // No valid reschedule UID
-  }
-
-  try {
-    const originalRescheduledBooking = await getOriginalRescheduledBooking(
-      actualRescheduleUid,
-      !!eventType.seatsPerTimeSlot
-    );
-
-    // Check if user is the organizer
-    const isUserOrganizer =
-      userId && originalRescheduledBooking.userId && userId === originalRescheduledBooking.userId;
-
-    // Check minimum reschedule notice (only for non-organizers)
-    const { minimumRescheduleNotice } = originalRescheduledBooking.eventType || {};
-    if (
-      !isUserOrganizer &&
-      isWithinMinimumRescheduleNotice(originalRescheduledBooking.startTime, minimumRescheduleNotice ?? null)
-    ) {
-      throw new HttpError({
-        statusCode: 403,
-        message: "Rescheduling is not allowed within the minimum notice period before the event",
-      });
-    }
-  } catch (error) {
-    // Re-throw HttpError (including our 403 validation error)
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    // For other errors (like booking not found), let the service handle it later
-    // We don't want to fail early validation for these cases
-  }
-}
-
 async function handler(
   this: RegularBookingService,
   input: BookingHandlerInput,
@@ -526,7 +475,7 @@ async function handler(
   });
 
   // Early validation: Check reschedule restrictions if rescheduling
-  await validateRescheduleRestrictions({
+  const rescheduleLookup = await validateRescheduleRestrictions({
     rescheduleUid: rawBookingData.rescheduleUid,
     userId: userId ?? null,
     eventType: eventType
@@ -650,14 +599,23 @@ async function handler(
     });
   }
 
-  const bookingSeat = reqBody.rescheduleUid ? await getSeatedBooking(reqBody.rescheduleUid) : null;
+  // Reuse the lookups done by the early validation instead of querying the same rows again
+  const reusableRescheduleLookup =
+    rescheduleLookup && rescheduleLookup.rescheduleUid === reqBody.rescheduleUid ? rescheduleLookup : null;
+  const bookingSeat = reusableRescheduleLookup
+    ? reusableRescheduleLookup.bookingSeat
+    : reqBody.rescheduleUid
+      ? await getSeatedBooking(reqBody.rescheduleUid)
+      : null;
   const rescheduleUid = bookingSeat ? bookingSeat.booking.uid : reqBody.rescheduleUid;
   const isNormalBookingOrFirstRecurringSlot = input.bookingData.allRecurringDates
     ? !!input.bookingData.isFirstRecurringSlot
     : true;
 
+  // When the early validation swallowed an error, query again so it surfaces here as before
   let originalRescheduledBooking = rescheduleUid
-    ? await getOriginalRescheduledBooking(rescheduleUid, !!eventType.seatsPerTimeSlot)
+    ? (reusableRescheduleLookup?.originalRescheduledBooking ??
+      (await getOriginalRescheduledBooking(rescheduleUid, !!eventType.seatsPerTimeSlot)))
     : null;
 
   const paymentAppData = getPaymentAppData({
@@ -1309,16 +1267,20 @@ async function handler(
   });
   // For bookings made before introducing iCalSequence, assume that the sequence should start at 1. For new bookings start at 0.
   const iCalSequence = getICalSequence(originalRescheduledBooking);
-  const organizerOrganizationProfile = await deps.prismaClient.profile.findFirst({
-    where: {
-      userId: organizerUser.id,
-    },
-    select: {
-      organizationId: true,
-      username: true,
-      organization: { select: { hideBranding: true } },
-    },
-  });
+  // For personal events the organizer is the owner, whose first profile is already loaded with the event type
+  const organizerOrganizationProfile =
+    eventType.owner?.id === organizerUser.id
+      ? (eventType.owner.profiles[0] ?? null)
+      : await deps.prismaClient.profile.findFirst({
+          where: {
+            userId: organizerUser.id,
+          },
+          select: {
+            organizationId: true,
+            username: true,
+            organization: { select: { hideBranding: true } },
+          },
+        });
 
   const organizerOrganizationId = organizerOrganizationProfile?.organizationId;
   const bookerUrl = process.env.NEXT_PUBLIC_WEBAPP_URL || "https://app.cal.com";
@@ -1472,24 +1434,6 @@ async function handler(
     : WebhookTriggerEvents.BOOKING_CREATED;
 
   subscriberOptions.triggerEvent = eventTrigger;
-
-  const subscriberOptionsMeetingEnded = {
-    userId: organizerUser.id,
-    eventTypeId,
-    triggerEvent: WebhookTriggerEvents.MEETING_ENDED,
-    teamId: null,
-    orgId: null,
-    oAuthClientId: platformClientId,
-  };
-
-  const subscriberOptionsMeetingStarted = {
-    userId: organizerUser.id,
-    eventTypeId,
-    triggerEvent: WebhookTriggerEvents.MEETING_STARTED,
-    teamId: null,
-    orgId: null,
-    oAuthClientId: platformClientId,
-  };
 
   const spamCheckResult = await spamCheckService.waitForCheck();
 
@@ -2363,8 +2307,13 @@ async function handler(
 
   // We are here so, booking doesn't require payment and booking is also created in DB already, through createBooking call
   if (isConfirmedByDefault) {
-    const subscribersMeetingEnded = await getWebhooks(subscriberOptionsMeetingEnded);
-    const subscribersMeetingStarted = await getWebhooks(subscriberOptionsMeetingStarted);
+    const subscribersByTrigger = await getWebhooksForTriggers(subscriberOptions, [
+      WebhookTriggerEvents.MEETING_ENDED,
+      WebhookTriggerEvents.MEETING_STARTED,
+      eventTrigger,
+    ]);
+    const subscribersMeetingEnded = subscribersByTrigger[WebhookTriggerEvents.MEETING_ENDED];
+    const subscribersMeetingStarted = subscribersByTrigger[WebhookTriggerEvents.MEETING_STARTED];
 
     const deleteWebhookScheduledTriggerPromises: Promise<unknown>[] = [];
     const scheduleTriggerPromises = [];
@@ -2436,6 +2385,7 @@ async function handler(
       webhookData,
       isDryRun,
       traceContext,
+      subscribers: subscribersByTrigger[eventTrigger],
     });
   }
 

@@ -1,15 +1,32 @@
 import { recordAdminAction, recordAdminDenial } from "@calcom/features/audit-log/adminAuditLog";
 import { getSystemAdminDenialReason } from "@calcom/features/auth/lib/systemAdminPolicy";
+import type { SessionContext } from "@calcom/features/auth/lib/userFromSessionUtils";
 import { getUserSession } from "@calcom/features/auth/lib/userFromSessionUtils";
 import logger from "@calcom/lib/logger";
 import { setUser as SentrySetUser } from "@sentry/nextjs";
 import { TRPCError } from "@trpc/server";
 import { middleware } from "../trpc";
 
+// A batched tRPC request runs isAuthed once per procedure with the same req: share a single user
+// load across them. The promise itself is cached so a failure is rethrown identically to each one.
+const userSessionByRequest = new WeakMap<object, ReturnType<typeof getUserSession>>();
+
+export function getUserSessionForRequest(ctx: SessionContext): ReturnType<typeof getUserSession> {
+  const { req } = ctx;
+  if (!req) return getUserSession(ctx);
+
+  const cached = userSessionByRequest.get(req);
+  if (cached) return cached;
+
+  const pending = getUserSession(ctx);
+  userSessionByRequest.set(req, pending);
+  return pending;
+}
+
 export const isAuthed = middleware(async ({ ctx, next }) => {
   const middlewareStart = performance.now();
 
-  const { user, session } = await getUserSession(ctx);
+  const { user, session } = await getUserSessionForRequest(ctx);
 
   const middlewareEnd = performance.now();
   logger.debug("Perf:t.isAuthed", middlewareEnd - middlewareStart);

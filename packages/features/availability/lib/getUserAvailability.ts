@@ -9,6 +9,7 @@ import {
 import { getBusyTimesService } from "@calcom/features/di/containers/BusyTimes";
 import type { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import type { PrismaHolidayRepository } from "@calcom/features/holidays/repositories/PrismaHolidayRepository";
+import { getOOOLookupStartDate } from "@calcom/features/ooo/lib/getOOOLookupStartDate";
 import type { PrismaOOORepository } from "@calcom/features/ooo/repositories/PrismaOOORepository";
 import type { IRedisService } from "@calcom/features/redis/IRedisService";
 import type { DateOverride, WorkingHours } from "@calcom/features/schedules/lib/date-ranges";
@@ -467,7 +468,7 @@ export class UserAvailabilityService {
       initialData?.outOfOfficeDays ??
       (await this.dependencies.oooRepo.findUserOOODays({
         userId: user.id,
-        dateFrom: dateFrom.toISOString(),
+        dateFrom: getOOOLookupStartDate(dateFrom.toDate()).toISOString(),
         dateTo: dateTo.toISOString(),
       }));
 

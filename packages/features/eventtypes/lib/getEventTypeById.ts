@@ -1,4 +1,6 @@
 //import "server-only";
+
+import process from "node:process";
 import type { LocationObject } from "@calcom/app-store/locations";
 import { getLocationGroupedOptions } from "@calcom/app-store/server";
 import { getEventTypeAppData } from "@calcom/app-store/utils";
@@ -6,13 +8,13 @@ import { eventTypeMetaDataSchemaWithTypedApps } from "@calcom/app-store/zod-util
 import { getBookingFieldsWithSystemFields } from "@calcom/features/bookings/lib/getBookingFields";
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
+import { getTranslation } from "@calcom/i18n/server";
 import { WEBSITE_URL } from "@calcom/lib/constants";
 import { getUserAvatarUrl } from "@calcom/lib/getAvatarUrl";
 import { parseBookingLimit } from "@calcom/lib/intervalLimits/isBookingLimits";
 import { parseDurationLimit } from "@calcom/lib/intervalLimits/isDurationLimits";
 import { parseEventTypeColor } from "@calcom/lib/isEventTypeColor";
 import { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
-import { getTranslation } from "@calcom/i18n/server";
 import type { PrismaClient } from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import { MembershipRole, SchedulingType } from "@calcom/prisma/enums";
@@ -77,35 +79,27 @@ export const getEventTypeById = async ({
   const apps = newMetadata?.apps || {};
   const eventTypeWithParsedMetadata = { ...rawEventType, metadata: newMetadata };
   const userRepo = new UserRepository(prisma);
-  const eventTeamMembershipsWithUserProfile = [];
-  for (const eventTeamMembership of rawEventType.team?.members || []) {
-    eventTeamMembershipsWithUserProfile.push({
-      ...eventTeamMembership,
-      user: await userRepo.enrichUserWithItsProfile({
-        user: eventTeamMembership.user,
-      }),
-    });
-  }
+  const rawTeamMembers = rawEventType.team?.members || [];
+  const enrichUserWithItsProfile = await userRepo.buildProfileEnricher([
+    ...rawTeamMembers.map((member) => member.user.id),
+    ...(rawEventType.children || []).flatMap((child) => (child.owner ? [child.owner.id] : [])),
+    ...rawEventType.users.map((user) => user.id),
+  ]);
 
-  const childrenWithUserProfile = [];
-  for (const child of rawEventType.children || []) {
-    childrenWithUserProfile.push({
-      ...child,
-      owner: child.owner
-        ? await userRepo.enrichUserWithItsProfile({
-            user: child.owner,
-          })
-        : null,
-    });
-  }
+  const eventTeamMembershipsWithUserProfile = rawTeamMembers.map((eventTeamMembership) => ({
+    ...eventTeamMembership,
+    user: enrichUserWithItsProfile(eventTeamMembership.user),
+  }));
 
-  const eventTypeUsersWithUserProfile = [];
-  for (const eventTypeUser of rawEventType.users) {
-    eventTypeUsersWithUserProfile.push(
-      await userRepo.enrichUserWithItsProfile({
-        user: eventTypeUser,
-      })
-    );
+  const childrenWithUserProfile = (rawEventType.children || []).map((child) => ({
+    ...child,
+    owner: child.owner ? enrichUserWithItsProfile(child.owner) : null,
+  }));
+
+  const eventTypeUsersWithUserProfile = rawEventType.users.map(enrichUserWithItsProfile);
+  const membershipRoleByUserId = new Map<number, MembershipRole>();
+  for (const member of rawTeamMembers) {
+    if (!membershipRoleByUserId.has(member.user.id)) membershipRoleByUserId.set(member.user.id, member.role);
   }
 
   newMetadata.apps = {
@@ -151,9 +145,7 @@ export const getEventTypeById = async ({
               email: ch.owner.email,
               name: ch.owner.name ?? "",
               username: ch.owner.username ?? "",
-              membership:
-                restEventType.team?.members.find((tm) => tm.user.id === ch.owner?.id)?.role ||
-                MembershipRole.MEMBER,
+              membership: membershipRoleByUserId.get(ch.owner.id) || MembershipRole.MEMBER,
             },
             created: true,
           }

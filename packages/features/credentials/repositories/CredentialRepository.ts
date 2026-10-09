@@ -42,6 +42,14 @@ export class CredentialRepository {
     });
   }
 
+  async findManyForCalendarServiceByIds({ ids }: { ids: number[] }) {
+    if (ids.length === 0) return [];
+    return this.prismaClient.credential.findMany({
+      where: { id: { in: ids } },
+      select: credentialForCalendarServiceSelect,
+    });
+  }
+
   async findByIdWithDelegationCredential(id: number) {
     return this.prismaClient.credential.findUnique({
       where: { id },
@@ -230,8 +238,15 @@ export class CredentialRepository {
         ...idToSearchObject,
         appId,
       },
-      include: {
-        app: true,
+      // key is read by the payment service to charge the card
+      select: {
+        id: true,
+        type: true,
+        key: true,
+        appId: true,
+        userId: true,
+        teamId: true,
+        app: { select: { slug: true, dirName: true } },
       },
     });
   }

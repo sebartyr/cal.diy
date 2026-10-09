@@ -229,4 +229,82 @@ describe("AvailableSlotsService - _getBusyTimesFromLimitsForUsers", () => {
       expect(result.get(31) ?? []).toHaveLength(0);
     });
   });
+
+  describe("yearly booking limit memoization", () => {
+    const users = [
+      { id: 29, email: "user29@example.com" },
+      { id: 31, email: "user31@example.com" },
+      { id: 33, email: "user33@example.com" },
+    ];
+    const eventType = { id: 52, length: 30 };
+    const dateFrom = dayjs("2026-01-01");
+    const dateTo = dayjs("2026-12-31");
+    const timeZone = "UTC";
+    const bookingLimits: IntervalLimit = { PER_YEAR: 5 };
+
+    const callService = (rescheduleUid?: string) =>
+      (
+        service as unknown as { _getBusyTimesFromLimitsForUsers: BusyTimesFromLimitsForUsers }
+      )._getBusyTimesFromLimitsForUsers(
+        users,
+        bookingLimits,
+        null,
+        dateFrom,
+        dateTo,
+        30,
+        eventType,
+        timeZone,
+        rescheduleUid
+      );
+
+    it("checks the yearly booking limit once per year instead of once per user", async () => {
+      mockDependencies.checkBookingLimitsService.checkBookingLimit.mockResolvedValue(undefined);
+
+      const result = await callService("reschedule-uid");
+
+      expect(mockDependencies.checkBookingLimitsService.checkBookingLimit).toHaveBeenCalledTimes(1);
+      expect(mockDependencies.checkBookingLimitsService.checkBookingLimit).toHaveBeenCalledWith({
+        eventStartDate: dayjs("2026-01-01").toDate(),
+        limitingNumber: 5,
+        eventId: 52,
+        key: "PER_YEAR",
+        user: users[0],
+        rescheduleUid: "reschedule-uid",
+        timeZone,
+      });
+      for (const user of users) {
+        expect(result.get(user.id) ?? []).toHaveLength(0);
+      }
+    });
+
+    it("marks every user busy for the year when the yearly booking limit is reached", async () => {
+      mockDependencies.checkBookingLimitsService.checkBookingLimit.mockRejectedValue(
+        new Error("booking_limit_reached")
+      );
+
+      const result = await callService();
+
+      expect(mockDependencies.checkBookingLimitsService.checkBookingLimit).toHaveBeenCalledTimes(1);
+      for (const user of users) {
+        expect(result.get(user.id)).toHaveLength(1);
+      }
+    });
+
+    it("checks each year separately when the range spans several years", async () => {
+      mockDependencies.userAvailabilityService.getPeriodStartDatesBetween.mockReturnValue([
+        dayjs("2025-01-01"),
+        dayjs("2026-01-01"),
+      ]);
+      mockDependencies.checkBookingLimitsService.checkBookingLimit
+        .mockRejectedValueOnce(new Error("booking_limit_reached"))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await callService();
+
+      expect(mockDependencies.checkBookingLimitsService.checkBookingLimit).toHaveBeenCalledTimes(2);
+      for (const user of users) {
+        expect(result.get(user.id)).toHaveLength(1);
+      }
+    });
+  });
 });
