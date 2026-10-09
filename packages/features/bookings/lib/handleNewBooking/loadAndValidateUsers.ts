@@ -52,6 +52,7 @@ type EventType = Pick<
   | "teamId"
   | "includeNoShowInRRCalculation"
   | "rrHostSubsetEnabled"
+  | "owner"
 >;
 
 type InputProps = {
@@ -135,7 +136,11 @@ const _loadAndValidateUsers = async ({
   // Fallback: For personal events, use the user's first org membership for org-specific blocking
   // TODO: When we support multiple orgs, revisit the logic
   if (!organizationId && eventType.userId) {
-    organizationId = await ProfileRepository.findFirstOrganizationIdForUser({ userId: eventType.userId });
+    // The owner relation is the eventType.userId user and is loaded with its first profile, so reuse it
+    organizationId =
+      eventType.owner?.id === eventType.userId
+        ? (eventType.owner.profiles[0]?.organizationId ?? null)
+        : await ProfileRepository.findFirstOrganizationIdForUser({ userId: eventType.userId });
   }
 
   const { eligibleUsers, blockedCount } = await filterBlockedUsers(users, organizationId, sentrySpan);

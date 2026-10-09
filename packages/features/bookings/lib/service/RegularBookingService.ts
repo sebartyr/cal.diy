@@ -1267,16 +1267,20 @@ async function handler(
   });
   // For bookings made before introducing iCalSequence, assume that the sequence should start at 1. For new bookings start at 0.
   const iCalSequence = getICalSequence(originalRescheduledBooking);
-  const organizerOrganizationProfile = await deps.prismaClient.profile.findFirst({
-    where: {
-      userId: organizerUser.id,
-    },
-    select: {
-      organizationId: true,
-      username: true,
-      organization: { select: { hideBranding: true } },
-    },
-  });
+  // For personal events the organizer is the owner, whose first profile is already loaded with the event type
+  const organizerOrganizationProfile =
+    eventType.owner?.id === organizerUser.id
+      ? (eventType.owner.profiles[0] ?? null)
+      : await deps.prismaClient.profile.findFirst({
+          where: {
+            userId: organizerUser.id,
+          },
+          select: {
+            organizationId: true,
+            username: true,
+            organization: { select: { hideBranding: true } },
+          },
+        });
 
   const organizerOrganizationId = organizerOrganizationProfile?.organizationId;
   const bookerUrl = process.env.NEXT_PUBLIC_WEBAPP_URL || "https://app.cal.com";
