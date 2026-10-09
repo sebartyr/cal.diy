@@ -328,8 +328,15 @@ export class CredentialRepository {
         ...idToSearchObject,
         appId,
       },
-      include: {
-        app: true,
+      // key is read by the payment service to charge the card
+      select: {
+        id: true,
+        type: true,
+        key: true,
+        appId: true,
+        userId: true,
+        teamId: true,
+        app: { select: { slug: true, dirName: true } },
       },
     });
   }

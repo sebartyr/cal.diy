@@ -70,7 +70,7 @@ export type SeatedBooking = Prisma.BookingGetPayload<{
     userId: true;
     references: true;
     startTime: true;
-    user: true;
+    user: { select: { id: true; email: true; name: true; timeZone: true; username: true } };
     status: true;
     smsReminderNumber: true;
     endTime: true;

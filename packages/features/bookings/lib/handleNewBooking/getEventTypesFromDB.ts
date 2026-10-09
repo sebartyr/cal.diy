@@ -114,6 +114,7 @@ const getEventTypesFromDBSelect = {
       profiles: {
         select: {
           organizationId: true,
+          username: true,
           organization: { select: { hideBranding: true } },
         },
         take: 1,
