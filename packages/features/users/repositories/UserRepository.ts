@@ -1651,11 +1651,13 @@ export class UserRepository {
     cursor,
     limit,
     ids,
+    withTotal = true,
   }: {
     searchTerm?: string | null;
     cursor: number | null | undefined;
     limit?: number | null;
     ids?: number[];
+    withTotal?: boolean;
   }) {
     const bothLockedAndUnlockedWhere: Prisma.UserWhereInput = {
       OR: [{ locked: false }, { locked: true }],
@@ -1716,9 +1718,9 @@ export class UserRepository {
       return { users, nextCursor: undefined, total: users.length };
     }
 
-    const total = await this.prismaClient.user.count({
-      where: searchFilters,
-    });
+    // The count repeats the case-insensitive search on every page, so callers that only need the
+    // cursor can skip it.
+    const total = withTotal ? await this.prismaClient.user.count({ where: searchFilters }) : undefined;
     const hasMore = users.length > limit;
     const items = hasMore ? users.slice(0, limit) : users;
     const nextCursor = hasMore ? items[items.length - 1].id : undefined;

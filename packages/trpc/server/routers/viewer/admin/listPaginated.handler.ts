@@ -11,13 +11,14 @@ type GetOptions = {
 const listPaginatedHandler = async ({ input }: GetOptions) => {
   const userRepository = getUserRepository();
 
-  const { cursor, limit, searchTerm, ids } = input;
+  const { cursor, limit, searchTerm, ids, withTotal } = input;
 
   const { users, total, nextCursor } = await userRepository.listUsers({
     searchTerm,
     limit,
     cursor,
     ids,
+    withTotal,
   });
 
   return {
