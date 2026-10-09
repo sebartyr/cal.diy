@@ -8,7 +8,7 @@ import { getUserAvatarUrl } from "@calcom/lib/getAvatarUrl";
 import { useIsStandalone } from "@calcom/lib/hooks/useIsStandalone";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { IdentityProvider, UserPermissionRole } from "@calcom/prisma/enums";
-import { trpc } from "@calcom/trpc/react";
+import useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
 import classNames from "@calcom/ui/classNames";
 import { Badge } from "@calcom/ui/components/badge";
 import { Button } from "@calcom/ui/components/button";
@@ -308,7 +308,7 @@ const useTabs = ({
   permissions?: SettingsPermissions;
 }) => {
   const session = useSession();
-  const { data: user } = trpc.viewer.me.get.useQuery({ includePasswordAdded: true });
+  const { data: user } = useMeQuery();
   const orgBranding = null as { id?: number; slug?: string; name?: string; logoUrl?: string | null } | null;
   const isAdmin = session.data?.user.role === UserPermissionRole.ADMIN;
 

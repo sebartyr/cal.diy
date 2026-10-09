@@ -7,7 +7,11 @@ import { useMemo } from "react";
 import type { AllBannerProps } from "./LayoutBanner";
 
 const useBannersInternal = () => {
-  const { data: getUserTopBanners, isPending } = trpc.viewer.me.getUserTopBanners.useQuery();
+  const { data: getUserTopBanners, isPending } = trpc.viewer.me.getUserTopBanners.useQuery(undefined, {
+    // Mounted on every Shell page and checks every app credential: no need to recheck on each focus.
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
   const { data: userSession } = useSession();
 
   if (isPending || !userSession) return null;
