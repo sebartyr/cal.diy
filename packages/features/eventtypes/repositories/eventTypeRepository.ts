@@ -685,6 +685,7 @@ export class EventTypeRepository implements IEventTypesRepository {
         id,
         OR: [{ userId }, { hosts: { some: { userId } } }, { users: { some: { id: userId } } }],
       },
+      select: { id: true },
     });
   }
 

@@ -128,4 +128,19 @@ describe("EventTypeRepository queries", () => {
     });
     expect(findByIdForOrgAdminArgs.where.AND[0]).toEqual({ id: 1 });
   });
+
+  it("only selects the id when checking user access to an event type", async () => {
+    mockPrisma.eventType.findUnique.mockResolvedValue({ id: 1 });
+
+    const result = await repository.findByIdWithUserAccess({ id: 1, userId: 7 });
+
+    expect(result).toEqual({ id: 1 });
+    expect(mockPrisma.eventType.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 1,
+        OR: [{ userId: 7 }, { hosts: { some: { userId: 7 } } }, { users: { some: { id: 7 } } }],
+      },
+      select: { id: true },
+    });
+  });
 });
