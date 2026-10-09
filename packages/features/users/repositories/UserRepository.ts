@@ -1309,9 +1309,9 @@ export class UserRepository {
           select: {
             team: {
               select: {
-                eventTypes: {
+                _count: {
                   select: {
-                    id: true,
+                    eventTypes: true,
                   },
                 },
               },
