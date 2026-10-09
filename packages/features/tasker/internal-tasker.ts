@@ -1,8 +1,13 @@
 import logger from "@calcom/lib/logger";
-
 import { Task } from "./repository";
-import type { TaskTypes } from "./tasker";
-import { type TaskerCreate, type Tasker } from "./tasker";
+import type { Tasker, TaskerCreate, TaskTypes } from "./tasker";
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+// Retention is deliberately long: Task rows are only read by the processor, but the
+// @@unique([referenceUid, type]) constraint makes a kept row reject a duplicate create for the same reference.
+const SUCCEEDED_TASK_RETENTION_DAYS = 30;
+// Definitively failed tasks are kept longer so their lastError stays available for investigation.
+const FAILED_TASK_RETENTION_DAYS = 90;
 
 /**
  * This is the default internal Tasker that uses the Task repository to create tasks.
@@ -17,7 +22,11 @@ export class InternalTasker implements Tasker {
   };
 
   async cleanup(): Promise<void> {
-    const count = await Task.cleanup();
+    const now = Date.now();
+    const count = await Task.cleanup({
+      succeededBefore: new Date(now - SUCCEEDED_TASK_RETENTION_DAYS * DAY_IN_MS),
+      failedBefore: new Date(now - FAILED_TASK_RETENTION_DAYS * DAY_IN_MS),
+    });
     logger.info(`Cleaned up ${count} tasks`);
   }
 
