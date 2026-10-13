@@ -3,9 +3,7 @@
     Don't modify this file manually.
 **/
 export const apiHandlers = {
-  alby: import("./alby/api"),
   applecalendar: import("./applecalendar/api"),
-  btcpayserver: import("./btcpayserver/api"),
   caldavcalendar: import("./caldavcalendar/api"),
   discord: import("./discord/api"),
   exchange2013calendar: import("./exchange2013calendar/api"),
@@ -14,7 +12,6 @@ export const apiHandlers = {
   feishucalendar: import("./feishucalendar/api"),
   googlecalendar: import("./googlecalendar/api"),
   googlevideo: import("./googlevideo/api"),
-  hitpay: import("./hitpay/api"),
   "ics-feedcalendar": import("./ics-feedcalendar/api"),
   jitsivideo: import("./jitsivideo/api"),
   larkcalendar: import("./larkcalendar/api"),
@@ -22,7 +19,6 @@ export const apiHandlers = {
   office365calendar: import("./office365calendar/api"),
   office365video: import("./office365video/api"),
   openvisio: import("./openvisio/api"),
-  paypal: import("./paypal/api"),
   "pipedrive-crm": import("./pipedrive-crm/api"),
   qr_code: import("./qr_code/api"),
   signal: import("./signal/api"),

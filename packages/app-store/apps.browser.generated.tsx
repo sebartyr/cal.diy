@@ -14,11 +14,7 @@ export const AppSettingsComponentsMap = {
   ),
 };
 export const EventTypeAddonMap = {
-  alby: dynamic(() => import("./alby/components/EventTypeAppCardInterface")),
-  btcpayserver: dynamic(() => import("./btcpayserver/components/EventTypeAppCardInterface")),
-  hitpay: dynamic(() => import("./hitpay/components/EventTypeAppCardInterface")),
   "mock-payment-app": dynamic(() => import("./mock-payment-app/components/EventTypeAppCardInterface")),
-  paypal: dynamic(() => import("./paypal/components/EventTypeAppCardInterface")),
   "pipedrive-crm": dynamic(() => import("./pipedrive-crm/components/EventTypeAppCardInterface")),
   qr_code: dynamic(() => import("./qr_code/components/EventTypeAppCardInterface")),
   stripepayment: dynamic(() => import("./stripepayment/components/EventTypeAppCardInterface")),
@@ -30,10 +26,6 @@ export const EventTypeAddonMap = {
   ),
 };
 export const EventTypeSettingsMap = {
-  alby: dynamic(() => import("./alby/components/EventTypeAppSettingsInterface")),
-  btcpayserver: dynamic(() => import("./btcpayserver/components/EventTypeAppSettingsInterface")),
-  hitpay: dynamic(() => import("./hitpay/components/EventTypeAppSettingsInterface")),
-  paypal: dynamic(() => import("./paypal/components/EventTypeAppSettingsInterface")),
   qr_code: dynamic(() => import("./qr_code/components/EventTypeAppSettingsInterface")),
   stripepayment: dynamic(() => import("./stripepayment/components/EventTypeAppSettingsInterface")),
 };
