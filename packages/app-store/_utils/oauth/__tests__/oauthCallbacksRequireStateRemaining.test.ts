@@ -29,7 +29,7 @@ vi.mock("../../getParsedAppKeysFromSlug", () => ({
   default: vi.fn().mockResolvedValue({
     client_id: "client-id",
     client_secret: "client-secret",
-    redirect_uris: "https://cal.example.com/api/integrations/office365video/callback",
+    redirect_uris: "https://cal.example.com/api/integrations/zoomvideo/callback",
   }),
 }));
 vi.mock("../../../pipedrive-crm/lib/getPipedriveAppKeys", () => ({
@@ -187,7 +187,7 @@ describe("createOAuthAppCredential (SEC-102)", () => {
     const createOAuthAppCredential = await loadActual();
 
     await expect(
-      createOAuthAppCredential({ type: "office365_video", appId: "office365video" }, { access_token: "t" }, makeReq(query))
+      createOAuthAppCredential({ type: "zoom_video", appId: "zoom" }, { access_token: "t" }, makeReq(query))
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(mocks.prisma.credential.create).not.toHaveBeenCalled();
   });
@@ -196,13 +196,13 @@ describe("createOAuthAppCredential (SEC-102)", () => {
     const createOAuthAppCredential = await loadActual();
 
     await createOAuthAppCredential(
-      { type: "office365_video", appId: "office365video" },
+      { type: "zoom_video", appId: "zoom" },
       { access_token: "t" },
       makeReq({ state: signedState(USER_ID) })
     );
 
     expect(mocks.prisma.credential.create).toHaveBeenCalledWith({
-      data: { type: "office365_video", key: { access_token: "t" }, userId: USER_ID, appId: "office365video" },
+      data: { type: "zoom_video", key: { access_token: "t" }, userId: USER_ID, appId: "zoom" },
     });
   });
 });

@@ -1954,7 +1954,7 @@ __metadata:
     reflect-metadata: "npm:0.1.14"
     rxjs: "npm:7.8.2"
     source-map-support: "npm:0.5.21"
-    stripe: "npm:15.4.0"
+    stripe: "npm:9.16.0"
     supertest: "npm:6.3.4"
     ts-jest: "npm:29.1.4"
     ts-loader: "npm:9.5.1"
@@ -1997,7 +1997,6 @@ __metadata:
     "@calcom/features": "workspace:*"
     "@calcom/i18n": "workspace:*"
     "@calcom/lib": "workspace:*"
-    "@calcom/office365video": "workspace:*"
     "@calcom/testing": "workspace:*"
     "@calcom/types": "workspace:*"
     "@calcom/ui": "workspace:*"
@@ -2347,7 +2346,6 @@ __metadata:
     framer-motion: "npm:10.12.8"
     react-select: "npm:5.8.0"
     react-sticky-box: "npm:2.0.4"
-    stripe: "npm:9.16.0"
     trigger.dev: "npm:4.3.2"
     web-push: "npm:3.6.7"
     zustand: "npm:4.5.2"
@@ -2490,16 +2488,6 @@ __metadata:
     "@calcom/types": "workspace:*"
     msw: "npm:2.7.0"
     windows-iana: "npm:5.1.0"
-  languageName: unknown
-  linkType: soft
-
-"@calcom/office365video@workspace:*, @calcom/office365video@workspace:packages/app-store/office365video":
-  version: 0.0.0-use.local
-  resolution: "@calcom/office365video@workspace:packages/app-store/office365video"
-  dependencies:
-    "@calcom/lib": "workspace:*"
-    "@calcom/prisma": "workspace:*"
-    "@calcom/types": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -2899,7 +2887,6 @@ __metadata:
     sharp: "npm:0.35.4"
     short-uuid: "npm:4.2.0"
     sonner: "npm:1.7.4"
-    stripe: "npm:9.16.0"
     superjson: "npm:1.9.1"
     tailwindcss: "npm:4.1.17"
     ts-node: "npm:10.9.2"
@@ -35392,7 +35379,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"stripe@npm:*, stripe@npm:15.4.0":
+"stripe@npm:*":
   version: 15.4.0
   resolution: "stripe@npm:15.4.0"
   dependencies:

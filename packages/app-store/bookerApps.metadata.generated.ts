@@ -6,7 +6,6 @@ import { metadata as dailyvideo__metadata_ts } from "./dailyvideo/_metadata";
 import discord_config_json from "./discord/config.json";
 import { metadata as googlevideo__metadata_ts } from "./googlevideo/_metadata";
 import { metadata as jitsivideo__metadata_ts } from "./jitsivideo/_metadata";
-import office365video_config_json from "./office365video/config.json";
 import openvisio_config_json from "./openvisio/config.json";
 import signal_config_json from "./signal/config.json";
 import telegram_config_json from "./telegram/config.json";
@@ -19,7 +18,6 @@ export const appStoreMetadata = {
   discord: discord_config_json,
   googlevideo: googlevideo__metadata_ts,
   jitsivideo: jitsivideo__metadata_ts,
-  office365video: office365video_config_json,
   openvisio: openvisio_config_json,
   signal: signal_config_json,
   telegram: telegram_config_json,

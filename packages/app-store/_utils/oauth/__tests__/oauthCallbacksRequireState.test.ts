@@ -63,7 +63,6 @@ type Handler = (req: NextApiRequest, res: NextApiResponse) => unknown;
 
 const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["zohocalendar", () => import("../../../zohocalendar/api/callback")],
-  ["office365video", () => import("../../../office365video/api/callback")],
 ];
 
 describe("OAuth callbacks refuse to exchange a code without a valid state (SEC-102)", () => {

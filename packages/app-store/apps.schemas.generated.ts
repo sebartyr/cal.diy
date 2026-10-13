@@ -10,7 +10,6 @@ import { appDataSchema as jitsivideo_zod_ts } from "./jitsivideo/zod";
 import { appDataSchema as larkcalendar_zod_ts } from "./larkcalendar/zod";
 import { appDataSchema as mock_payment_app_zod_ts } from "./mock-payment-app/zod";
 import { appDataSchema as office365calendar_zod_ts } from "./office365calendar/zod";
-import { appDataSchema as office365video_zod_ts } from "./office365video/zod";
 import { appDataSchema as openvisio_zod_ts } from "./openvisio/zod";
 import { appDataSchema as pipedrive_crm_zod_ts } from "./pipedrive-crm/zod";
 import { appDataSchema as qr_code_zod_ts } from "./qr_code/zod";
@@ -27,7 +26,6 @@ export const appDataSchemas = {
   larkcalendar: larkcalendar_zod_ts,
   "mock-payment-app": mock_payment_app_zod_ts,
   office365calendar: office365calendar_zod_ts,
-  office365video: office365video_zod_ts,
   openvisio: openvisio_zod_ts,
   "pipedrive-crm": pipedrive_crm_zod_ts,
   qr_code: qr_code_zod_ts,

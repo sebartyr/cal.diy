@@ -128,10 +128,6 @@ export default async function main() {
       client_id: process.env.MS_GRAPH_CLIENT_ID,
       client_secret: process.env.MS_GRAPH_CLIENT_SECRET,
     });
-    await createApp("msteams", "office365video", ["conferencing"], "office365_video", {
-      client_id: process.env.MS_GRAPH_CLIENT_ID,
-      client_secret: process.env.MS_GRAPH_CLIENT_SECRET,
-    });
   }
   if (
     process.env.LARK_OPEN_APP_ID &&

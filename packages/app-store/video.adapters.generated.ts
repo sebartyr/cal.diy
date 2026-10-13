@@ -8,7 +8,6 @@ export const VideoApiAdapterMap =
     : {
         dailyvideo: import("./dailyvideo/lib/VideoApiAdapter"),
         jitsivideo: import("./jitsivideo/lib/VideoApiAdapter"),
-        office365video: import("./office365video/lib/VideoApiAdapter"),
         openvisio: import("./openvisio/lib/VideoApiAdapter"),
         zoomvideo: import("./zoomvideo/lib/VideoApiAdapter"),
       };

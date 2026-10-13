@@ -1,6 +1,5 @@
 "use client";
 
-import AccountDialog from "@calcom/app-store/office365video/components/AccountDialog";
 import { AppList } from "@calcom/features/apps/components/AppList";
 import type { UpdateUsersDefaultConferencingAppParams } from "@calcom/features/apps/components/AppSetDefaultLinkDialog";
 import DisconnectIntegrationModal from "@calcom/features/apps/components/DisconnectIntegrationModal";
@@ -20,7 +19,7 @@ import {
 import { EmptyScreen } from "@calcom/ui/components/empty-screen";
 import { SkeletonContainer, SkeletonText } from "@calcom/ui/components/skeleton";
 import { useQueryClient } from "@tanstack/react-query";
-import { useReducer, useState } from "react";
+import { useReducer } from "react";
 import { AtomsWrapper } from "../../src/components/atoms-wrapper";
 import { useToast } from "../../src/components/ui/use-toast";
 import { cn } from "../../src/lib/utils";
@@ -39,6 +38,8 @@ import {
 } from "./hooks/useGetDefaultConferencingApp";
 import { useUpdateUserDefaultConferencingApp } from "./hooks/useUpdateUserDefaultConferencingApp";
 
+// OFFICE_365_VIDEO stays in this public union even though the Teams app was removed, so
+// integrators passing `apps={["msteams"]}` keep type-checking; the option just never renders.
 type ConferencingAppSlug = typeof GOOGLE_MEET | typeof ZOOM | typeof OFFICE_365_VIDEO;
 
 export type ConferencingAppsCustomClassNames = {
@@ -114,7 +115,6 @@ export const ConferencingAppsViewPlatformWrapper = ({
     }
   );
 
-  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   const handleModelClose = () => {
     updateModal({ isOpen: false, credentialId: null, app: null });
@@ -254,16 +254,6 @@ export const ConferencingAppsViewPlatformWrapper = ({
               </DropdownMenuItem>
             )}
 
-          {/* Show Office 365 Video if it's not installed and either no apps filter is provided or it's in the apps filter */}
-          {installedApps &&
-            !installedApps.find((app) => app.slug === OFFICE_365_VIDEO) &&
-            (!apps || apps.includes(OFFICE_365_VIDEO)) && (
-              <DropdownMenuItem>
-                <DropdownItem color="secondary" onClick={() => setIsAccountModalOpen(true)}>
-                  {t("office_365_video")}
-                </DropdownItem>
-              </DropdownMenuItem>
-            )}
         </DropdownMenuContent>
       </Dropdown>
     );
@@ -344,11 +334,6 @@ export const ConferencingAppsViewPlatformWrapper = ({
             isPlatform={true}
           />
 
-          <AccountDialog
-            open={isAccountModalOpen}
-            onOpenChange={setIsAccountModalOpen}
-            handleSubmit={() => connect(OFFICE_365_VIDEO)}
-          />
         </>
       </SettingsHeader>
     </AtomsWrapper>
