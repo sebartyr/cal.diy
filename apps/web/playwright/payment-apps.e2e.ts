@@ -116,11 +116,11 @@ test.describe("Payment app", () => {
     await goToAppsTab(page, paymentEvent?.id);
 
     await page.locator("#event-type-form").getByRole("switch").click();
-    // make sure Tracking ID is displayed
-    await expect(page.locator("text=Tracking ID").first()).toBeVisible();
-    await page.getByLabel("Tracking ID").click();
-    await page.getByLabel("Tracking ID").fill("demo");
-    await page.getByTestId("update-eventtype").click();
+
+    // The setup warning is reserved for payment apps missing their keys; a non-payment app
+    // must never show it. This used to drive ga4 and assert on its Tracking ID field, which
+    // only existed because ga4 was an analytics app.
+    await expect(page.locator("text=This app has not been setup yet")).toHaveCount(0);
   });
 
   test("Should only be allowed to enable one payment app", async ({ page, users }) => {
