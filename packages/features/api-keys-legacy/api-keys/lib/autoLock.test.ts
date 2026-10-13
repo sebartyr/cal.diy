@@ -1,10 +1,9 @@
-import type { RatelimitResponse } from "@unkey/ratelimit";
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
-
+import process from "node:process";
 import { hashAPIKey } from "@calcom/features/api-keys-legacy/api-keys/lib/apiKeys";
 import { RedisService } from "@calcom/features/redis/RedisService";
+import type { RatelimitResponse } from "@calcom/lib/rateLimit";
 import prisma from "@calcom/prisma";
-
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleAutoLock } from "./autoLock";
 
 // Mock the dependencies

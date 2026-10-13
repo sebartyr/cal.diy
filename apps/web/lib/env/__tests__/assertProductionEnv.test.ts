@@ -7,7 +7,6 @@ const fullProdEnv: Record<string, string | undefined> = {
   DATABASE_URL: "postgresql://localhost/cal",
   NEXTAUTH_SECRET: "x".repeat(32),
   CALENDSO_ENCRYPTION_KEY: "y".repeat(32),
-  UNKEY_ROOT_KEY: "unkey_xxxxxxxxxx",
 };
 
 describe("checkProductionEnv", () => {
@@ -30,12 +29,6 @@ describe("checkProductionEnv", () => {
     const r = checkProductionEnv({ ...fullProdEnv, DATABASE_URL: "" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.missing).toContain("DATABASE_URL");
-  });
-
-  it("flags missing UNKEY_ROOT_KEY", () => {
-    const r = checkProductionEnv({ ...fullProdEnv, UNKEY_ROOT_KEY: undefined });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.missing).toContain("UNKEY_ROOT_KEY");
   });
 
   it("flags placeholder value 'secret'", () => {
@@ -77,12 +70,10 @@ describe("checkProductionEnv", () => {
       DATABASE_URL: "",
       NEXTAUTH_SECRET: "secret",
       CALENDSO_ENCRYPTION_KEY: "short",
-      UNKEY_ROOT_KEY: "",
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.missing).toContain("DATABASE_URL");
-      expect(r.missing).toContain("UNKEY_ROOT_KEY");
       expect(r.placeholders).toContain("NEXTAUTH_SECRET");
     }
   });
@@ -91,11 +82,11 @@ describe("checkProductionEnv", () => {
 describe("formatAssertProductionEnvError", () => {
   it("renders a single-line error mentioning all problems", () => {
     const message = formatAssertProductionEnvError({
-      missing: ["DATABASE_URL", "UNKEY_ROOT_KEY"],
+      missing: ["DATABASE_URL", "CALENDSO_ENCRYPTION_KEY"],
       placeholders: ["NEXTAUTH_SECRET"],
     });
     expect(message).toMatch(/Refusing to boot in production/);
-    expect(message).toMatch(/missing: DATABASE_URL, UNKEY_ROOT_KEY/);
+    expect(message).toMatch(/missing: DATABASE_URL, CALENDSO_ENCRYPTION_KEY/);
     expect(message).toMatch(/placeholder.*NEXTAUTH_SECRET/);
     expect(message).toMatch(/OPS_TODO/);
   });

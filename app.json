@@ -3,7 +3,15 @@
   "description": "Open Source Scheduling",
   "repository": "https://github.com/calcom/cal.diy",
   "logo": "https://cal.com/android-chrome-512x512.png",
-  "keywords": ["react", "typescript", "node", "nextjs", "prisma", "postgres", "trpc"],
+  "keywords": [
+    "react",
+    "typescript",
+    "node",
+    "nextjs",
+    "prisma",
+    "postgres",
+    "trpc"
+  ],
   "addons": [
     {
       "plan": "heroku-postgresql:mini"
@@ -44,21 +52,6 @@
     "SEND_FEEDBACK_EMAIL": {
       "description": "Send feedback email",
       "value": ""
-    },
-    "SENDGRID_API_KEY": {
-      "description": "Sendgrid api key. Used for email reminders in workflows",
-      "value": "",
-      "required": false
-    },
-    "SENDGRID_SYNC_API_KEY": {
-      "description": "Sendgrid internal sync service",
-      "value": "",
-      "required": false
-    },
-    "SENDGRID_EMAIL": {
-      "description": "Sendgrid email. Used for email reminders in workflows",
-      "value": "",
-      "required": false
     },
     "EMAIL_FROM": {
       "description": "Configures the global From: header whilst sending emails",

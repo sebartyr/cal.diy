@@ -30,10 +30,6 @@ vi.mock("../../../stripepayment/lib/server", () => ({
     accounts: { retrieve: vi.fn().mockResolvedValue({ default_currency: "usd" }) },
   },
 }));
-vi.mock("../../../lyra/lib", () => ({
-  getLyraAppKeys: vi.fn().mockResolvedValue({ client_id: "client-id", client_secret: "client-secret" }),
-  LYRA_API_URL: "https://lyra.example.com",
-}));
 vi.mock("@hubspot/api-client", () => ({
   Client: class {
     oauth = { tokensApi: { createToken: mocks.hubspotCreateToken } };
@@ -84,9 +80,6 @@ const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["stripepayment", () => import("../../../stripepayment/api/callback")],
   ["zohocalendar", () => import("../../../zohocalendar/api/callback")],
   ["office365video", () => import("../../../office365video/api/callback")],
-  ["nextcloudtalk", () => import("../../../nextcloudtalk/api/callback")],
-  ["jelly", () => import("../../../jelly/api/callback")],
-  ["lyra", () => import("../../../lyra/api/callback")],
   ["hubspot", () => import("../../../hubspot/api/callback")],
   ["salesforce", () => import("../../../salesforce/api/callback")],
 ];

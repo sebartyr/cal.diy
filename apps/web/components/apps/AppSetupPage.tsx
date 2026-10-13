@@ -10,7 +10,6 @@ export const AppSetupMap = {
   "caldav-calendar": dynamic(() => import("@calcom/web/components/apps/caldavcalendar/Setup")),
   "ics-feed": dynamic(() => import("@calcom/web/components/apps/ics-feedcalendar/Setup")),
   make: dynamic(() => import("@calcom/web/components/apps/make/Setup")),
-  sendgrid: dynamic(() => import("@calcom/web/components/apps/sendgrid/Setup")),
   stripe: dynamic(() => import("@calcom/web/components/apps/stripepayment/Setup")),
   paypal: dynamic(() => import("@calcom/web/components/apps/paypal/Setup")),
   hitpay: dynamic(() => import("@calcom/web/components/apps/hitpay/Setup")),

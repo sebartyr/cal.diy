@@ -4,9 +4,10 @@ Liste des items que Claude Code **ne peut pas** traiter depuis le repo et qui re
 
 ## Sprint 0 — Bloquant avant exposition publique
 
-- [ ] **UNKEY_ROOT_KEY provisionné** sur l'environnement hosted Clever (`SPRINT0-005`).
-  - Confirmer la présence dans la config (sans logger la valeur).
-  - Si non provisionné : la modif `SPRINT0-003` fera échouer le boot en production — bloquant.
+- [x] ~~**UNKEY_ROOT_KEY provisionné** sur l'environnement hosted Clever (`SPRINT0-005`).~~
+  - Sans objet : le rate limiting est désormais adossé à PostgreSQL (table
+    `RateLimitBucket`), plus aucun service externe à provisionner.
+  - À la place : planifier le cron `/api/cron/rate-limit-cleanup` (quotidien suffit).
 - [ ] **CALENDSO_ENCRYPTION_KEY** ≥ 32 caractères, généré aléatoirement.
 - [ ] **NEXTAUTH_SECRET** ≥ 32 caractères, généré aléatoirement, ≠ `"secret"`.
 - [ ] Vérifier que `DATABASE_URL` est masqué dans tous les logs (Sentry, stdout).

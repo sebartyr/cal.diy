@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => {
   return {
     axios,
     createOAuthAppCredential: vi.fn(),
-    storeHuddle01Credential: vi.fn(),
     prisma: {
       user: { findFirstOrThrow: vi.fn(), update: vi.fn() },
       credential: { create: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
@@ -36,14 +35,8 @@ vi.mock("../../getParsedAppKeysFromSlug", () => ({
 vi.mock("../../../pipedrive-crm/lib/getPipedriveAppKeys", () => ({
   getPipedriveAppKeys: vi.fn().mockResolvedValue({ client_id: "client-id", client_secret: "client-secret" }),
 }));
-vi.mock("../../../webex/lib/getWebexAppKeys", () => ({
-  getWebexAppKeys: vi.fn().mockResolvedValue({ client_id: "client-id", client_secret: "client-secret" }),
-}));
 vi.mock("../../../basecamp3/lib/getBasecampKeys", () => ({
   getBasecampKeys: vi.fn().mockResolvedValue({ client_id: "client-id" }),
-}));
-vi.mock("../../../huddle01video/utils/storage", () => ({
-  storeHuddle01Credential: mocks.storeHuddle01Credential,
 }));
 vi.mock("@calcom/features/auth/lib/getServerSession", () => ({
   getServerSession: vi.fn().mockResolvedValue({ user: { id: 42 } }),
@@ -97,11 +90,8 @@ const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["zoho-bigin", () => import("../../../zoho-bigin/api/callback")],
   ["closecom", () => import("../../../closecom/api/callback")],
   ["intercom", () => import("../../../intercom/api/callback")],
-  ["huddle01video", () => import("../../../huddle01video/api/callback")],
   ["basecamp3", () => import("../../../basecamp3/api/callback")],
   ["dub", () => import("../../../dub/api/callback")],
-  ["webex", () => import("../../../webex/api/callback")],
-  ["tandemvideo", () => import("../../../tandemvideo/api/callback")],
 ];
 
 const providerQuery = {
@@ -142,38 +132,13 @@ describe("remaining OAuth callbacks refuse to complete without a valid state (SE
       expect(mocks.axios).not.toHaveBeenCalled();
       expect(mocks.axios.post).not.toHaveBeenCalled();
       expect(mocks.createOAuthAppCredential).not.toHaveBeenCalled();
-      expect(mocks.storeHuddle01Credential).not.toHaveBeenCalled();
       expect(mocks.prisma.credential.create).not.toHaveBeenCalled();
       expect(mocks.prisma.credential.deleteMany).not.toHaveBeenCalled();
       expect(mocks.prisma.user.update).not.toHaveBeenCalled();
     });
   });
 
-  it("still completes the Webex flow when the state is bound to the current session", async () => {
-    fetchSpy.mockResolvedValue(
-      new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }), { status: 200 })
-    );
-    mocks.prisma.credential.findMany.mockResolvedValue([]);
-    const { default: handler } = await import("../../../webex/api/callback");
-    const res = makeRes();
 
-    await handler(makeReq({ code: "user-code", state: signedState(USER_ID) }), res);
-
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(mocks.createOAuthAppCredential).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
-    expect(res.redirect).toHaveBeenCalledTimes(1);
-  });
-
-  it("stores the Huddle01 identityToken when the state is bound to the current session", async () => {
-    const { default: handler } = await import("../../../huddle01video/api/callback");
-    const res = makeRes();
-
-    await handler(makeReq({ identityToken: "user-token", state: signedState(USER_ID) }), res);
-
-    expect(mocks.storeHuddle01Credential).toHaveBeenCalledWith(USER_ID, "user-token");
-    expect(res.redirect).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe("formerly nonce-exempt /add routes sign the state (SEC-101)", () => {
@@ -190,8 +155,6 @@ describe("formerly nonce-exempt /add routes sign the state (SEC-101)", () => {
   const addRoutes: Array<[string, () => Promise<{ default: Handler }>]> = [
     ["basecamp3", () => import("../../../basecamp3/api/add")],
     ["dub", () => import("../../../dub/api/add")],
-    ["webex", () => import("../../../webex/api/add")],
-    ["tandemvideo", () => import("../../../tandemvideo/api/add")],
   ];
 
   it.each(addRoutes)("%s puts a session-bound nonce in the authorize URL", async (_slug, load) => {

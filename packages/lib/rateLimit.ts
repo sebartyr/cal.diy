@@ -1,10 +1,12 @@
-import { type LimitOptions, Ratelimit, type RatelimitResponse } from "@unkey/ratelimit";
+import process from "node:process";
 import { isIpInBanListString } from "./getIP";
 import logger from "./logger";
+import type { LimitOptions, RateLimitStore, RateLimitWindow, RatelimitResponse } from "./rateLimitStore";
+import { InMemoryRateLimitStore, PostgresRateLimitStore } from "./rateLimitStore";
 
 const log = logger.getSubLogger({ prefix: ["RateLimit"] });
 
-export type { RatelimitResponse };
+export type { RatelimitResponse, LimitOptions };
 
 export type RateLimitNamespace =
   | "core"
@@ -29,11 +31,7 @@ export type RateLimitHelper = {
 
 export const API_KEY_RATE_LIMIT = 30;
 
-/**
- * Sliding-window rate-limit config used by the dev/test in-memory fallback.
- * Mirrors the limits configured against Unkey in production.
- */
-const FALLBACK_LIMITS: Record<RateLimitNamespace, { limit: number; durationMs: number }> = {
+export const RATE_LIMIT_WINDOWS: Record<RateLimitNamespace, RateLimitWindow> = {
   core: { limit: 10, durationMs: 60_000 },
   instantMeeting: { limit: 1, durationMs: 10 * 60_000 },
   common: { limit: 200, durationMs: 60_000 },
@@ -44,163 +42,74 @@ const FALLBACK_LIMITS: Record<RateLimitNamespace, { limit: number; durationMs: n
   smsMonth: { limit: 250, durationMs: 30 * 24 * 60 * 60_000 },
 };
 
-const inMemoryStore = new Map<string, number[]>();
+const inMemoryStore = new InMemoryRateLimitStore();
+const postgresStore = new PostgresRateLimitStore();
 
 /**
- * Test helper — reset the sliding window between tests. Not exposed in the
+ * Test helper — reset the in-memory buckets between tests. Not exposed in the
  * package public surface; importers should call it from `__tests__` only.
  */
 export function __resetInMemoryRateLimitStore() {
-  inMemoryStore.clear();
+  inMemoryStore.reset();
 }
 
-function fallbackInMemoryLimit(namespace: RateLimitNamespace, identifier: string): RatelimitResponse {
-  const cfg = FALLBACK_LIMITS[namespace];
-  const key = `${namespace}:${identifier}`;
-  const now = Date.now();
-  const cutoff = now - cfg.durationMs;
-  const timestamps = (inMemoryStore.get(key) ?? []).filter((t) => t > cutoff);
+let warnedInMemoryStore = false;
 
-  if (timestamps.length >= cfg.limit) {
-    inMemoryStore.set(key, timestamps);
-    return {
-      success: false,
-      limit: cfg.limit,
-      remaining: 0,
-      reset: (timestamps[0] ?? now) + cfg.durationMs,
-    };
-  }
+function resolveStore(): RateLimitStore {
+  const { RATE_LIMIT_STORE, NODE_ENV } = process.env;
 
-  timestamps.push(now);
-  inMemoryStore.set(key, timestamps);
-  return {
-    success: true,
-    limit: cfg.limit,
-    remaining: cfg.limit - timestamps.length,
-    reset: now + cfg.durationMs,
-  };
-}
+  if (RATE_LIMIT_STORE === "postgres") return postgresStore;
 
-let warnedMissingUnkey = false;
-
-export function rateLimiter() {
-  const { UNKEY_ROOT_KEY, NODE_ENV } = process.env;
-
-  if (!UNKEY_ROOT_KEY) {
-    // Fail-closed in production: silently letting every request through is
-    // exactly what Unkey is supposed to prevent. The previous fail-open made
-    // brute-force on /api/auth/* free in any deployment without Unkey.
+  if (RATE_LIMIT_STORE === "memory") {
+    // Fail-closed in production: a per-instance limiter silently multiplies
+    // every limit by the number of running instances, which makes brute-force
+    // on /api/auth/* practical again (SEC-200).
     if (NODE_ENV === "production") {
       throw new Error(
-        "UNKEY_ROOT_KEY is required when NODE_ENV=production. " +
-          "Either provision an Unkey root key, or run the in-memory fallback " +
-          "explicitly by leaving NODE_ENV unset (development/test only)."
+        'RATE_LIMIT_STORE="memory" is not allowed when NODE_ENV=production, because the ' +
+          "in-memory limiter is per-instance and therefore unenforceable across a scaled " +
+          "deployment. Remove the variable to use the Postgres-backed limiter."
       );
     }
-    if (!warnedMissingUnkey) {
+    if (!warnedInMemoryStore) {
       log.warn(
-        "UNKEY_ROOT_KEY is not set — using an in-memory sliding-window fallback. " +
-          "This is acceptable for development and single-instance test runs only. " +
-          "Production deployments MUST provision Unkey (see SEC-200)."
+        'RATE_LIMIT_STORE="memory" — using a process-local token bucket. This is ' +
+          "acceptable for development and single-instance test runs only."
       );
-      warnedMissingUnkey = true;
+      warnedInMemoryStore = true;
     }
-    return async ({ rateLimitingType = "core", identifier }: RateLimitHelper) => {
-      if (isIpInBanListString(identifier)) {
-        return fallbackInMemoryLimit("forcedSlowMode", identifier);
-      }
-      return fallbackInMemoryLimit(rateLimitingType, identifier);
-    };
-  }
-  const timeout = {
-    fallback: { success: true, limit: 10, remaining: 999, reset: 0 },
-    ms: 5000,
-  };
-
-  const onError = (err: Error, identifier: string) => {
-    log.error("Unkey rate limiter encountered unknown error", {
-      error: err.message,
-      stack: err.stack,
-      identifier,
-      timestamp: new Date().toISOString(),
-    });
-    return { success: true, limit: 10, remaining: 999, reset: 0 };
-  };
-
-  const limiter = {
-    core: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "core",
-      limit: 10,
-      duration: "60s",
-      timeout,
-      onError,
-    }),
-    instantMeeting: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "instantMeeting",
-      limit: 1,
-      duration: "10m",
-      timeout,
-      onError,
-    }),
-    common: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "common",
-      limit: 200,
-      duration: "60s",
-      timeout,
-      onError,
-    }),
-    forcedSlowMode: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "forcedSlowMode",
-      limit: 1,
-      duration: "30s",
-      timeout,
-      onError,
-    }),
-    api: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "api",
-      limit: API_KEY_RATE_LIMIT,
-      duration: "60s",
-      timeout,
-      onError,
-    }),
-    ai: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "ai",
-      limit: 20,
-      duration: "1d",
-      timeout,
-      onError,
-    }),
-    sms: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "sms",
-      limit: 50,
-      duration: "5m",
-      timeout,
-      onError,
-    }),
-    smsMonth: new Ratelimit({
-      rootKey: UNKEY_ROOT_KEY,
-      namespace: "smsMonth",
-      limit: 250,
-      duration: "30d",
-      timeout,
-      onError,
-    }),
-  };
-
-  async function rateLimit({ rateLimitingType = "core", identifier, opts }: RateLimitHelper) {
-    if (isIpInBanListString(identifier)) {
-      return await limiter.forcedSlowMode.limit(identifier, opts);
-    }
-
-    return await limiter[rateLimitingType].limit(identifier, opts);
+    return inMemoryStore;
   }
 
-  return rateLimit;
+  return NODE_ENV === "production" ? postgresStore : inMemoryStore;
+}
+
+export function rateLimiter() {
+  const store = resolveStore();
+
+  return async function rateLimit({
+    rateLimitingType = "core",
+    identifier,
+    opts,
+  }: RateLimitHelper): Promise<RatelimitResponse> {
+    const namespace: RateLimitNamespace = isIpInBanListString(identifier)
+      ? "forcedSlowMode"
+      : rateLimitingType;
+
+    try {
+      return await store.limit(`${namespace}:${identifier}`, RATE_LIMIT_WINDOWS[namespace], opts);
+    } catch (err) {
+      // A limiter outage must not take the whole app down with it; this mirrors
+      // the `onError` fallback the Unkey client used to provide.
+      log.error("Rate limiter encountered an unexpected error", {
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        identifier,
+        namespace,
+        timestamp: new Date().toISOString(),
+      });
+      const { limit } = RATE_LIMIT_WINDOWS[namespace];
+      return { success: true, limit, remaining: limit, reset: Date.now() };
+    }
+  };
 }

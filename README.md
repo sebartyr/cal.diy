@@ -782,18 +782,20 @@ following
 
 [Follow these steps](./packages/app-store/pipedrive-crm/)
 
-### Rate Limiting with Unkey
+### Rate Limiting
 
-Cal.diy uses [Unkey](https://unkey.com) for rate limiting. This is an optional feature and is not required for self-hosting.
+Rate limiting is backed by PostgreSQL (the `RateLimitBucket` table) and needs no
+external service or extra configuration: it is active as soon as migrations have
+been applied.
 
-If you want to enable rate limiting:
+Each namespace (`core`, `api`, `sms`, ...) is a token bucket keyed by namespace and
+identifier. Buckets refill continuously, and a bucket read after its window has
+elapsed refills to full, so stale rows are harmless. Schedule
+`/api/cron/rate-limit-cleanup` to keep the table small.
 
-1. Sign up for an account at [unkey.com](https://unkey.com)
-2. Create a Root key with permissions for
-   `ratelimit.create_namespace` and `ratelimit.limit`
-3. Copy the root key to your `.env` file into the `UNKEY_ROOT_KEY` field
-
-Note: If you don't configure Unkey, Cal.diy will work normally without rate limiting enabled.
+Set `RATE_LIMIT_STORE=memory` to fall back to a process-local limiter during
+development. It is rejected when `NODE_ENV=production`, because a per-instance
+limiter multiplies every limit by the number of running instances.
 
 ## Contributing
 

@@ -48,7 +48,7 @@ vi.mock("@calcom/features/form/components/LocationSelect", () => {
 
 const AttendeePhoneNumberLabel = "Attendee phone number";
 const OrganizerPhoneLabel = "Phone call";
-const CampfireLabel = "Campfire";
+const JitsiLabel = "Jitsi Video";
 const ZoomVideoLabel = "Zoom Video";
 const OrganizerDefaultConferencingAppLabel = "Organizer's default app";
 
@@ -71,11 +71,11 @@ describe("EditLocationDialog", () => {
             label: "Conferencing",
             options: [
               {
-                value: "integrations:campfire_video",
-                label: CampfireLabel,
+                value: "integrations:jitsi",
+                label: JitsiLabel,
                 disabled: false,
-                icon: "/app-store/campfire/icon.svg",
-                slug: "campfire",
+                icon: "/app-store/jitsivideo/icon.svg",
+                slug: "jitsi",
                 credentialId: 2,
                 teamName: null,
               },
@@ -207,7 +207,7 @@ describe("EditLocationDialog", () => {
 
       expect(screen.queryByText(AttendeePhoneNumberLabel)).not.toBeInTheDocument();
       expect(screen.queryByText(OrganizerPhoneLabel)).toBeInTheDocument();
-      expect(screen.queryByText(CampfireLabel)).toBeInTheDocument();
+      expect(screen.queryByText(JitsiLabel)).toBeInTheDocument();
       expect(screen.queryByText(ZoomVideoLabel)).toBeInTheDocument();
     });
 
