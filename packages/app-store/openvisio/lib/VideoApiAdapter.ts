@@ -26,6 +26,8 @@ function buildRoomUrl(pattern: string, apiBaseUrl: string, slug: string): string
 const OpenVisioVideoApiAdapter = (credential: CredentialPayload): VideoApiAdapter => {
   // The delegated token that authorizes room deletion is scoped per user; deleteMeeting only
   // receives the room id, so we fall back to the installing user's email for cleanup.
+  // On a team-level install there is no owning user, so no token can be minted and the room
+  // is left in place even though it was created as event.organizer.email.
   const credentialEmail = credential.user?.email;
 
   return {
@@ -44,15 +46,27 @@ const OpenVisioVideoApiAdapter = (credential: CredentialPayload): VideoApiAdapte
         url: room.url ?? buildRoomUrl(meetingUrlPattern, apiBaseUrl, room.slug),
       };
     },
+    /**
+     * Rooms are NOT guaranteed to be removed. The delegated external API of La Suite Meet
+     * exposes no DELETE on its RoomViewSet — the upstream documentation still lists the
+     * operation as forthcoming — so this request only succeeds on a deployment that adds
+     * the endpoint itself. It is issued anyway, best effort, and every failure (405 as much
+     * as 404) is swallowed: cancelling a booking must never fail over room cleanup.
+     *
+     * If the OpenVisio add-on gains a documented DELETE contract, cover it with a test
+     * asserting the real expected id and scopes instead of a stubbed success.
+     */
     deleteMeeting: async (uid: string): Promise<void> => {
-      if (!credentialEmail) return;
+      if (!credentialEmail) {
+        log.debug("Skipping OpenVisio room cleanup: credential has no owning user", { uid });
+        return;
+      }
       try {
         await openVisioFetcher(credentialEmail, `/rooms/${encodeURIComponent(uid)}/`, {
           method: "DELETE",
         });
       } catch (error) {
-        // Best-effort cleanup: a failed deletion must never block booking cancellation.
-        log.warn("Failed to delete OpenVisio room", { uid, error });
+        log.warn("OpenVisio room was not deleted", { uid, error });
       }
     },
     updateMeeting: (bookingRef: PartialReference): Promise<VideoCallData> =>

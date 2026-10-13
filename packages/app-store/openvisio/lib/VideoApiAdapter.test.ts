@@ -96,19 +96,28 @@ describe("OpenVisioVideoApiAdapter", () => {
     expect(result.password).toBe("");
   });
 
-  it("deletes the room by slug using the credential owner email", async () => {
+  // Asserts where the request is addressed, NOT that the room gets deleted: the delegated
+  // external API of La Suite Meet exposes no DELETE on rooms, so a stubbed 204 here would
+  // claim a cleanup the provider does not perform.
+  it("addresses the room by slug using the credential owner email", async () => {
     fetchMock
       .mockResolvedValueOnce(
         jsonResponse({ access_token: "jwt-789", token_type: "Bearer", expires_in: 3600 })
       )
-      .mockResolvedValueOnce(jsonResponse({}, 204));
+      .mockResolvedValueOnce(jsonResponse({ detail: "Method not allowed." }, 405));
 
     const adapter = OpenVisioVideoApiAdapter(buildCredential("owner3@acme.eu"));
-    await adapter.deleteMeeting("abcdef1234");
+    await expect(adapter.deleteMeeting("abcdef1234")).resolves.toBeUndefined();
 
     const [deleteUrl, deleteInit] = fetchMock.mock.calls[1];
     expect(deleteUrl).toBe("https://visio.clever.cloud/external-api/v1.0/rooms/abcdef1234/");
     expect(deleteInit.method).toBe("DELETE");
+  });
+
+  it("leaves the room in place on a team install, which has no owning user", async () => {
+    const adapter = OpenVisioVideoApiAdapter(buildCredential());
+    await expect(adapter.deleteMeeting("abcdef1234")).resolves.toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("skips deletion when the credential has no owner email", async () => {
