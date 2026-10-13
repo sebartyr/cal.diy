@@ -28,6 +28,7 @@ export const apiHandlers = {
   "mock-payment-app": import("./mock-payment-app/api"),
   office365calendar: import("./office365calendar/api"),
   office365video: import("./office365video/api"),
+  openvisio: import("./openvisio/api"),
   paypal: import("./paypal/api"),
   "pipedrive-crm": import("./pipedrive-crm/api"),
   qr_code: import("./qr_code/api"),

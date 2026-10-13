@@ -21,6 +21,7 @@ import { appKeysSchema as make_zod_ts } from "./make/zod";
 import { appKeysSchema as mock_payment_app_zod_ts } from "./mock-payment-app/zod";
 import { appKeysSchema as office365calendar_zod_ts } from "./office365calendar/zod";
 import { appKeysSchema as office365video_zod_ts } from "./office365video/zod";
+import { appKeysSchema as openvisio_zod_ts } from "./openvisio/zod";
 import { appKeysSchema as paypal_zod_ts } from "./paypal/zod";
 import { appKeysSchema as pipedrive_crm_zod_ts } from "./pipedrive-crm/zod";
 import { appKeysSchema as qr_code_zod_ts } from "./qr_code/zod";
@@ -54,6 +55,7 @@ export const appKeysSchemas = {
   "mock-payment-app": mock_payment_app_zod_ts,
   office365calendar: office365calendar_zod_ts,
   office365video: office365video_zod_ts,
+  openvisio: openvisio_zod_ts,
   paypal: paypal_zod_ts,
   "pipedrive-crm": pipedrive_crm_zod_ts,
   qr_code: qr_code_zod_ts,
