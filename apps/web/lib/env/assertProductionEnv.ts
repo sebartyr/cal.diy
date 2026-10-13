@@ -6,12 +6,7 @@
  * cheaply.
  */
 
-const REQUIRED_VARS = [
-  "DATABASE_URL",
-  "NEXTAUTH_SECRET",
-  "CALENDSO_ENCRYPTION_KEY",
-  "UNKEY_ROOT_KEY",
-] as const;
+const REQUIRED_VARS = ["DATABASE_URL", "NEXTAUTH_SECRET", "CALENDSO_ENCRYPTION_KEY"] as const;
 
 const PLACEHOLDER_VALUES = new Set(["secret", "changeme", "change-me", "TODO"]);
 

@@ -2864,3 +2864,16 @@ model AttributeSyncFieldMapping {
   @@unique([integrationAttributeSyncId, attributeId])
   @@index([integrationAttributeSyncId])
 }
+
+/// Token-bucket state for distributed rate limiting. One row per
+/// namespace+identifier pair; rows are self-healing (an expired row refills to
+/// full on read) so the cleanup cron only bounds table size.
+/// Unrelated to the `RateLimit` model above, which stores per-API-key config.
+model RateLimitBucket {
+  key       String   @id
+  tokens    Float
+  updatedAt DateTime
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
