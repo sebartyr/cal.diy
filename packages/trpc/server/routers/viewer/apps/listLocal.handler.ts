@@ -1,9 +1,9 @@
 import { appKeysSchemas } from "@calcom/app-store/apps.keys-schemas.generated";
 import { getLocalAppMetadata } from "@calcom/app-store/utils";
+import { DeploymentRepository } from "@calcom/features/deployment/repositories/DeploymentRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import { AppCategories } from "@calcom/prisma/enums";
-
 import type { TrpcSessionUser } from "../../../types";
 import type { TListLocalInputSchema } from "./listLocal.schema";
 
@@ -19,6 +19,8 @@ export const listLocalHandler = async ({ ctx, input }: ListLocalOptions) => {
   const { prisma } = ctx;
   const category = input.category;
   const localApps = getLocalAppMetadata();
+
+  const defaultConferencingAppSlug = await new DeploymentRepository(prisma).getDefaultConferencingAppSlug();
 
   const dbApps = await prisma.app.findMany({
     where: {
@@ -57,6 +59,7 @@ export const listLocalHandler = async ({ ctx, input }: ListLocalOptions) => {
         dirName: app.dirName || app.slug,
         enabled: dbData?.enabled || false,
         isTemplate: app.isTemplate,
+        isInstanceDefaultConferencingApp: app.slug === defaultConferencingAppSlug,
       };
     }
 
@@ -87,6 +90,7 @@ export const listLocalHandler = async ({ ctx, input }: ListLocalOptions) => {
       enabled: dbData?.enabled ?? false,
       dirName: app.dirName ?? app.slug,
       keys: Object.keys(keys).length === 0 ? null : keys,
+      isInstanceDefaultConferencingApp: app.slug === defaultConferencingAppSlug,
     };
   });
 };

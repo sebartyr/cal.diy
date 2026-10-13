@@ -5,10 +5,17 @@ import { createHandler } from "./create.handler";
 
 const mockFindScheduleByIdForOwnershipCheck = vi.fn();
 const mockEventTypeCreate = vi.fn();
+const mockGetDefaultConferencingAppSlug = vi.fn();
 
 vi.mock("@calcom/features/schedules/repositories/ScheduleRepository", () => ({
   ScheduleRepository: vi.fn().mockImplementation(function () {
     return { findScheduleByIdForOwnershipCheck: mockFindScheduleByIdForOwnershipCheck };
+  }),
+}));
+
+vi.mock("@calcom/features/deployment/repositories/DeploymentRepository", () => ({
+  DeploymentRepository: vi.fn().mockImplementation(function () {
+    return { getDefaultConferencingAppSlug: mockGetDefaultConferencingAppSlug };
   }),
 }));
 
@@ -49,6 +56,7 @@ describe("createHandler schedule ownership", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockEventTypeCreate.mockResolvedValue({ id: 42 });
+    mockGetDefaultConferencingAppSlug.mockResolvedValue(null);
   });
 
   it("rejects a scheduleId owned by another user", async () => {

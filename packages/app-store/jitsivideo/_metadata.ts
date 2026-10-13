@@ -13,7 +13,11 @@ export const metadata = {
   url: "https://jitsi.org/",
   slug: "jitsi",
   title: "Jitsi Meet",
-  isGlobal: false,
+  // Global like Cal Video: Jitsi needs no API key and no per-user credential, and
+  // EventManager only reaches an adapter through getApps(credentials, true), which drops
+  // non-global apps that have no Credential row. Left at false, selecting jitsi as a
+  // location resolved to FAKE_DAILY_CREDENTIAL and produced a Daily link instead.
+  isGlobal: true,
   email: "help@cal.com",
   appData: {
     location: {
