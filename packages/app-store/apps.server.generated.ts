@@ -10,7 +10,6 @@ export const apiHandlers = {
   caldavcalendar: import("./caldavcalendar/api"),
   closecom: import("./closecom/api"),
   discord: import("./discord/api"),
-  dub: import("./dub/api"),
   exchange2013calendar: import("./exchange2013calendar/api"),
   exchange2016calendar: import("./exchange2016calendar/api"),
   exchangecalendar: import("./exchangecalendar/api"),

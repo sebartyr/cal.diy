@@ -1,3 +1,7 @@
+/**
+ * Currency list shared by payment apps. Lived in packages/app-store/paypal until that app
+ * was removed; mock-payment-app still consumes it, so it is not PayPal-specific.
+ */
 export const currencyOptions = [
   { label: "United States dollar", value: "USD" },
   { label: "Australian dollar", value: "AUD" },

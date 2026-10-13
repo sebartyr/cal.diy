@@ -2256,16 +2256,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@calcom/dub@workspace:packages/app-store/dub":
-  version: 0.0.0-use.local
-  resolution: "@calcom/dub@workspace:packages/app-store/dub"
-  dependencies:
-    "@calcom/lib": "workspace:*"
-    "@calcom/types": "workspace:*"
-    dub-package: "npm:dub@^0.61.12"
-  languageName: unknown
-  linkType: soft
-
 "@calcom/emails@workspace:*, @calcom/emails@workspace:packages/emails":
   version: 0.0.0-use.local
   resolution: "@calcom/emails@workspace:packages/emails"
@@ -2440,6 +2430,7 @@ __metadata:
     class-variance-authority: "npm:0.7.1"
     date-fns-tz: "npm:3.2.0"
     deasync: "npm:^0.1.31"
+    dub-package: "npm:dub@^0.61.12"
     framer-motion: "npm:10.12.8"
     react-select: "npm:5.8.0"
     react-sticky-box: "npm:2.0.4"
@@ -21977,8 +21968,8 @@ __metadata:
   linkType: hard
 
 "dub-package@npm:dub@^0.61.12":
-  version: 0.61.14
-  resolution: "dub@npm:0.61.14"
+  version: 0.61.15
+  resolution: "dub@npm:0.61.15"
   peerDependencies:
     "@modelcontextprotocol/sdk": ">=1.5.0 <1.10.0"
     zod: ">= 3"
@@ -21987,7 +21978,7 @@ __metadata:
       optional: true
   bin:
     mcp: bin/mcp-server.js
-  checksum: 10/8db3d81365a8ed7c0183bced62cae773efcd78c544a28498e9e0db1135408caffcd57ed38ea20f156e8c50f2afc3122346ad731bb58ff1dcf5c93354df6ed263
+  checksum: 10/8248ff183c87cefaac22b123097e7814719554d99fd342fd5879d34965cfb0da1dc7cfb6305227de402d30564bc152d94f12f40dc02c131491cbc0f21a356a77
   languageName: node
   linkType: hard
 

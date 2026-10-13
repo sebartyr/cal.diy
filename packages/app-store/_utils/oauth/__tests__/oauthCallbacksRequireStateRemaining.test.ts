@@ -29,7 +29,7 @@ vi.mock("../../getParsedAppKeysFromSlug", () => ({
   default: vi.fn().mockResolvedValue({
     client_id: "client-id",
     client_secret: "client-secret",
-    redirect_uris: "https://cal.example.com/api/integrations/dub/callback",
+    redirect_uris: "https://cal.example.com/api/integrations/basecamp3/callback",
   }),
 }));
 vi.mock("../../../pipedrive-crm/lib/getPipedriveAppKeys", () => ({
@@ -91,7 +91,6 @@ const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["closecom", () => import("../../../closecom/api/callback")],
   ["intercom", () => import("../../../intercom/api/callback")],
   ["basecamp3", () => import("../../../basecamp3/api/callback")],
-  ["dub", () => import("../../../dub/api/callback")],
 ];
 
 const providerQuery = {
@@ -154,7 +153,6 @@ describe("formerly nonce-exempt /add routes sign the state (SEC-101)", () => {
 
   const addRoutes: Array<[string, () => Promise<{ default: Handler }>]> = [
     ["basecamp3", () => import("../../../basecamp3/api/add")],
-    ["dub", () => import("../../../dub/api/add")],
   ];
 
   it.each(addRoutes)("%s puts a session-bound nonce in the authorize URL", async (_slug, load) => {
@@ -198,7 +196,7 @@ describe("createOAuthAppCredential (SEC-102)", () => {
     const createOAuthAppCredential = await loadActual();
 
     await expect(
-      createOAuthAppCredential({ type: "dub", appId: "dub" }, { access_token: "t" }, makeReq(query))
+      createOAuthAppCredential({ type: "basecamp3", appId: "basecamp3" }, { access_token: "t" }, makeReq(query))
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(mocks.prisma.credential.create).not.toHaveBeenCalled();
   });
@@ -207,13 +205,13 @@ describe("createOAuthAppCredential (SEC-102)", () => {
     const createOAuthAppCredential = await loadActual();
 
     await createOAuthAppCredential(
-      { type: "dub", appId: "dub" },
+      { type: "basecamp3", appId: "basecamp3" },
       { access_token: "t" },
       makeReq({ state: signedState(USER_ID) })
     );
 
     expect(mocks.prisma.credential.create).toHaveBeenCalledWith({
-      data: { type: "dub", key: { access_token: "t" }, userId: USER_ID, appId: "dub" },
+      data: { type: "basecamp3", key: { access_token: "t" }, userId: USER_ID, appId: "basecamp3" },
     });
   });
 });

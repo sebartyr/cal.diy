@@ -7,7 +7,6 @@ import { appDataSchema as basecamp3_zod_ts } from "./basecamp3/zod";
 import { appDataSchema as btcpayserver_zod_ts } from "./btcpayserver/zod";
 import { appDataSchema as closecom_zod_ts } from "./closecom/zod";
 import { appDataSchema as dailyvideo_zod_ts } from "./dailyvideo/zod";
-import { appDataSchema as dub_zod_ts } from "./dub/zod";
 import { appDataSchema as feishucalendar_zod_ts } from "./feishucalendar/zod";
 import { appDataSchema as giphy_zod_ts } from "./giphy/zod";
 import { appDataSchema as googlecalendar_zod_ts } from "./googlecalendar/zod";
@@ -41,7 +40,6 @@ export const appDataSchemas = {
   btcpayserver: btcpayserver_zod_ts,
   closecom: closecom_zod_ts,
   dailyvideo: dailyvideo_zod_ts,
-  dub: dub_zod_ts,
   feishucalendar: feishucalendar_zod_ts,
   giphy: giphy_zod_ts,
   googlecalendar: googlecalendar_zod_ts,

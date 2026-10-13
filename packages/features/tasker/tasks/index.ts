@@ -16,8 +16,6 @@ const tasks: Record<TaskTypes, () => Promise<TaskHandler>> = {
   translateEventTypeData: () =>
     import("./translateEventTypeData").then((module) => module.translateEventTypeData),
   createCRMEvent: () => import("./crm/createCRMEvent").then((module) => module.createCRMEvent),
-  sendAnalyticsEvent: () =>
-    import("./analytics/sendAnalyticsEvent").then((module) => module.sendAnalyticsEvent),
   sendAwaitingPaymentEmail: () =>
     import("./sendAwaitingPaymentEmail").then((module) => module.sendAwaitingPaymentEmail),
   bookingAudit: () => import("./bookingAudit").then((module) => module.bookingAudit),

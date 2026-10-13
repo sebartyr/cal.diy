@@ -4,7 +4,7 @@ import {
   currencyOptions,
   currencySymbols,
   isAcceptedCurrencyCode,
-} from "@calcom/app-store/paypal/lib/currencyOptions";
+} from "@calcom/app-store/_utils/payments/currencyOptions";
 import type { EventTypeAppSettingsComponent } from "@calcom/app-store/types";
 import {
   convertToSmallestCurrencyUnit,
