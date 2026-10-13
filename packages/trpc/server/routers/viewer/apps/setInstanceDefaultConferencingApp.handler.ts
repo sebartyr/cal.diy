@@ -67,6 +67,25 @@ export const setInstanceDefaultConferencingAppHandler = async ({
         message: `App ${slug} is not globally installed, so hosts without their own credential could not use it`,
       });
     }
+
+    // videoClient.createMeeting() throws "is either disabled or not seeded at all" when the App
+    // row is missing or disabled, which surfaces as a booking with no meeting URL. The admin
+    // panel can disable any app, so this pairing has to be checked here.
+    const appRow = await ctx.prisma.app.findUnique({ where: { slug }, select: { enabled: true } });
+
+    if (!appRow) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `App ${slug} is not installed on this instance`,
+      });
+    }
+
+    if (!appRow.enabled) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `App ${slug} is disabled, so it cannot produce a meeting link`,
+      });
+    }
   }
 
   await new DeploymentRepository(ctx.prisma).setDefaultConferencingAppSlug(slug);

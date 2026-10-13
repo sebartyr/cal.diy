@@ -65,6 +65,7 @@ describe("getDefaultLocation ", async () => {
       metadata: {},
     };
     await mockUser(user);
+    await enableAppInDb("jitsi", "jitsivideo");
     const res = await getDefaultLocations(user);
     expect(res[0]).toEqual({ type: JitsiLocationType });
   });
@@ -76,6 +77,7 @@ describe("getDefaultLocation ", async () => {
       metadata: {},
     };
     await mockUser(user);
+    await enableAppInDb("google-meet", "googlevideo");
     const res = await getDefaultLocations(user, "google-meet");
     expect(res[0]).toEqual({ type: MeetLocationType });
   });
@@ -89,6 +91,7 @@ describe("getDefaultLocation ", async () => {
       metadata: {},
     };
     await mockUser(user);
+    await enableAppInDb("jitsi", "jitsivideo");
     const res = await getDefaultLocations(user, "an-app-that-does-not-exist");
     expect(res[0]).toEqual({ type: JitsiLocationType });
   });
@@ -124,8 +127,47 @@ describe("getDefaultLocation ", async () => {
       },
     };
     await mockUser(user);
+    await enableAppInDb("jitsi", "jitsivideo");
     const res = await getDefaultLocations(user, "jitsi");
     expect(res[0]).toEqual({ type: JitsiLocationType });
+  });
+
+  // createMeeting() throws on a disabled app, so a location pointing at one yields a booking
+  // with no meeting URL. An administrator can disable any app after making it the default.
+  it("ignores a deployment default whose app is disabled", async () => {
+    const user: User = {
+      id: 106,
+      email: "disabled-default@example.com",
+      metadata: {},
+    };
+    await mockUser(user);
+    await prismaMock.app.create({
+      data: {
+        slug: "google-meet",
+        dirName: "googlevideo",
+        categories: ["conferencing"],
+        enabled: false,
+        keys: {},
+      } as any,
+    });
+    await enableAppInDb("jitsi", "jitsivideo");
+
+    const res = await getDefaultLocations(user, "google-meet");
+    expect(res[0]).toEqual({ type: JitsiLocationType });
+  });
+
+  // No location at all is recoverable: the host is prompted to pick one. A location that cannot
+  // produce a link is not, it surfaces as a booking with no meeting URL.
+  it("returns no location when every provider is disabled or unseeded", async () => {
+    const user: User = {
+      id: 107,
+      email: "nothing-usable@example.com",
+      metadata: {},
+    };
+    await mockUser(user);
+
+    const res = await getDefaultLocations(user, "google-meet");
+    expect(res).toEqual([]);
   });
 });
 
@@ -145,6 +187,12 @@ async function mockUser(user: User) {
     data: userToCreate,
   });
 }
+async function enableAppInDb(slug: string, dirName: string) {
+  await prismaMock.app.create({
+    data: { slug, dirName, categories: ["conferencing"], enabled: true, keys: {} } as any,
+  });
+}
+
 async function addAppsToDb(apps: any[]) {
   await prismaMock.app.createMany({
     data: apps.map((app) => {

@@ -1,9 +1,13 @@
 import { getUsersCredentialsIncludeServiceAccountKey } from "@calcom/app-store/delegationCredential";
+import logger from "@calcom/lib/logger";
+import prisma from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import { type eventTypeLocations, userMetadata as userMetadataSchema } from "@calcom/prisma/zod-utils";
 import type { z } from "zod";
 import { JitsiLocationType } from "../constants";
 import getApps, { getAppFromSlug } from "../utils";
+
+const log = logger.getSubLogger({ prefix: ["getDefaultLocations"] });
 
 type EventTypeLocation = z.infer<typeof eventTypeLocations>[number];
 
@@ -20,6 +24,9 @@ type User = {
  * resolve to "no location at all" — which would create event types with no location and
  * bookings with no meeting URL, with nothing failing loudly along the way.
  */
+export const FALLBACK_CONFERENCING_APP_SLUG = "jitsi";
+
+/** Kept for callers that need the type rather than the slug. */
 export const FALLBACK_CONFERENCING_LOCATION_TYPE = JitsiLocationType;
 
 /**
@@ -29,6 +36,23 @@ export const FALLBACK_CONFERENCING_LOCATION_TYPE = JitsiLocationType;
  */
 function getLocationTypeFromSlug(slug: string): string | undefined {
   return getAppFromSlug(slug)?.appData?.location?.type;
+}
+
+/**
+ * videoClient.createMeeting() throws when the App row is missing or disabled, so a location
+ * pointing at such an app yields a booking with no meeting URL. An administrator can disable
+ * any app from the admin panel at any time, including after it was made the default.
+ */
+async function isAppEnabled(slug: string): Promise<boolean> {
+  const app = await prisma.app.findUnique({ where: { slug }, select: { enabled: true } });
+  return app?.enabled === true;
+}
+
+async function resolveUsableLocation(slug: string): Promise<EventTypeLocation | null> {
+  const type = getLocationTypeFromSlug(slug);
+  if (!type) return null;
+  if (!(await isAppEnabled(slug))) return null;
+  return { type };
 }
 
 /**
@@ -58,9 +82,20 @@ export async function getDefaultLocations(
   }
 
   if (defaultConferencingAppSlug) {
-    const locationType = getLocationTypeFromSlug(defaultConferencingAppSlug);
-    if (locationType) return [{ type: locationType }];
+    const location = await resolveUsableLocation(defaultConferencingAppSlug);
+    if (location) return [location];
+    log.warn(
+      `Deployment default conferencing app "${defaultConferencingAppSlug}" is disabled or not seeded; falling back`
+    );
   }
 
-  return [{ type: FALLBACK_CONFERENCING_LOCATION_TYPE }];
+  const fallback = await resolveUsableLocation(FALLBACK_CONFERENCING_APP_SLUG);
+  if (fallback) return [fallback];
+
+  // Better no location, which the host is prompted to fill in, than one that cannot produce a
+  // meeting link. Reaching here means every conferencing provider is disabled or unseeded.
+  log.warn(
+    `No usable default conferencing app: "${FALLBACK_CONFERENCING_APP_SLUG}" is disabled or not seeded either`
+  );
+  return [];
 }

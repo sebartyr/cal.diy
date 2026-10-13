@@ -16,9 +16,11 @@ vi.mock("@calcom/app-store/utils", () => ({
   getAppFromSlug: (slug: string) => mockGetAppFromSlug(slug),
 }));
 
+const mockAppFindUnique = vi.fn();
+
 const ctx = {
   user: { id: 1 } as never,
-  prisma: {} as PrismaClient,
+  prisma: { app: { findUnique: mockAppFindUnique } } as unknown as PrismaClient,
 };
 
 const conferencingApp = {
@@ -32,6 +34,7 @@ const conferencingApp = {
 describe("setInstanceDefaultConferencingAppHandler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAppFindUnique.mockResolvedValue({ enabled: true });
   });
 
   it("stores the slug of a conferencing app", async () => {
@@ -41,6 +44,28 @@ describe("setInstanceDefaultConferencingAppHandler", () => {
       setInstanceDefaultConferencingAppHandler({ ctx, input: { slug: "jitsi" } })
     ).resolves.toEqual({ slug: "jitsi" });
     expect(mockSetDefaultConferencingAppSlug).toHaveBeenCalledWith("jitsi");
+  });
+
+  // createMeeting() throws "is either disabled or not seeded at all" on a disabled app, which
+  // reaches the user as a booking with no meeting URL. The admin panel can disable any app.
+  it("rejects a disabled app", async () => {
+    mockGetAppFromSlug.mockReturnValue(conferencingApp);
+    mockAppFindUnique.mockResolvedValue({ enabled: false });
+
+    await expect(setInstanceDefaultConferencingAppHandler({ ctx, input: { slug: "jitsi" } })).rejects.toThrow(
+      /is disabled/
+    );
+    expect(mockSetDefaultConferencingAppSlug).not.toHaveBeenCalled();
+  });
+
+  it("rejects an app with no App row on this instance", async () => {
+    mockGetAppFromSlug.mockReturnValue(conferencingApp);
+    mockAppFindUnique.mockResolvedValue(null);
+
+    await expect(setInstanceDefaultConferencingAppHandler({ ctx, input: { slug: "jitsi" } })).rejects.toThrow(
+      /not installed on this instance/
+    );
+    expect(mockSetDefaultConferencingAppSlug).not.toHaveBeenCalled();
   });
 
   it("clears the default without looking up any app", async () => {
