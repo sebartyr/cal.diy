@@ -7,6 +7,7 @@ import discord_config_json from "./discord/config.json";
 import { metadata as googlevideo__metadata_ts } from "./googlevideo/_metadata";
 import { metadata as jitsivideo__metadata_ts } from "./jitsivideo/_metadata";
 import office365video_config_json from "./office365video/config.json";
+import openvisio_config_json from "./openvisio/config.json";
 import signal_config_json from "./signal/config.json";
 import telegram_config_json from "./telegram/config.json";
 import booking_pages_tag_config_json from "./templates/booking-pages-tag/config.json";
@@ -19,6 +20,7 @@ export const appStoreMetadata = {
   googlevideo: googlevideo__metadata_ts,
   jitsivideo: jitsivideo__metadata_ts,
   office365video: office365video_config_json,
+  openvisio: openvisio_config_json,
   signal: signal_config_json,
   telegram: telegram_config_json,
   "booking-pages-tag": booking_pages_tag_config_json,

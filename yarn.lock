@@ -2648,6 +2648,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@calcom/openvisio@workspace:packages/app-store/openvisio":
+  version: 0.0.0-use.local
+  resolution: "@calcom/openvisio@workspace:packages/app-store/openvisio"
+  dependencies:
+    "@calcom/lib": "workspace:*"
+    "@calcom/types": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@calcom/paypal@workspace:packages/app-store/paypal":
   version: 0.0.0-use.local
   resolution: "@calcom/paypal@workspace:packages/app-store/paypal"

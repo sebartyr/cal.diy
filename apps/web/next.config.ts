@@ -653,6 +653,11 @@ const nextConfig = (phase: string): NextConfig => {
             source: "/apps/jitsi_video",
             destination: "/apps/jitsi",
             permanent: true,
+          },
+          {
+            source: "/apps/openvisio_video",
+            destination: "/apps/openvisio",
+            permanent: true,
           }
         );
       }
