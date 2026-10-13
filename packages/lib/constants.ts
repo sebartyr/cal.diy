@@ -1,9 +1,15 @@
+// WARNING: do not let `biome lint --write` add an explicit `node:process` import here.
+// This module is pulled into the Edge runtime through
+// apps/web/app/api/social/og/image/route.tsx, and a node: import in that graph fails the
+// production build with "Failed to collect page data for /api/social/og/image".
+// The global `process` works in every runtime we target, and `process.env` is supported on
+// Edge. A biome-ignore comment does not stop the fix, so this is a review-time guard.
+
 /**
  * Ensures URL has a protocol prefix. If the URL doesn't start with http:// or https://,
  * prepends https:// to make it valid for URL parsing.
  * This handles cases where environment variables have their protocol stripped
  */
-import process from "node:process";
 
 function ensureProtocol(url: string | undefined): string {
   if (!url) return "";
