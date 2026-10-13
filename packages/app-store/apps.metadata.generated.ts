@@ -7,7 +7,6 @@ import amie_config_json from "./amie/config.json";
 import { metadata as applecalendar__metadata_ts } from "./applecalendar/_metadata";
 import btcpayserver_config_json from "./btcpayserver/config.json";
 import { metadata as caldavcalendar__metadata_ts } from "./caldavcalendar/_metadata";
-import closecom_config_json from "./closecom/config.json";
 import cron_config_json from "./cron/config.json";
 import { metadata as dailyvideo__metadata_ts } from "./dailyvideo/_metadata";
 import discord_config_json from "./discord/config.json";
@@ -18,7 +17,6 @@ import { metadata as feishucalendar__metadata_ts } from "./feishucalendar/_metad
 import { metadata as googlecalendar__metadata_ts } from "./googlecalendar/_metadata";
 import { metadata as googlevideo__metadata_ts } from "./googlevideo/_metadata";
 import hitpay_config_json from "./hitpay/config.json";
-import { metadata as hubspot__metadata_ts } from "./hubspot/_metadata";
 import ics_feedcalendar_config_json from "./ics-feedcalendar/config.json";
 import { metadata as jitsivideo__metadata_ts } from "./jitsivideo/_metadata";
 import { metadata as larkcalendar__metadata_ts } from "./larkcalendar/_metadata";
@@ -29,7 +27,6 @@ import openvisio_config_json from "./openvisio/config.json";
 import paypal_config_json from "./paypal/config.json";
 import pipedrive_crm_config_json from "./pipedrive-crm/config.json";
 import qr_code_config_json from "./qr_code/config.json";
-import salesforce_config_json from "./salesforce/config.json";
 import signal_config_json from "./signal/config.json";
 import { metadata as stripepayment__metadata_ts } from "./stripepayment/_metadata";
 import telegram_config_json from "./telegram/config.json";
@@ -41,9 +38,7 @@ import general_app_settings_config_json from "./templates/general-app-settings/c
 import link_as_an_app_config_json from "./templates/link-as-an-app/config.json";
 import vimcal_config_json from "./vimcal/config.json";
 import whatsapp_config_json from "./whatsapp/config.json";
-import zoho_bigin_config_json from "./zoho-bigin/config.json";
 import zohocalendar_config_json from "./zohocalendar/config.json";
-import zohocrm_config_json from "./zohocrm/config.json";
 import { metadata as zoomvideo__metadata_ts } from "./zoomvideo/_metadata";
 export const appStoreMetadata = {
   alby: alby_config_json,
@@ -51,7 +46,6 @@ export const appStoreMetadata = {
   applecalendar: applecalendar__metadata_ts,
   btcpayserver: btcpayserver_config_json,
   caldavcalendar: caldavcalendar__metadata_ts,
-  closecom: closecom_config_json,
   cron: cron_config_json,
   dailyvideo: dailyvideo__metadata_ts,
   discord: discord_config_json,
@@ -62,7 +56,6 @@ export const appStoreMetadata = {
   googlecalendar: googlecalendar__metadata_ts,
   googlevideo: googlevideo__metadata_ts,
   hitpay: hitpay_config_json,
-  hubspot: hubspot__metadata_ts,
   "ics-feedcalendar": ics_feedcalendar_config_json,
   jitsivideo: jitsivideo__metadata_ts,
   larkcalendar: larkcalendar__metadata_ts,
@@ -73,7 +66,6 @@ export const appStoreMetadata = {
   paypal: paypal_config_json,
   "pipedrive-crm": pipedrive_crm_config_json,
   qr_code: qr_code_config_json,
-  salesforce: salesforce_config_json,
   signal: signal_config_json,
   stripepayment: stripepayment__metadata_ts,
   telegram: telegram_config_json,
@@ -85,8 +77,6 @@ export const appStoreMetadata = {
   "link-as-an-app": link_as_an_app_config_json,
   vimcal: vimcal_config_json,
   whatsapp: whatsapp_config_json,
-  "zoho-bigin": zoho_bigin_config_json,
   zohocalendar: zohocalendar_config_json,
-  zohocrm: zohocrm_config_json,
   zoomvideo: zoomvideo__metadata_ts,
 };

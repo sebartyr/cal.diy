@@ -15,7 +15,7 @@ interface User {
 
 interface EventTypeMetadata {
   apps: {
-    salesforce: {
+    "pipedrive-crm": {
       enabled: boolean;
       credentialId: number;
       appCategories: string[];
@@ -91,7 +91,7 @@ describe("createCRMEvent", () => {
     prismaMock.bookingReference.findMany.mockReset();
   });
 
-  it("should successfully create a Salesforce CRM event", async () => {
+  it("should successfully create a CRM event", async () => {
     const mockBooking: Booking = {
       id: 1,
       uid: "booking-123",
@@ -107,7 +107,7 @@ describe("createCRMEvent", () => {
       eventType: {
         metadata: {
           apps: {
-            salesforce: {
+            "pipedrive-crm": {
               enabled: true,
               credentialId: 1,
               appCategories: ["crm"],
@@ -119,7 +119,7 @@ describe("createCRMEvent", () => {
 
     const mockCredential: CRMCredential = {
       id: 1,
-      type: "salesforce_crm",
+      type: "pipedrive-crm_crm",
       key: {
         access_token: "mock_token",
         refresh_token: "mock_refresh",
@@ -144,7 +144,7 @@ describe("createCRMEvent", () => {
     expect(prismaMock.bookingReference.createMany).toHaveBeenCalledWith({
       data: [
         {
-          type: "salesforce_crm",
+          type: "pipedrive-crm_crm",
           uid: "sf-event-123",
           meetingId: "sf-event-123",
           credentialId: 1,
@@ -172,7 +172,7 @@ describe("createCRMEvent", () => {
     await expect(createCRMEvent(payload)).rejects.toThrow("booking not found");
   });
 
-  it("should handle case when Salesforce CRM is not enabled", async () => {
+  it("should handle case when Pipedrive CRM is not enabled", async () => {
     const mockBooking: Booking = {
       id: 1,
       uid: "booking-123",
@@ -188,7 +188,7 @@ describe("createCRMEvent", () => {
       eventType: {
         metadata: {
           apps: {
-            salesforce: {
+            "pipedrive-crm": {
               enabled: false,
               credentialId: 1,
               appCategories: ["crm"],
@@ -228,7 +228,7 @@ describe("createCRMEvent", () => {
       eventType: {
         metadata: {
           apps: {
-            salesforce: {
+            "pipedrive-crm": {
               enabled: true,
               credentialId: 1,
               appCategories: ["crm"],
@@ -243,7 +243,7 @@ describe("createCRMEvent", () => {
     prismaMock.credential.findMany.mockResolvedValueOnce([]);
     prismaMock.bookingReference.findMany.mockResolvedValueOnce([]);
 
-    mockCreateEvent.mockRejectedValue(new Error("Salesforce API error"));
+    mockCreateEvent.mockRejectedValue(new Error("CRM API error"));
 
     const payload = JSON.stringify({
       bookingUid: "booking-123",
@@ -272,7 +272,7 @@ describe("createCRMEvent", () => {
       eventType: {
         metadata: {
           apps: {
-            salesforce: {
+            "pipedrive-crm": {
               enabled: true,
               credentialId: 1,
               appCategories: ["crm"],
@@ -284,7 +284,7 @@ describe("createCRMEvent", () => {
 
     const mockCredential: CRMCredential = {
       id: 1,
-      type: "salesforce_crm",
+      type: "pipedrive-crm_crm",
       key: { key1: "value1" },
       userId: 1,
     };
@@ -294,13 +294,13 @@ describe("createCRMEvent", () => {
     prismaMock.credential.findMany.mockResolvedValueOnce([mockCredential]);
     prismaMock.bookingReference.findMany.mockResolvedValueOnce([]);
 
-    mockCreateEvent.mockRejectedValue(new RetryableError("Salesforce API Retryable error"));
+    mockCreateEvent.mockRejectedValue(new RetryableError("CRM API Retryable error"));
 
     const payload = JSON.stringify({
       bookingUid: "booking-123",
     });
 
-    await expect(createCRMEvent(payload)).rejects.toThrow("Salesforce API Retryable error");
+    await expect(createCRMEvent(payload)).rejects.toThrow("CRM API Retryable error");
   });
 
   it("should not throw(and thus not retry) if there is non-RetryableError from `createEvent`", async () => {
@@ -319,7 +319,7 @@ describe("createCRMEvent", () => {
       eventType: {
         metadata: {
           apps: {
-            salesforce: {
+            "pipedrive-crm": {
               enabled: true,
               credentialId: 1,
               appCategories: ["crm"],
@@ -331,7 +331,7 @@ describe("createCRMEvent", () => {
 
     const mockCredential: CRMCredential = {
       id: 1,
-      type: "salesforce_crm",
+      type: "pipedrive-crm_crm",
       key: { key1: "value1" },
       userId: 1,
     };
@@ -341,7 +341,7 @@ describe("createCRMEvent", () => {
     prismaMock.credential.findMany.mockResolvedValueOnce([mockCredential]);
     prismaMock.bookingReference.findMany.mockResolvedValueOnce([]);
 
-    mockCreateEvent.mockRejectedValue(new Error("Salesforce API error"));
+    mockCreateEvent.mockRejectedValue(new Error("CRM API error"));
 
     const payload = JSON.stringify({
       bookingUid: "booking-123",
@@ -370,12 +370,15 @@ describe("createCRMEvent", () => {
       eventType: {
         metadata: {
           apps: {
-            salesforce: {
+            "pipedrive-crm": {
               enabled: true,
               credentialId: 1,
               appCategories: ["crm"],
             },
-            hubspot: {
+            // Only one CRM app survives the app-store cleanup, so the second entry just
+            // needs an app that has an appDataSchema; what matters here is that a failure
+            // on the first entry does not stop the second from being processed.
+            qr_code: {
               enabled: true,
               credentialId: 2,
               appCategories: ["crm"],
@@ -385,35 +388,35 @@ describe("createCRMEvent", () => {
       },
     };
 
-    const mockSalesforceCredential: CRMCredential = {
+    const mockCrmCredential: CRMCredential = {
       id: 1,
-      type: "salesforce_crm",
+      type: "pipedrive-crm_crm",
       key: { key1: "value1" },
       userId: 1,
     };
 
-    const mockHubspotCredential: CRMCredential = {
+    const mockSecondCredential: CRMCredential = {
       id: 2,
-      type: "hubspot",
+      type: "qr_code",
       key: { key1: "value1" },
       userId: 1,
     };
 
     prismaMock.booking.findUnique.mockResolvedValue(mockBooking);
 
-    // First call returns Salesforce credential and second call returns Hubspot credential
+    // First call returns the CRM credential, second call the other app's credential
     prismaMock.credential.findUnique
-      .mockResolvedValueOnce(mockSalesforceCredential)
-      .mockResolvedValueOnce(mockHubspotCredential);
+      .mockResolvedValueOnce(mockCrmCredential)
+      .mockResolvedValueOnce(mockSecondCredential);
 
-    prismaMock.credential.findMany.mockResolvedValueOnce([mockSalesforceCredential, mockHubspotCredential]);
+    prismaMock.credential.findMany.mockResolvedValueOnce([mockCrmCredential, mockSecondCredential]);
 
     prismaMock.bookingReference.findMany.mockResolvedValueOnce([]);
 
     // Throw error for first app and resolve for second app
     mockCreateEvent
-      .mockRejectedValueOnce(new Error("Salesforce API error"))
-      .mockResolvedValueOnce({ id: "hubspot-event-123" });
+      .mockRejectedValueOnce(new Error("CRM API error"))
+      .mockResolvedValueOnce({ id: "second-event-123" });
 
     const payload = JSON.stringify({
       bookingUid: "booking-123",
@@ -424,9 +427,9 @@ describe("createCRMEvent", () => {
     expect(prismaMock.bookingReference.createMany).toHaveBeenCalledWith({
       data: [
         {
-          type: "hubspot",
-          uid: "hubspot-event-123",
-          meetingId: "hubspot-event-123",
+          type: "qr_code",
+          uid: "second-event-123",
+          meetingId: "second-event-123",
           credentialId: 2,
           bookingId: 1,
         },
@@ -450,7 +453,7 @@ describe("createCRMEvent", () => {
       eventType: {
         metadata: {
           apps: {
-            salesforce: {
+            "pipedrive-crm": {
               enabled: true,
               credentialId: 1,
               appCategories: ["crm"],
@@ -460,18 +463,18 @@ describe("createCRMEvent", () => {
       },
     };
 
-    const mockSalesforceCredential: CRMCredential = {
+    const mockCrmCredential: CRMCredential = {
       id: 1,
-      type: "salesforce_crm",
+      type: "pipedrive-crm_crm",
       key: { key1: "value1" },
       userId: 1,
     };
 
     prismaMock.booking.findUnique.mockResolvedValue(mockBooking);
-    prismaMock.credential.findUnique.mockResolvedValueOnce(mockSalesforceCredential);
-    prismaMock.credential.findMany.mockResolvedValueOnce([mockSalesforceCredential]);
+    prismaMock.credential.findUnique.mockResolvedValueOnce(mockCrmCredential);
+    prismaMock.credential.findMany.mockResolvedValueOnce([mockCrmCredential]);
     prismaMock.bookingReference.findMany.mockResolvedValueOnce([
-      { id: 1, type: "salesforce_crm", uid: "sf-event-123", credentialId: 1, bookingId: 1 },
+      { id: 1, type: "pipedrive-crm_crm", uid: "sf-event-123", credentialId: 1, bookingId: 1 },
     ]);
 
     const payload = JSON.stringify({

@@ -83,9 +83,6 @@ type Handler = (req: NextApiRequest, res: NextApiResponse) => unknown;
 
 const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["pipedrive-crm", () => import("../../../pipedrive-crm/api/callback")],
-  ["zohocrm", () => import("../../../zohocrm/api/callback")],
-  ["zoho-bigin", () => import("../../../zoho-bigin/api/callback")],
-  ["closecom", () => import("../../../closecom/api/callback")],
 ];
 
 const providerQuery = {

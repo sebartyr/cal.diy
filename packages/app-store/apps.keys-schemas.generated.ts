@@ -4,13 +4,11 @@
 **/
 import { appKeysSchema as alby_zod_ts } from "./alby/zod";
 import { appKeysSchema as btcpayserver_zod_ts } from "./btcpayserver/zod";
-import { appKeysSchema as closecom_zod_ts } from "./closecom/zod";
 import { appKeysSchema as dailyvideo_zod_ts } from "./dailyvideo/zod";
 import { appKeysSchema as feishucalendar_zod_ts } from "./feishucalendar/zod";
 import { appKeysSchema as googlecalendar_zod_ts } from "./googlecalendar/zod";
 import { appKeysSchema as googlevideo_zod_ts } from "./googlevideo/zod";
 import { appKeysSchema as hitpay_zod_ts } from "./hitpay/zod";
-import { appKeysSchema as hubspot_zod_ts } from "./hubspot/zod";
 import { appKeysSchema as jitsivideo_zod_ts } from "./jitsivideo/zod";
 import { appKeysSchema as larkcalendar_zod_ts } from "./larkcalendar/zod";
 import { appKeysSchema as mock_payment_app_zod_ts } from "./mock-payment-app/zod";
@@ -20,24 +18,19 @@ import { appKeysSchema as openvisio_zod_ts } from "./openvisio/zod";
 import { appKeysSchema as paypal_zod_ts } from "./paypal/zod";
 import { appKeysSchema as pipedrive_crm_zod_ts } from "./pipedrive-crm/zod";
 import { appKeysSchema as qr_code_zod_ts } from "./qr_code/zod";
-import { appKeysSchema as salesforce_zod_ts } from "./salesforce/zod";
 import { appKeysSchema as stripepayment_zod_ts } from "./stripepayment/zod";
 import { appKeysSchema as booking_pages_tag_zod_ts } from "./templates/booking-pages-tag/zod";
 import { appKeysSchema as event_type_app_card_zod_ts } from "./templates/event-type-app-card/zod";
-import { appKeysSchema as zoho_bigin_zod_ts } from "./zoho-bigin/zod";
 import { appKeysSchema as zohocalendar_zod_ts } from "./zohocalendar/zod";
-import { appKeysSchema as zohocrm_zod_ts } from "./zohocrm/zod";
 import { appKeysSchema as zoomvideo_zod_ts } from "./zoomvideo/zod";
 export const appKeysSchemas = {
   alby: alby_zod_ts,
   btcpayserver: btcpayserver_zod_ts,
-  closecom: closecom_zod_ts,
   dailyvideo: dailyvideo_zod_ts,
   feishucalendar: feishucalendar_zod_ts,
   googlecalendar: googlecalendar_zod_ts,
   googlevideo: googlevideo_zod_ts,
   hitpay: hitpay_zod_ts,
-  hubspot: hubspot_zod_ts,
   jitsivideo: jitsivideo_zod_ts,
   larkcalendar: larkcalendar_zod_ts,
   "mock-payment-app": mock_payment_app_zod_ts,
@@ -47,12 +40,9 @@ export const appKeysSchemas = {
   paypal: paypal_zod_ts,
   "pipedrive-crm": pipedrive_crm_zod_ts,
   qr_code: qr_code_zod_ts,
-  salesforce: salesforce_zod_ts,
   stripe: stripepayment_zod_ts,
   "booking-pages-tag": booking_pages_tag_zod_ts,
   "event-type-app-card": event_type_app_card_zod_ts,
-  "zoho-bigin": zoho_bigin_zod_ts,
   zohocalendar: zohocalendar_zod_ts,
-  zohocrm: zohocrm_zod_ts,
   zoomvideo: zoomvideo_zod_ts,
 };
