@@ -1,13 +1,12 @@
-import { getPremiumMonthlyPlanPriceId } from "@calcom/app-store/stripepayment/lib/utils";
 import { sendChangeOfEmailVerification } from "@calcom/features/auth/lib/verifyEmail";
 import { FeaturesRepository } from "@calcom/features/flags/features.repository";
 import { checkUsername } from "@calcom/features/profile/lib/checkUsername";
 import { ScheduleRepository } from "@calcom/features/schedules/repositories/ScheduleRepository";
+import { getTranslation } from "@calcom/i18n/server";
 import hasKeyInMetadata from "@calcom/lib/hasKeyInMetadata";
 import { HttpError } from "@calcom/lib/http-error";
 import logger from "@calcom/lib/logger";
 import { uploadAvatar } from "@calcom/lib/server/avatar";
-import { getTranslation } from "@calcom/i18n/server";
 import { resizeBase64Image } from "@calcom/lib/server/resizeBase64Image";
 import slugify from "@calcom/lib/slugify";
 import { validateBookerLayouts } from "@calcom/lib/validateBookerLayouts";
@@ -24,7 +23,9 @@ import { type TUpdateProfileInputSchema, updateUserMetadataAllowedKeys } from ".
 const getBillingProviderService = async (..._args: unknown[]) => ({
   createCustomer: async (..._a: unknown[]) => null,
   getCustomer: async (..._a: unknown[]) => null,
-  getSubscriptions: async (..._a: unknown[]): Promise<{ items: { data: { price: { id: string } }[] }; status: string }[]> => [],
+  getSubscriptions: async (
+    ..._a: unknown[]
+  ): Promise<{ items: { data: { price: { id: string } }[] }; status: string }[]> => [],
   updateCustomer: async (..._a: unknown[]) => null,
 });
 const updateNewTeamMemberEventTypes = async (..._args: unknown[]) => {};
@@ -57,8 +58,6 @@ export const updateProfileHandler = async ({ ctx, input }: UpdateProfileOptions)
     secondaryEmails: undefined,
   };
 
-  let isPremiumUsername = false;
-
   const layoutError = validateBookerLayouts(input?.metadata?.defaultBookerLayouts || null);
   if (layoutError) {
     const t = await getTranslation(locale, "common");
@@ -71,7 +70,6 @@ export const updateProfileHandler = async ({ ctx, input }: UpdateProfileOptions)
     if (username !== user.username) {
       data.username = username;
       const response = await checkUsername(username);
-      isPremiumUsername = response.premium;
       if (!response.available) {
         const t = await getTranslation(locale, "common");
         throw new TRPCError({ code: "BAD_REQUEST", message: t("username_already_taken") });
@@ -82,37 +80,6 @@ export const updateProfileHandler = async ({ ctx, input }: UpdateProfileOptions)
     delete data.username;
   }
 
-  if (isPremiumUsername) {
-    const stripeCustomerId = userMetadata?.stripeCustomerId;
-    const isPremium = userMetadata?.isPremium;
-    if (!isPremium || !stripeCustomerId) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "User is not premium" });
-    }
-
-    const stripeSubscriptions = await billingService.getSubscriptions(stripeCustomerId);
-
-    if (!stripeSubscriptions || !stripeSubscriptions.length) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "No stripeSubscription found",
-      });
-    }
-
-    // Iterate over subscriptions and look for premium product id and status active
-    // @TODO: iterate if stripeSubscriptions.hasMore is true
-    const isPremiumUsernameSubscriptionActive = stripeSubscriptions.some(
-      (subscription) =>
-        subscription.items.data[0].price.id === getPremiumMonthlyPlanPriceId() &&
-        subscription.status === "active"
-    );
-
-    if (!isPremiumUsernameSubscriptionActive) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "You need to pay for premium username",
-      });
-    }
-  }
   const hasEmailBeenChanged = data.email && user.email !== data.email;
 
   let secondaryEmail:

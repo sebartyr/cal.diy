@@ -5,9 +5,6 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createOAuthAppCredential: vi.fn(),
-  stripeOauthToken: vi.fn(),
-  hubspotCreateToken: vi.fn(),
-  jsforceConnection: vi.fn(),
 }));
 
 vi.mock("@calcom/prisma", () => ({ default: {}, prisma: {} }));
@@ -24,18 +21,6 @@ vi.mock("../../getAppKeysFromSlug", () => ({
   }),
 }));
 vi.mock("../../setDefaultConferencingApp", () => ({ default: vi.fn() }));
-vi.mock("../../../stripepayment/lib/server", () => ({
-  default: {
-    oauth: { token: mocks.stripeOauthToken },
-    accounts: { retrieve: vi.fn().mockResolvedValue({ default_currency: "usd" }) },
-  },
-}));
-vi.mock("@hubspot/api-client", () => ({
-  Client: class {
-    oauth = { tokensApi: { createToken: mocks.hubspotCreateToken } };
-  },
-}));
-vi.mock("@jsforce/jsforce-node", () => ({ default: { Connection: mocks.jsforceConnection } }));
 
 const NEXTAUTH_SECRET = "test-nextauth-secret";
 const USER_ID = 42;
@@ -77,7 +62,6 @@ function signedState(userId: number) {
 type Handler = (req: NextApiRequest, res: NextApiResponse) => unknown;
 
 const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
-  ["stripepayment", () => import("../../../stripepayment/api/callback")],
   ["zohocalendar", () => import("../../../zohocalendar/api/callback")],
   ["office365video", () => import("../../../office365video/api/callback")],
 ];
@@ -111,26 +95,7 @@ describe("OAuth callbacks refuse to exchange a code without a valid state (SEC-1
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(fetchSpy).not.toHaveBeenCalled();
-      expect(mocks.stripeOauthToken).not.toHaveBeenCalled();
-      expect(mocks.hubspotCreateToken).not.toHaveBeenCalled();
-      expect(mocks.jsforceConnection).not.toHaveBeenCalled();
       expect(mocks.createOAuthAppCredential).not.toHaveBeenCalled();
     });
-  });
-
-  it("still completes the Stripe flow when the state is bound to the current session", async () => {
-    mocks.stripeOauthToken.mockResolvedValue({ stripe_user_id: "acct_123" });
-    const { default: handler } = await import("../../../stripepayment/api/callback");
-    const res = makeRes();
-
-    await handler(makeReq({ code: "user-code", state: signedState(USER_ID) }), res);
-
-    expect(mocks.stripeOauthToken).toHaveBeenCalledWith({
-      grant_type: "authorization_code",
-      code: "user-code",
-    });
-    expect(mocks.createOAuthAppCredential).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
-    expect(res.redirect).toHaveBeenCalledTimes(1);
   });
 });

@@ -17,7 +17,6 @@ export const EventTypeAddonMap = {
   "mock-payment-app": dynamic(() => import("./mock-payment-app/components/EventTypeAppCardInterface")),
   "pipedrive-crm": dynamic(() => import("./pipedrive-crm/components/EventTypeAppCardInterface")),
   qr_code: dynamic(() => import("./qr_code/components/EventTypeAppCardInterface")),
-  stripepayment: dynamic(() => import("./stripepayment/components/EventTypeAppCardInterface")),
   "booking-pages-tag": dynamic(
     () => import("./templates/booking-pages-tag/components/EventTypeAppCardInterface")
   ),
@@ -27,5 +26,4 @@ export const EventTypeAddonMap = {
 };
 export const EventTypeSettingsMap = {
   qr_code: dynamic(() => import("./qr_code/components/EventTypeAppSettingsInterface")),
-  stripepayment: dynamic(() => import("./stripepayment/components/EventTypeAppSettingsInterface")),
 };

@@ -35,9 +35,6 @@ const formatOutput = (source: string) => source;
 
 const getVariableName = (appName: string) => appName.replace(/[-./]/g, "_");
 
-// INFO: Handle stripe separately as it's an old app with different dirName than slug/appId
-const getAppId = (app: { name: string }) => (app.name === "stripepayment" ? "stripe" : app.name);
-
 type App = Partial<AppMetaType> & {
   name: string;
   path: string;
@@ -295,9 +292,7 @@ function generateFiles() {
         fileToBeImported: "zod.ts",
         importName: "appDataSchema",
       },
-      // HACK: Key must be appId as this is used by eventType metadata and lookup is by appId
-      // This can be removed once we rename the ids of apps like stripe to that of their app folder name
-      entryObjectKeyGetter: (app) => getAppId(app),
+      entryObjectKeyGetter: (app) => app.name,
     })
   );
 
@@ -307,9 +302,7 @@ function generateFiles() {
         fileToBeImported: "zod.ts",
         importName: "appKeysSchema",
       },
-      // HACK: Key must be appId as this is used by eventType metadata and lookup is by appId
-      // This can be removed once we rename the ids of apps like stripe to that of their app folder name
-      entryObjectKeyGetter: (app) => getAppId(app),
+      entryObjectKeyGetter: (app) => app.name,
     })
   );
 

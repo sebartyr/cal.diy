@@ -22,7 +22,6 @@ export const apiHandlers = {
   "pipedrive-crm": import("./pipedrive-crm/api"),
   qr_code: import("./qr_code/api"),
   signal: import("./signal/api"),
-  stripepayment: import("./stripepayment/api"),
   telegram: import("./telegram/api"),
   basic: import("./templates/basic/api"),
   "booking-pages-tag": import("./templates/booking-pages-tag/api"),

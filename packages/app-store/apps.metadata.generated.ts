@@ -24,7 +24,6 @@ import openvisio_config_json from "./openvisio/config.json";
 import pipedrive_crm_config_json from "./pipedrive-crm/config.json";
 import qr_code_config_json from "./qr_code/config.json";
 import signal_config_json from "./signal/config.json";
-import { metadata as stripepayment__metadata_ts } from "./stripepayment/_metadata";
 import telegram_config_json from "./telegram/config.json";
 import basic_config_json from "./templates/basic/config.json";
 import booking_pages_tag_config_json from "./templates/booking-pages-tag/config.json";
@@ -59,7 +58,6 @@ export const appStoreMetadata = {
   "pipedrive-crm": pipedrive_crm_config_json,
   qr_code: qr_code_config_json,
   signal: signal_config_json,
-  stripepayment: stripepayment__metadata_ts,
   telegram: telegram_config_json,
   basic: basic_config_json,
   "booking-pages-tag": booking_pages_tag_config_json,

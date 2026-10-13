@@ -2169,7 +2169,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@calcom/emails@workspace:*, @calcom/emails@workspace:packages/emails":
+"@calcom/emails@workspace:packages/emails":
   version: 0.0.0-use.local
   resolution: "@calcom/emails@workspace:packages/emails"
   dependencies:
@@ -2620,26 +2620,6 @@ __metadata:
   dependencies:
     "@calcom/lib": "workspace:*"
     "@calcom/types": "workspace:*"
-  languageName: unknown
-  linkType: soft
-
-"@calcom/stripepayment@workspace:packages/app-store/stripepayment":
-  version: 0.0.0-use.local
-  resolution: "@calcom/stripepayment@workspace:packages/app-store/stripepayment"
-  dependencies:
-    "@calcom/app-store": "workspace:*"
-    "@calcom/dayjs": "workspace:*"
-    "@calcom/emails": "workspace:*"
-    "@calcom/features": "workspace:*"
-    "@calcom/lib": "workspace:*"
-    "@calcom/prisma": "workspace:*"
-    "@calcom/types": "workspace:*"
-    "@stripe/react-stripe-js": "npm:1.10.0"
-    "@stripe/stripe-js": "npm:1.35.0"
-    stripe: "npm:9.16.0"
-    ts-node: "npm:10.9.2"
-    uuid: "npm:8.3.2"
-    zod: "npm:3.25.76"
   languageName: unknown
   linkType: soft
 

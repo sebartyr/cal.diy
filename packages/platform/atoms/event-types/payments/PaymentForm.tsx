@@ -8,22 +8,25 @@ import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { isBrowserLocale24h } from "@calcom/lib/timeFormat";
 import { CURRENT_TIMEZONE } from "@calcom/lib/timezoneConstants";
 import { localStorage } from "@calcom/lib/webstorage";
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import { AtomsWrapper } from "../../src/components/atoms-wrapper";
 import { cn } from "../../src/lib/utils";
 import { useAtomsEventTypePaymentInfo } from "../hooks/useAtomEventTypePaymentInfo";
 
-const StripePaymentForm = React.lazy(() => import("./StripePaymentForm"));
-
 export const PaymentForm = ({
   paymentUid,
-  onPaymentSuccess,
-  onPaymentCancellation,
   onEventTypePaymentInfoSuccess,
   onEventTypePaymentInfoFailure,
 }: {
   paymentUid: string;
+  /**
+   * @deprecated Never called. Only the removed Stripe card form ever fired it; kept so the
+   * public `@calcom/atoms` contract does not break for integrators passing it.
+   */
   onPaymentSuccess?: (input: PaymentPageProps) => void;
+  /**
+   * @deprecated Never called, for the same reason as onPaymentSuccess.
+   */
   onPaymentCancellation?: (input: PaymentPageProps) => void;
   onEventTypePaymentInfoSuccess?: () => void;
   onEventTypePaymentInfoFailure?: () => void;
@@ -109,19 +112,6 @@ export const PaymentForm = ({
                     <div>
                       {paymentInfo.payment.success && !paymentInfo.payment.refunded && (
                         <div className="mt-4 text-center text-default dark:text-gray-300">{t("paid")}</div>
-                      )}
-                      {paymentInfo.payment.appId === "stripe" && !paymentInfo.payment.success && (
-                        <StripePaymentForm
-                          clientSecret={paymentInfo.clientSecret}
-                          payment={paymentInfo.payment}
-                          eventType={paymentInfo.eventType}
-                          user={paymentInfo.user}
-                          location={paymentInfo.booking.location}
-                          booking={paymentInfo.booking}
-                          uid={paymentUid}
-                          onPaymentSuccess={onPaymentSuccess}
-                          onPaymentCancellation={onPaymentCancellation}
-                        />
                       )}
                       {paymentInfo.payment.refunded && (
                         <div className="mt-4 text-center text-default dark:text-gray-300">

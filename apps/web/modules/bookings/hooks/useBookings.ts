@@ -1,6 +1,5 @@
 "use client";
 
-import { createPaymentLink } from "@calcom/app-store/stripepayment/lib/client";
 import { useHandleBookEvent } from "@calcom/atoms/hooks/bookings/useHandleBookEvent";
 import dayjs from "@calcom/dayjs";
 import { sdkActionManager } from "@calcom/embed-core/embed-iframe";
@@ -16,6 +15,7 @@ import type { BookerEvent, BookingResponse } from "@calcom/features/bookings/typ
 import { getFullName } from "@calcom/features/form-builder/utils";
 import { ErrorCode } from "@calcom/lib/errorCodes";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
+import { createPaymentLink } from "@calcom/lib/payment/createPaymentLink";
 import { BookingStatus } from "@calcom/prisma/enums";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";

@@ -461,9 +461,8 @@ export const EventAdvancedTab = ({
   );
   const seatsEnabled = formMethods.watch("seatsPerTimeSlotEnabled");
   const multiLocation = (formMethods.getValues("locations") || []).length > 1;
-  const noShowFeeEnabled =
-    formMethods.getValues("metadata")?.apps?.stripe?.enabled === true &&
-    formMethods.getValues("metadata")?.apps?.stripe?.paymentOption === "HOLD";
+  // No-show fees relied on a card held by the removed stripe app (paymentOption "HOLD").
+  const noShowFeeEnabled = false;
 
   const isRecurringEvent = !!formMethods.getValues("recurringEvent");
   const interfaceLanguageOptions =
@@ -669,7 +668,9 @@ export const EventAdvancedTab = ({
       {!isPlatform && (
         <Controller
           name="requiresCancellationReason"
-          defaultValue={eventType.requiresCancellationReason ?? CancellationReasonRequirement.MANDATORY_HOST_ONLY}
+          defaultValue={
+            eventType.requiresCancellationReason ?? CancellationReasonRequirement.MANDATORY_HOST_ONLY
+          }
           render={({ field: { value, onChange } }) => {
             const cancellationReasonOptions = [
               { value: CancellationReasonRequirement.MANDATORY_BOTH, label: t("mandatory_for_both") },

@@ -4,5 +4,4 @@
 **/
 export const PaymentServiceMap = {
   "mock-payment-app": import("./mock-payment-app/lib/PaymentService"),
-  stripepayment: import("./stripepayment/lib/PaymentService"),
 };

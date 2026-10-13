@@ -14,7 +14,6 @@ import { appDataSchema as office365video_zod_ts } from "./office365video/zod";
 import { appDataSchema as openvisio_zod_ts } from "./openvisio/zod";
 import { appDataSchema as pipedrive_crm_zod_ts } from "./pipedrive-crm/zod";
 import { appDataSchema as qr_code_zod_ts } from "./qr_code/zod";
-import { appDataSchema as stripepayment_zod_ts } from "./stripepayment/zod";
 import { appDataSchema as booking_pages_tag_zod_ts } from "./templates/booking-pages-tag/zod";
 import { appDataSchema as event_type_app_card_zod_ts } from "./templates/event-type-app-card/zod";
 import { appDataSchema as zohocalendar_zod_ts } from "./zohocalendar/zod";
@@ -32,7 +31,6 @@ export const appDataSchemas = {
   openvisio: openvisio_zod_ts,
   "pipedrive-crm": pipedrive_crm_zod_ts,
   qr_code: qr_code_zod_ts,
-  stripe: stripepayment_zod_ts,
   "booking-pages-tag": booking_pages_tag_zod_ts,
   "event-type-app-card": event_type_app_card_zod_ts,
   zohocalendar: zohocalendar_zod_ts,

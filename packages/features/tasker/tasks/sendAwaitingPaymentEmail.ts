@@ -1,9 +1,9 @@
-import { createPaymentLink } from "@calcom/app-store/stripepayment/lib/client";
 import { sendAwaitingPaymentEmailAndSMS } from "@calcom/emails/email-manager";
 import { getBooking } from "@calcom/features/bookings/lib/payment/getBooking";
 import { AttendeeRepository } from "@calcom/features/bookings/repositories/AttendeeRepository";
 import { PrismaBookingPaymentRepository } from "@calcom/features/bookings/repositories/PrismaBookingPaymentRepository";
 import logger from "@calcom/lib/logger";
+import { createPaymentLink } from "@calcom/lib/payment/createPaymentLink";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import prisma from "@calcom/prisma";
 import { z } from "zod";
