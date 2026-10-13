@@ -14,37 +14,9 @@ type AnalyticsAppPolicy = {
   requiresGtmOptIn?: boolean;
 };
 
-export const ANALYTICS_APP_POLICIES: Record<string, AnalyticsAppPolicy> = {
-  // gtag.js also serves full GTM containers when given a GTM- ID, so only measurement IDs are accepted.
-  ga4: {
-    defaultOrigins: ["https://www.googletagmanager.com"],
-    idPatterns: { TRACKING_ID: /^G-[A-Z0-9]+$/i },
-  },
-  // Custom HTML tags in a GTM container run arbitrary JS chosen by whoever owns the container.
-  gtm: {
-    defaultOrigins: [],
-    idPatterns: { TRACKING_ID: /^GTM-[A-Z0-9]+$/i },
-    requiresGtmOptIn: true,
-  },
-  fathom: {
-    defaultOrigins: ["https://cdn.usefathom.com"],
-    idPatterns: { TRACKING_ID: /^[A-Z0-9]+$/i },
-  },
-  metapixel: {
-    defaultOrigins: [],
-    idPatterns: {
-      TRACKING_ID: /^\d+$/,
-      TRACKING_EVENT: /^(Lead|CompleteRegistration|Schedule|PageView)$/,
-    },
-  },
-  insihts: { defaultOrigins: ["https://collector.insihts.com"] },
-  twipla: { defaultOrigins: [] },
-  umami: { defaultOrigins: ["https://cloud.umami.is"] },
-  plausible: { defaultOrigins: ["https://plausible.io"] },
-  matomo: { defaultOrigins: ["https://*.matomo.cloud", "https://*.innocraft.cloud"] },
-  posthog: { defaultOrigins: ["https://*.posthog.com"] },
-  databuddy: { defaultOrigins: ["https://cdn.databuddy.cc", "https://basket.databuddy.cc"] },
-};
+// Every analytics app has been removed from the app store; the record stays so the
+// default-deny lookups below keep their shape if one is ever reintroduced.
+export const ANALYTICS_APP_POLICIES: Record<string, AnalyticsAppPolicy> = {};
 
 export const isUrlTemplateVariable = (variableName: string): boolean =>
   variableName.endsWith("_URL") || variableName === "API_HOST";
