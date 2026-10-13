@@ -1,9 +1,7 @@
+import process from "node:process";
+import { isENVDev } from "@calcom/lib/env";
 import type SendmailTransport from "nodemailer/lib/sendmail-transport";
 import type SMTPConnection from "nodemailer/lib/smtp-connection";
-
-import { isENVDev } from "@calcom/lib/env";
-
-import { getAdditionalEmailHeaders } from "./getAdditionalEmailHeaders";
 
 function detectTransport(): SendmailTransport.Options | SMTPConnection.Options | string {
   if (process.env.RESEND_API_KEY) {
@@ -57,5 +55,4 @@ function detectTransport(): SendmailTransport.Options | SMTPConnection.Options |
 export const serverConfig = {
   transport: detectTransport(),
   from: process.env.EMAIL_FROM,
-  headers: getAdditionalEmailHeaders()[process.env.EMAIL_SERVER_HOST || ""] || undefined,
 };

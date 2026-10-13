@@ -58,8 +58,6 @@ const { postHandler } = recordedDailyVideoRoute;
 
 beforeAll(() => {
   // Setup env vars
-  vi.stubEnv("SENDGRID_API_KEY", "FAKE_SENDGRID_API_KEY");
-  vi.stubEnv("SENDGRID_EMAIL", "FAKE_SENDGRID_EMAIL");
 });
 
 vi.mock("@calcom/app-store/dailyvideo/lib", () => {

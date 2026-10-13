@@ -40,8 +40,6 @@ export const IS_GOOGLE_CALENDAR_ENABLED = !!(
   process.env.E2E_TEST_CALCOM_QA_GCAL_CREDENTIALS
 );
 
-export const IS_SENDGRID_ENABLED = !!process.env.SENDGRID_API_KEY;
-
 export function createHttpServer(opts: { requestHandler?: RequestHandler } = {}) {
   const {
     requestHandler = ({ res }) => {
