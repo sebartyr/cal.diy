@@ -4,7 +4,7 @@ import { getGoogleMeetCredential, TestData } from "@calcom/testing/lib/bookingSc
 
 import { describe, expect, it } from "vitest";
 
-import { DailyLocationType, MeetLocationType } from "../locations";
+import { JitsiLocationType, MeetLocationType } from "../locations";
 import { getDefaultLocations } from "./getDefaultLocations";
 
 type User = {
@@ -50,26 +50,74 @@ describe("getDefaultLocation ", async () => {
       type: MeetLocationType,
     });
   });
-  it("should return calvideo when default conferencing app is not set", async () => {
+  it("falls back to jitsi when neither the user nor the deployment picked one", async () => {
     const user: User = {
       id: 101,
       email: "test@example.com",
       metadata: {},
     };
     await mockUser(user);
-    await addAppsToDb([TestData.apps["daily-video"]]);
-    await prismaMock.app.create({
-      data: {
-        ...TestData.apps["daily-video"],
-        enabled: true,
-      },
-    });
     const res = await getDefaultLocations(user);
-    expect(res[0]).toEqual(
-      expect.objectContaining({
-        type: DailyLocationType,
-      })
-    );
+    expect(res[0]).toEqual({ type: JitsiLocationType });
+  });
+
+  it("uses the deployment default when the user has not picked one", async () => {
+    const user: User = {
+      id: 102,
+      email: "deployment-default@example.com",
+      metadata: {},
+    };
+    await mockUser(user);
+    const res = await getDefaultLocations(user, "google-meet");
+    expect(res[0]).toEqual({ type: MeetLocationType });
+  });
+
+  // A slug that no longer resolves to an app must not yield an empty location list: that is
+  // what produced event types with no location and bookings with no meeting URL.
+  it("falls back to jitsi when the deployment default names an unknown app", async () => {
+    const user: User = {
+      id: 103,
+      email: "unknown-default@example.com",
+      metadata: {},
+    };
+    await mockUser(user);
+    const res = await getDefaultLocations(user, "an-app-that-does-not-exist");
+    expect(res[0]).toEqual({ type: JitsiLocationType });
+  });
+
+  it("prefers the user pick over the deployment default", async () => {
+    const user: User = {
+      id: 104,
+      email: "user-pick@example.com",
+      metadata: {
+        defaultConferencingApp: {
+          appSlug: "google-meet",
+          appLink: "https://example.com",
+        },
+      },
+      credentials: [getGoogleMeetCredential()],
+    };
+    await mockUser(user);
+    await addAppsToDb([TestData.apps["google-meet"]]);
+    const res = await getDefaultLocations(user, "jitsi");
+    expect(res[0]).toEqual({ link: "https://example.com", type: MeetLocationType });
+  });
+
+  // The user picked an app they no longer have a credential for.
+  it("falls through to the deployment default when the user pick is not installed", async () => {
+    const user: User = {
+      id: 105,
+      email: "stale-pick@example.com",
+      metadata: {
+        defaultConferencingApp: {
+          appSlug: "google-meet",
+          appLink: "https://example.com",
+        },
+      },
+    };
+    await mockUser(user);
+    const res = await getDefaultLocations(user, "jitsi");
+    expect(res[0]).toEqual({ type: JitsiLocationType });
   });
 });
 

@@ -1,5 +1,6 @@
 import { getDefaultLocations } from "@calcom/app-store/_utils/getDefaultLocations";
 import { DailyLocationType } from "@calcom/app-store/constants";
+import { DeploymentRepository } from "@calcom/features/deployment/repositories/DeploymentRepository";
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import { ScheduleRepository } from "@calcom/features/schedules/repositories/ScheduleRepository";
@@ -75,8 +76,17 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
     });
   }
 
-  const locations: EventTypeLocation[] =
-    inputLocations && inputLocations.length !== 0 ? inputLocations : await getDefaultLocations(ctx.user);
+  let locations: EventTypeLocation[];
+  if (inputLocations && inputLocations.length !== 0) {
+    locations = inputLocations;
+  } else {
+    // Read here rather than inside getDefaultLocations: packages/app-store must not import
+    // from packages/features.
+    const defaultConferencingAppSlug = await new DeploymentRepository(
+      ctx.prisma
+    ).getDefaultConferencingAppSlug();
+    locations = await getDefaultLocations(ctx.user, defaultConferencingAppSlug);
+  }
 
   const isCalVideoLocationActive = locations.some((location) => location.type === DailyLocationType);
 

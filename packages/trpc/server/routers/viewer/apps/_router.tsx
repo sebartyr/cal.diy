@@ -9,6 +9,7 @@ import { ZLocationOptionsInputSchema } from "./locationOptions.schema";
 import { ZQueryForDependenciesInputSchema } from "./queryForDependencies.schema";
 import { ZSaveKeysInputSchema } from "./saveKeys.schema";
 import { ZSetDefaultConferencingAppSchema } from "./setDefaultConferencingApp.schema";
+import { ZSetInstanceDefaultConferencingAppInputSchema } from "./setInstanceDefaultConferencingApp.schema";
 import { ZToggleInputSchema } from "./toggle.schema";
 import { ZUpdateAppCredentialsInputSchema } from "./updateAppCredentials.schema";
 import { ZUpdateUserDefaultConferencingAppInputSchema } from "./updateUserDefaultConferencingApp.schema";
@@ -20,6 +21,7 @@ type AppsRouterHandlerCache = {
   integrations?: typeof import("./integrations.handler").integrationsHandler;
   listLocal?: typeof import("./listLocal.handler").listLocalHandler;
   locationOptions?: typeof import("./locationOptions.handler").locationOptionsHandler;
+  setInstanceDefaultConferencingApp?: typeof import("./setInstanceDefaultConferencingApp.handler").setInstanceDefaultConferencingAppHandler;
   toggle?: typeof import("./toggle.handler").toggleHandler;
   saveKeys?: typeof import("./saveKeys.handler").saveKeysHandler;
   checkForGCal?: typeof import("./checkForGCal.handler").checkForGCalHandler;
@@ -65,6 +67,15 @@ export const appsRouter = router({
     const { locationOptionsHandler } = await import("./locationOptions.handler");
     return locationOptionsHandler({ ctx, input });
   }),
+
+  setInstanceDefaultConferencingApp: authedAdminProcedure
+    .input(ZSetInstanceDefaultConferencingAppInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { setInstanceDefaultConferencingAppHandler } = await import(
+        "./setInstanceDefaultConferencingApp.handler"
+      );
+      return setInstanceDefaultConferencingAppHandler({ ctx, input });
+    }),
 
   toggle: authedAdminProcedure.input(ZToggleInputSchema).mutation(async ({ ctx, input }) => {
     const { toggleHandler } = await import("./toggle.handler");

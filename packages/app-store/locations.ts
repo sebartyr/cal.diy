@@ -9,10 +9,10 @@ import type { Ensure, Optional } from "@calcom/types/utils";
 import type { TFunction } from "i18next";
 import { isValidPhoneNumber } from "libphonenumber-js/max";
 import { z } from "zod";
-
 import type { EventLocationTypeFromAppMeta } from "../types/App";
 import {
   DailyLocationType as importedDailyLocationType,
+  JitsiLocationType as importedJitsiLocationType,
   MeetLocationType as importedMeetLocationType,
   MSTeamsLocationType as importedMSTeamsLocationType,
 } from "./constants";
@@ -20,6 +20,7 @@ import {
 export const MeetLocationType = importedMeetLocationType;
 export const MSTeamsLocationType = importedMSTeamsLocationType;
 export const DailyLocationType = importedDailyLocationType;
+export const JitsiLocationType = importedJitsiLocationType;
 
 export type DefaultEventLocationType = {
   default: true;
