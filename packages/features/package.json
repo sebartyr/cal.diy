@@ -31,12 +31,9 @@
     "date-fns-tz": "3.2.0",
     "deasync": "^0.1.31",
     "framer-motion": "10.12.8",
-    "p-limit": "6.2.0",
     "react-select": "5.8.0",
     "react-sticky-box": "2.0.4",
-    "recharts": "3.0.2",
     "stripe": "9.16.0",
-    "stripe-event-types": "3.1.0",
     "web-push": "3.6.7",
     "zustand": "4.5.2"
   },
