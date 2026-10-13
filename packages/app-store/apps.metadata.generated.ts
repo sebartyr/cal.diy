@@ -22,10 +22,8 @@ import { metadata as googlevideo__metadata_ts } from "./googlevideo/_metadata";
 import hitpay_config_json from "./hitpay/config.json";
 import { metadata as hubspot__metadata_ts } from "./hubspot/_metadata";
 import ics_feedcalendar_config_json from "./ics-feedcalendar/config.json";
-import intercom_config_json from "./intercom/config.json";
 import { metadata as jitsivideo__metadata_ts } from "./jitsivideo/_metadata";
 import { metadata as larkcalendar__metadata_ts } from "./larkcalendar/_metadata";
-import make_config_json from "./make/config.json";
 import mock_payment_app_config_json from "./mock-payment-app/config.json";
 import { metadata as office365calendar__metadata_ts } from "./office365calendar/_metadata";
 import office365video_config_json from "./office365video/config.json";
@@ -44,10 +42,7 @@ import event_type_location_video_static_config_json from "./templates/event-type
 import general_app_settings_config_json from "./templates/general-app-settings/config.json";
 import link_as_an_app_config_json from "./templates/link-as-an-app/config.json";
 import vimcal_config_json from "./vimcal/config.json";
-import { metadata as vital__metadata_ts } from "./vital/_metadata";
 import whatsapp_config_json from "./whatsapp/config.json";
-import { metadata as wipemycalother__metadata_ts } from "./wipemycalother/_metadata";
-import zapier_config_json from "./zapier/config.json";
 import zoho_bigin_config_json from "./zoho-bigin/config.json";
 import zohocalendar_config_json from "./zohocalendar/config.json";
 import zohocrm_config_json from "./zohocrm/config.json";
@@ -73,10 +68,8 @@ export const appStoreMetadata = {
   hitpay: hitpay_config_json,
   hubspot: hubspot__metadata_ts,
   "ics-feedcalendar": ics_feedcalendar_config_json,
-  intercom: intercom_config_json,
   jitsivideo: jitsivideo__metadata_ts,
   larkcalendar: larkcalendar__metadata_ts,
-  make: make_config_json,
   "mock-payment-app": mock_payment_app_config_json,
   office365calendar: office365calendar__metadata_ts,
   office365video: office365video_config_json,
@@ -95,10 +88,7 @@ export const appStoreMetadata = {
   "general-app-settings": general_app_settings_config_json,
   "link-as-an-app": link_as_an_app_config_json,
   vimcal: vimcal_config_json,
-  vital: vital__metadata_ts,
   whatsapp: whatsapp_config_json,
-  wipemycalother: wipemycalother__metadata_ts,
-  zapier: zapier_config_json,
   "zoho-bigin": zoho_bigin_config_json,
   zohocalendar: zohocalendar_config_json,
   zohocrm: zohocrm_config_json,

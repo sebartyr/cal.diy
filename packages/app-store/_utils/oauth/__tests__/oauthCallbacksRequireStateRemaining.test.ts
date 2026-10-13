@@ -89,7 +89,6 @@ const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["zohocrm", () => import("../../../zohocrm/api/callback")],
   ["zoho-bigin", () => import("../../../zoho-bigin/api/callback")],
   ["closecom", () => import("../../../closecom/api/callback")],
-  ["intercom", () => import("../../../intercom/api/callback")],
   ["basecamp3", () => import("../../../basecamp3/api/callback")],
 ];
 

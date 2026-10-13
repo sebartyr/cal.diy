@@ -13,10 +13,8 @@ import { appKeysSchema as googlecalendar_zod_ts } from "./googlecalendar/zod";
 import { appKeysSchema as googlevideo_zod_ts } from "./googlevideo/zod";
 import { appKeysSchema as hitpay_zod_ts } from "./hitpay/zod";
 import { appKeysSchema as hubspot_zod_ts } from "./hubspot/zod";
-import { appKeysSchema as intercom_zod_ts } from "./intercom/zod";
 import { appKeysSchema as jitsivideo_zod_ts } from "./jitsivideo/zod";
 import { appKeysSchema as larkcalendar_zod_ts } from "./larkcalendar/zod";
-import { appKeysSchema as make_zod_ts } from "./make/zod";
 import { appKeysSchema as mock_payment_app_zod_ts } from "./mock-payment-app/zod";
 import { appKeysSchema as office365calendar_zod_ts } from "./office365calendar/zod";
 import { appKeysSchema as office365video_zod_ts } from "./office365video/zod";
@@ -28,8 +26,6 @@ import { appKeysSchema as salesforce_zod_ts } from "./salesforce/zod";
 import { appKeysSchema as stripepayment_zod_ts } from "./stripepayment/zod";
 import { appKeysSchema as booking_pages_tag_zod_ts } from "./templates/booking-pages-tag/zod";
 import { appKeysSchema as event_type_app_card_zod_ts } from "./templates/event-type-app-card/zod";
-import { appKeysSchema as vital_zod_ts } from "./vital/zod";
-import { appKeysSchema as zapier_zod_ts } from "./zapier/zod";
 import { appKeysSchema as zoho_bigin_zod_ts } from "./zoho-bigin/zod";
 import { appKeysSchema as zohocalendar_zod_ts } from "./zohocalendar/zod";
 import { appKeysSchema as zohocrm_zod_ts } from "./zohocrm/zod";
@@ -46,10 +42,8 @@ export const appKeysSchemas = {
   googlevideo: googlevideo_zod_ts,
   hitpay: hitpay_zod_ts,
   hubspot: hubspot_zod_ts,
-  intercom: intercom_zod_ts,
   jitsivideo: jitsivideo_zod_ts,
   larkcalendar: larkcalendar_zod_ts,
-  make: make_zod_ts,
   "mock-payment-app": mock_payment_app_zod_ts,
   office365calendar: office365calendar_zod_ts,
   office365video: office365video_zod_ts,
@@ -61,8 +55,6 @@ export const appKeysSchemas = {
   stripe: stripepayment_zod_ts,
   "booking-pages-tag": booking_pages_tag_zod_ts,
   "event-type-app-card": event_type_app_card_zod_ts,
-  vital: vital_zod_ts,
-  zapier: zapier_zod_ts,
   "zoho-bigin": zoho_bigin_zod_ts,
   zohocalendar: zohocalendar_zod_ts,
   zohocrm: zohocrm_zod_ts,

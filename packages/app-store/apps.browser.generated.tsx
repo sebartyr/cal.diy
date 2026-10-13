@@ -7,13 +7,11 @@ export const InstallAppButtonMap = {
   exchange2013calendar: dynamic(() => import("./exchange2013calendar/components/InstallAppButton")),
   exchange2016calendar: dynamic(() => import("./exchange2016calendar/components/InstallAppButton")),
   office365video: dynamic(() => import("./office365video/components/InstallAppButton")),
-  vital: dynamic(() => import("./vital/components/InstallAppButton")),
 };
 export const AppSettingsComponentsMap = {
   "general-app-settings": dynamic(
     () => import("./templates/general-app-settings/components/AppSettingsInterface")
   ),
-  zapier: dynamic(() => import("./zapier/components/AppSettingsInterface")),
 };
 export const EventTypeAddonMap = {
   alby: dynamic(() => import("./alby/components/EventTypeAppCardInterface")),
