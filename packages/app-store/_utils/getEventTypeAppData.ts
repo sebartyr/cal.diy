@@ -44,10 +44,6 @@ export const getEventTypeAppData = <T extends EventTypeAppsList>(
       currency: eventType.currency,
       paymentOption: "ON_BOOKING",
     },
-    giphy: {
-      enabled: !!eventType.metadata?.giphyThankYouPage,
-      thankYouPage: eventType.metadata?.giphyThankYouPage || "",
-    },
   } as const;
 
   // TODO: This assertion helps typescript hint that only one of the app's data can be returned

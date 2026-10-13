@@ -3,12 +3,10 @@
     Don't modify this file manually.
 **/
 import { appKeysSchema as alby_zod_ts } from "./alby/zod";
-import { appKeysSchema as basecamp3_zod_ts } from "./basecamp3/zod";
 import { appKeysSchema as btcpayserver_zod_ts } from "./btcpayserver/zod";
 import { appKeysSchema as closecom_zod_ts } from "./closecom/zod";
 import { appKeysSchema as dailyvideo_zod_ts } from "./dailyvideo/zod";
 import { appKeysSchema as feishucalendar_zod_ts } from "./feishucalendar/zod";
-import { appKeysSchema as giphy_zod_ts } from "./giphy/zod";
 import { appKeysSchema as googlecalendar_zod_ts } from "./googlecalendar/zod";
 import { appKeysSchema as googlevideo_zod_ts } from "./googlevideo/zod";
 import { appKeysSchema as hitpay_zod_ts } from "./hitpay/zod";
@@ -32,12 +30,10 @@ import { appKeysSchema as zohocrm_zod_ts } from "./zohocrm/zod";
 import { appKeysSchema as zoomvideo_zod_ts } from "./zoomvideo/zod";
 export const appKeysSchemas = {
   alby: alby_zod_ts,
-  basecamp3: basecamp3_zod_ts,
   btcpayserver: btcpayserver_zod_ts,
   closecom: closecom_zod_ts,
   dailyvideo: dailyvideo_zod_ts,
   feishucalendar: feishucalendar_zod_ts,
-  giphy: giphy_zod_ts,
   googlecalendar: googlecalendar_zod_ts,
   googlevideo: googlevideo_zod_ts,
   hitpay: hitpay_zod_ts,

@@ -5,7 +5,6 @@
 import alby_config_json from "./alby/config.json";
 import amie_config_json from "./amie/config.json";
 import { metadata as applecalendar__metadata_ts } from "./applecalendar/_metadata";
-import basecamp3_config_json from "./basecamp3/config.json";
 import btcpayserver_config_json from "./btcpayserver/config.json";
 import { metadata as caldavcalendar__metadata_ts } from "./caldavcalendar/_metadata";
 import closecom_config_json from "./closecom/config.json";
@@ -16,7 +15,6 @@ import { metadata as exchange2013calendar__metadata_ts } from "./exchange2013cal
 import { metadata as exchange2016calendar__metadata_ts } from "./exchange2016calendar/_metadata";
 import exchangecalendar_config_json from "./exchangecalendar/config.json";
 import { metadata as feishucalendar__metadata_ts } from "./feishucalendar/_metadata";
-import { metadata as giphy__metadata_ts } from "./giphy/_metadata";
 import { metadata as googlecalendar__metadata_ts } from "./googlecalendar/_metadata";
 import { metadata as googlevideo__metadata_ts } from "./googlevideo/_metadata";
 import hitpay_config_json from "./hitpay/config.json";
@@ -51,7 +49,6 @@ export const appStoreMetadata = {
   alby: alby_config_json,
   amie: amie_config_json,
   applecalendar: applecalendar__metadata_ts,
-  basecamp3: basecamp3_config_json,
   btcpayserver: btcpayserver_config_json,
   caldavcalendar: caldavcalendar__metadata_ts,
   closecom: closecom_config_json,
@@ -62,7 +59,6 @@ export const appStoreMetadata = {
   exchange2016calendar: exchange2016calendar__metadata_ts,
   exchangecalendar: exchangecalendar_config_json,
   feishucalendar: feishucalendar__metadata_ts,
-  giphy: giphy__metadata_ts,
   googlecalendar: googlecalendar__metadata_ts,
   googlevideo: googlevideo__metadata_ts,
   hitpay: hitpay_config_json,

@@ -5,7 +5,6 @@
 export const apiHandlers = {
   alby: import("./alby/api"),
   applecalendar: import("./applecalendar/api"),
-  basecamp3: import("./basecamp3/api"),
   btcpayserver: import("./btcpayserver/api"),
   caldavcalendar: import("./caldavcalendar/api"),
   closecom: import("./closecom/api"),
@@ -14,7 +13,6 @@ export const apiHandlers = {
   exchange2016calendar: import("./exchange2016calendar/api"),
   exchangecalendar: import("./exchangecalendar/api"),
   feishucalendar: import("./feishucalendar/api"),
-  giphy: import("./giphy/api"),
   googlecalendar: import("./googlecalendar/api"),
   googlevideo: import("./googlevideo/api"),
   hitpay: import("./hitpay/api"),

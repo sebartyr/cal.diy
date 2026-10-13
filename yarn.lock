@@ -2152,15 +2152,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@calcom/basecamp3@workspace:packages/app-store/basecamp3":
-  version: 0.0.0-use.local
-  resolution: "@calcom/basecamp3@workspace:packages/app-store/basecamp3"
-  dependencies:
-    "@calcom/lib": "workspace:*"
-    "@calcom/types": "workspace:*"
-  languageName: unknown
-  linkType: soft
-
 "@calcom/btcpayserver@workspace:packages/app-store/btcpayserver":
   version: 0.0.0-use.local
   resolution: "@calcom/btcpayserver@workspace:packages/app-store/btcpayserver"
@@ -2452,15 +2443,6 @@ __metadata:
   resolution: "@calcom/feishucalendar@workspace:packages/app-store/feishucalendar"
   dependencies:
     "@calcom/lib": "workspace:*"
-    "@calcom/prisma": "workspace:*"
-    "@calcom/types": "workspace:*"
-  languageName: unknown
-  linkType: soft
-
-"@calcom/giphy@workspace:packages/app-store/giphy":
-  version: 0.0.0-use.local
-  resolution: "@calcom/giphy@workspace:packages/app-store/giphy"
-  dependencies:
     "@calcom/prisma": "workspace:*"
     "@calcom/types": "workspace:*"
   languageName: unknown
