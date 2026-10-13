@@ -42,8 +42,30 @@ export const setInstanceDefaultConferencingAppHandler = async ({
 
     // Without a location type the app would resolve to no location at all, producing event
     // types with no location and bookings with no meeting URL.
-    if (!app.appData?.location?.type) {
+    const location = app.appData?.location;
+    if (!location?.type) {
       throw new TRPCError({ code: "BAD_REQUEST", message: `App ${slug} declares no location type` });
+    }
+
+    // A static-link app (Signal, WhatsApp, Telegram, Discord) expects a URL typed in by the
+    // organizer. This setting stores a slug only, so the location would carry no link and no
+    // meeting could ever be reached through it.
+    if (location.linkType === "static") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `App ${slug} needs a link entered per event type, so it cannot be the instance default`,
+      });
+    }
+
+    // EventManager resolves an adapter through getApps(credentials, true), which drops
+    // non-global apps with no Credential row and then falls back to Cal Video. An app that is
+    // not global is therefore unusable as an instance-wide default: hosts who never installed
+    // it would silently get a different provider, or no meeting at all.
+    if (!app.isGlobal) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `App ${slug} is not globally installed, so hosts without their own credential could not use it`,
+      });
     }
   }
 

@@ -25,7 +25,8 @@ const conferencingApp = {
   slug: "jitsi",
   variant: "conferencing",
   categories: ["conferencing"],
-  appData: { location: { type: "integrations:jitsi" } },
+  isGlobal: true,
+  appData: { location: { type: "integrations:jitsi", linkType: "dynamic" } },
 };
 
 describe("setInstanceDefaultConferencingAppHandler", () => {
@@ -73,6 +74,40 @@ describe("setInstanceDefaultConferencingAppHandler", () => {
     expect(mockSetDefaultConferencingAppSlug).not.toHaveBeenCalled();
   });
 
+  // Signal, WhatsApp, Telegram and Discord are conferencing apps but expect a URL typed in
+  // per event type. This setting stores a slug only, so the location would carry no link.
+  it("rejects a static-link app", async () => {
+    mockGetAppFromSlug.mockReturnValue({
+      slug: "signal",
+      variant: "conferencing",
+      categories: ["conferencing"],
+      isGlobal: true,
+      appData: { location: { type: "integrations:signal_video", linkType: "static" } },
+    });
+
+    await expect(
+      setInstanceDefaultConferencingAppHandler({ ctx, input: { slug: "signal" } })
+    ).rejects.toThrow(/needs a link entered per event type/);
+    expect(mockSetDefaultConferencingAppSlug).not.toHaveBeenCalled();
+  });
+
+  // EventManager drops non-global apps with no Credential row and then falls back to Cal
+  // Video, so a non-global default would silently hand hosts a different provider.
+  it("rejects an app that is not globally installed", async () => {
+    mockGetAppFromSlug.mockReturnValue({
+      slug: "zoom",
+      variant: "conferencing",
+      categories: ["conferencing"],
+      isGlobal: false,
+      appData: { location: { type: "integrations:zoom", linkType: "dynamic" } },
+    });
+
+    await expect(setInstanceDefaultConferencingAppHandler({ ctx, input: { slug: "zoom" } })).rejects.toThrow(
+      /not globally installed/
+    );
+    expect(mockSetDefaultConferencingAppSlug).not.toHaveBeenCalled();
+  });
+
   // An app with no location type would resolve to no location at all, which is what produced
   // event types with no location and bookings with no meeting URL.
   it("rejects a conferencing app that declares no location type", async () => {
@@ -80,6 +115,7 @@ describe("setInstanceDefaultConferencingAppHandler", () => {
       slug: "weird",
       variant: "conferencing",
       categories: ["conferencing"],
+      isGlobal: true,
       appData: {},
     });
 

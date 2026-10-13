@@ -1,10 +1,8 @@
 import prismaMock from "@calcom/testing/lib/__mocks__/prisma";
-
 import { getGoogleMeetCredential, TestData } from "@calcom/testing/lib/bookingScenario/bookingScenario";
-
 import { describe, expect, it } from "vitest";
-
 import { JitsiLocationType, MeetLocationType } from "../locations";
+import getApps from "../utils";
 import { getDefaultLocations } from "./getDefaultLocations";
 
 type User = {
@@ -26,7 +24,7 @@ type User = {
         refresh_token?: string;
         scope: string;
       };
-    }
+    },
   ];
 };
 describe("getDefaultLocation ", async () => {
@@ -50,6 +48,16 @@ describe("getDefaultLocation ", async () => {
       type: MeetLocationType,
     });
   });
+  // The locations array alone proves nothing: EventManager resolves an adapter through
+  // getApps(credentials, true) and falls back to FAKE_DAILY_CREDENTIAL when no credential
+  // matches, so a fallback that is not global yields a Daily link instead of its own.
+  it("resolves the jitsi fallback to a usable adapter with no installation", () => {
+    const jitsi = getApps([], true).find((app) => app.slug === "jitsi");
+
+    expect(jitsi?.locationOption?.value).toBe(JitsiLocationType);
+    expect(jitsi?.credentials?.[0]?.type).toContain("jitsi");
+  });
+
   it("falls back to jitsi when neither the user nor the deployment picked one", async () => {
     const user: User = {
       id: 101,
