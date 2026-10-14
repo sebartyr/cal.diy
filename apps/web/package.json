@@ -171,7 +171,6 @@
     "@types/react": "18.0.26",
     "@types/remove-markdown": "0.3.1",
     "@types/sanitize-html": "2.9.0",
-    "@types/stripe": "8.0.417",
     "@types/turndown": "5.0.1",
     "@types/uuid": "8.3.1",
     "autoprefixer": "10.4.19",
