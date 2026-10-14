@@ -1,5 +1,4 @@
 import type {
-  CalVideoSettings,
   ChildInput,
   DestinationCalendarInput,
   EventTypeUpdateInput,
@@ -35,20 +34,6 @@ const hashedLinkInputSchema: z.ZodType<HashedLinkInput> = z
     usageCount: z.number().nullish(),
   })
   .strict();
-
-const calVideoSettingsSchema: z.ZodType<CalVideoSettings | undefined> = z
-  .object({
-    disableRecordingForGuests: z.boolean().nullish(),
-    disableRecordingForOrganizer: z.boolean().nullish(),
-    enableAutomaticTranscription: z.boolean().nullish(),
-    enableAutomaticRecordingForOrganizer: z.boolean().nullish(),
-    disableTranscriptionForGuests: z.boolean().nullish(),
-    disableTranscriptionForOrganizer: z.boolean().nullish(),
-    redirectUrlOnExit: z.string().url().nullish(),
-    requireEmailForGuests: z.boolean().nullish(),
-  })
-  .optional()
-  .nullable();
 
 const hostLocationSchema = z.object({
   id: z.string().optional(),
@@ -136,7 +121,6 @@ const BaseEventTypeUpdateInput: z.ZodType<TUpdateInputSchema> = z
     requiresConfirmationWillBlockSlot: z.boolean().optional(),
     requiresConfirmationForFreeEmail: z.boolean().optional(),
     requiresBookerEmailVerification: z.boolean().optional(),
-    canSendCalVideoTranscriptionEmails: z.boolean().optional(),
     autoTranslateDescriptionEnabled: z.boolean().optional(),
     autoTranslateInstantMeetingTitleEnabled: z.boolean().optional(),
     recurringEvent: recurringEventType.nullable().optional(),
@@ -195,7 +179,6 @@ const BaseEventTypeUpdateInput: z.ZodType<TUpdateInputSchema> = z
     updatedAt: z.coerce.date().nullable().optional(),
 
     // Extended fields
-    calVideoSettings: calVideoSettingsSchema,
     customInputs: z.array(customInputSchema).optional(),
     destinationCalendar: destinationCalendarInputSchema.optional(),
     users: z.array(z.number()).optional(),

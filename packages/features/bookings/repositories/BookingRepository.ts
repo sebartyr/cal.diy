@@ -1737,13 +1737,11 @@ export class BookingRepository implements IBookingRepository {
         ...bookingMinimalSelect,
         uid: true,
         location: true,
-        isRecorded: true,
         eventTypeId: true,
         eventType: {
           select: {
             teamId: true,
             parentId: true,
-            canSendCalVideoTranscriptionEmails: true,
             customReplyToEmail: true,
           },
         },

@@ -157,7 +157,12 @@ export class BookingsController_2024_04_15 {
     }
     return {
       status: SUCCESS_STATUS,
-      data: { ...bookings, nextCursor },
+      data: {
+        ...bookings,
+        // Recordings came from Cal Video, which was removed; the field stays for API compatibility.
+        bookings: bookings.bookings.map((booking) => ({ ...booking, isRecorded: false })),
+        nextCursor,
+      },
     };
   }
 

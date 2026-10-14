@@ -19,16 +19,16 @@ const MOCK_MS_TEAMS_URL = "https://teams.microsoft.com/l/meetup-join/mock-teams-
 jest.mock("@calcom/platform-libraries/conferencing", () => ({
   ...jest.requireActual("@calcom/platform-libraries/conferencing"),
   createMeeting: jest.fn().mockResolvedValue({
-    appName: "daily-video",
-    type: "daily_video",
+    appName: "jitsi",
+    type: "jitsi_video",
     uid: "MOCK_UID",
     originalEvent: {},
     success: true,
     createdEvent: {
-      type: "daily_video",
-      id: "MOCK_DAILY_ID",
-      password: "MOCK_DAILY_PASS",
-      url: "https://mock-daily.example.com/mock-meeting",
+      type: "jitsi_video",
+      id: "MOCK_JITSI_ID",
+      password: "",
+      url: "https://mock-jitsi.example.com/mock-meeting",
     },
     credentialId: 0,
   }),
@@ -179,7 +179,7 @@ describe("Bookings Endpoints 2024-08-13 update booking location", () => {
             slug: `book-using-any-location-${randomString()}`,
             length: 15,
             locations: [
-              { type: "integrations:daily" },
+              { type: "integrations:jitsi" },
               { type: "inPerson", address: "123 Main St", displayLocationPublicly: true },
               { type: "link", link: "https://cal.com/join/123456", displayLocationPublicly: true },
               { type: "userPhone", hostPhoneNumber: "+37121999999", displayLocationPublicly: true },
@@ -387,7 +387,7 @@ describe("Bookings Endpoints 2024-08-13 update booking location", () => {
         expect(updatedBooking.location).toEqual(attendeeDefinedLocation);
       });
 
-      it("can update location to type integration (cal-video)", async () => {
+      it("can update location to type integration (cal-video, now Jitsi)", async () => {
         const updatedBookingBody: UpdateBookingLocationInput_2024_08_13 = {
           location: {
             type: "integration",
@@ -412,9 +412,9 @@ describe("Bookings Endpoints 2024-08-13 update booking location", () => {
         }
         const updatedBooking = updatedBookingResponseBody.data as BookingOutput_2024_08_13;
         expect(updatedBooking).toHaveProperty("id");
-        // cal-video location should be either a Daily video URL or the internal location string
+        // cal-video now books Jitsi: either the Jitsi meeting URL or the internal location string
         expect(
-          updatedBooking.location?.startsWith("http") || updatedBooking.location === "integrations:daily"
+          updatedBooking.location?.startsWith("http") || updatedBooking.location === "integrations:jitsi"
         ).toBe(true);
       });
 
@@ -477,7 +477,7 @@ describe("Bookings Endpoints 2024-08-13 update booking location", () => {
         await credentialsRepositoryFixture.delete(googleCredential.id);
       });
 
-      it("should fall back to Cal Video when google-meet is requested but no Google Calendar credential exists", async () => {
+      it("should fall back to Jitsi when google-meet is requested but no Google Calendar credential exists", async () => {
         const bookingWithoutGoogleCal = await bookingsRepositoryFixture.create({
           uid: `no-gcal-booking-${randomString(10)}`,
           title: "no google cal booking",
@@ -514,9 +514,9 @@ describe("Bookings Endpoints 2024-08-13 update booking location", () => {
         }
         const updatedBooking = updatedBookingResponseBody.data as BookingOutput_2024_08_13;
         expect(updatedBooking).toHaveProperty("id");
-        // No Google Calendar credential → fell back to Cal Video, not Google Meet
+        // No Google Calendar credential → fell back to Jitsi, not Google Meet
         expect(updatedBooking.location).not.toContain("meet.google.com");
-        expect(["integrations:daily", "https://mock-daily.example.com/mock-meeting"]).toContain(
+        expect(["integrations:jitsi", "https://mock-jitsi.example.com/mock-meeting"]).toContain(
           updatedBooking.location
         );
 

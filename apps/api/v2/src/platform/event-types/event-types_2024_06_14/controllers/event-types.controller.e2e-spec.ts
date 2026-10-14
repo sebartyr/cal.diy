@@ -344,7 +344,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "cal-video",
+            integration: "jitsi",
           },
         ],
         bookingFields: [
@@ -377,7 +377,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "cal-video",
+            integration: "jitsi",
           },
         ],
         bookingFields: [
@@ -440,7 +440,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "cal-video",
+            integration: "jitsi",
           },
         ],
         interfaceLanguage: "invalid-locale-xyz",
@@ -471,7 +471,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "cal-video",
+            integration: "jitsi",
           },
           {
             type: "attendeePhone",
@@ -638,7 +638,7 @@ describe("Event types Endpoints", () => {
           expect(createdEventType.bookingUrl).toContain(`/${user.username}/${body.slug}`);
           expect(createdEventType.disableCancelling).toEqual({ disabled: true });
           expect(createdEventType.disableRescheduling).toEqual({ disabled: true });
-          expect(createdEventType.calVideoSettings?.sendTranscriptionEmails).toEqual(true);
+          expect(createdEventType.calVideoSettings).toBeUndefined();
           expect(createdEventType.interfaceLanguage).toEqual(body.interfaceLanguage);
           expect(createdEventType.allowReschedulingPastBookings).toEqual(body.allowReschedulingPastBookings);
           expect(createdEventType.allowReschedulingCancelledBookings).toEqual(
@@ -658,7 +658,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "cal-video",
+            integration: "jitsi",
           },
         ],
         hidden: true,
@@ -735,9 +735,7 @@ describe("Event types Endpoints", () => {
       expect(fetchedEventType?.bookingUrl).toContain(`/${user.username}/${eventType.slug}`);
       expect(fetchedEventType?.disableCancelling).toEqual(eventType.disableCancelling);
       expect(fetchedEventType?.disableRescheduling).toEqual(eventType.disableRescheduling);
-      expect(fetchedEventType?.calVideoSettings?.sendTranscriptionEmails).toEqual(
-        eventType.calVideoSettings?.sendTranscriptionEmails
-      );
+      expect(fetchedEventType?.calVideoSettings).toBeUndefined();
       expect(fetchedEventType?.interfaceLanguage).toEqual(eventType.interfaceLanguage);
       expect(fetchedEventType?.allowReschedulingPastBookings).toEqual(
         eventType.allowReschedulingPastBookings
@@ -877,9 +875,7 @@ describe("Event types Endpoints", () => {
       expect(fetchedEventType?.hidden).toEqual(false);
       expect(fetchedEventType?.disableCancelling).toEqual(eventType.disableCancelling);
       expect(fetchedEventType?.disableRescheduling).toEqual(eventType.disableRescheduling);
-      expect(fetchedEventType?.calVideoSettings?.sendTranscriptionEmails).toEqual(
-        eventType.calVideoSettings?.sendTranscriptionEmails
-      );
+      expect(fetchedEventType?.calVideoSettings).toBeUndefined();
       expect(fetchedEventType?.interfaceLanguage).toEqual(eventType.interfaceLanguage);
       expect(fetchedEventType?.allowReschedulingPastBookings).toEqual(
         eventType.allowReschedulingPastBookings
@@ -977,7 +973,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "cal-video",
+            integration: "jitsi",
           },
           {
             type: "phone",
@@ -1010,7 +1006,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "cal-video",
+            integration: "jitsi",
           },
           {
             type: "phone",
@@ -1164,7 +1160,7 @@ describe("Event types Endpoints", () => {
           locations: [
             {
               type: "integration",
-              integration: "cal-video",
+              integration: "jitsi",
             },
             {
               type: "phone",
@@ -1406,24 +1402,7 @@ describe("Event types Endpoints", () => {
             body.lockTimeZoneToggleOnBookingPage
           );
           expect(updatedEventType.color).toEqual(body.color);
-          expect(updatedEventType.calVideoSettings?.disableRecordingForGuests).toEqual(
-            body.calVideoSettings?.disableRecordingForGuests
-          );
-          expect(updatedEventType.calVideoSettings?.disableRecordingForOrganizer).toEqual(
-            body.calVideoSettings?.disableRecordingForOrganizer
-          );
-          expect(updatedEventType.calVideoSettings?.enableAutomaticRecordingForOrganizer).toEqual(
-            body.calVideoSettings?.enableAutomaticRecordingForOrganizer
-          );
-          expect(updatedEventType.calVideoSettings?.enableAutomaticTranscription).toEqual(
-            body.calVideoSettings?.enableAutomaticTranscription
-          );
-          expect(updatedEventType.calVideoSettings?.disableTranscriptionForGuests).toEqual(
-            body.calVideoSettings?.disableTranscriptionForGuests
-          );
-          expect(updatedEventType.calVideoSettings?.disableTranscriptionForOrganizer).toEqual(
-            body.calVideoSettings?.disableTranscriptionForOrganizer
-          );
+          expect(updatedEventType.calVideoSettings).toBeUndefined();
 
           eventType.title = newTitle;
           eventType.scheduleId = secondSchedule.id;
@@ -1444,12 +1423,10 @@ describe("Event types Endpoints", () => {
           eventType.lockTimeZoneToggleOnBookingPage = updatedEventType.lockTimeZoneToggleOnBookingPage;
           eventType.color = updatedEventType.color;
           eventType.bookingFields = updatedEventType.bookingFields;
-          eventType.calVideoSettings = updatedEventType.calVideoSettings;
 
           expect(updatedEventType.bookingRequiresAuthentication).toEqual(false);
           expect(updatedEventType.disableCancelling).toEqual({ disabled: false });
           expect(updatedEventType.disableRescheduling).toEqual({ disabled: false, minutesBefore: 60 });
-          expect(updatedEventType.calVideoSettings?.sendTranscriptionEmails).toEqual(false);
           expect(updatedEventType.interfaceLanguage).toEqual(body.interfaceLanguage);
           expect(updatedEventType.allowReschedulingPastBookings).toEqual(body.allowReschedulingPastBookings);
           expect(updatedEventType.allowReschedulingCancelledBookings).toEqual(
@@ -1459,7 +1436,6 @@ describe("Event types Endpoints", () => {
 
           eventType.disableCancelling = updatedEventType.disableCancelling;
           eventType.disableRescheduling = updatedEventType.disableRescheduling;
-          eventType.calVideoSettings = updatedEventType.calVideoSettings;
           eventType.interfaceLanguage = updatedEventType.interfaceLanguage;
           eventType.allowReschedulingPastBookings = updatedEventType.allowReschedulingPastBookings;
           eventType.allowReschedulingCancelledBookings = updatedEventType.allowReschedulingCancelledBookings;
@@ -2696,7 +2672,7 @@ describe("Event types Endpoints", () => {
           });
       });
 
-      it("should create event type with cal video settings", async () => {
+      it("should accept deprecated cal video settings and book Jitsi for cal-video", async () => {
         const body: CreateEventTypeInput_2024_06_14 = {
           title: "event type with cal video settings",
           slug: "event-type-with-cal-video-settings",
@@ -2724,10 +2700,8 @@ describe("Event types Endpoints", () => {
             const createdEventType = responseBody.data;
             expect(createdEventType).toHaveProperty("id");
             expect(createdEventType.title).toEqual(body.title);
-            expect(createdEventType.locations).toEqual(body.locations);
-            expect(createdEventType.calVideoSettings?.disableRecordingForGuests).toEqual(true);
-            expect(createdEventType.calVideoSettings?.disableRecordingForOrganizer).toEqual(true);
-            expect(createdEventType.calVideoSettings?.enableAutomaticRecordingForOrganizer).toEqual(true);
+            expect(createdEventType.locations).toEqual([{ type: "integration", integration: "jitsi" }]);
+            expect(createdEventType.calVideoSettings).toBeUndefined();
             firstCreatedEventType = responseBody.data;
           });
       });

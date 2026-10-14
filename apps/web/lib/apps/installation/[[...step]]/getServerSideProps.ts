@@ -32,7 +32,6 @@ const eventTypeSelect: Prisma.EventTypeSelect = {
   position: true,
   recurringEvent: true,
   requiresConfirmation: true,
-  canSendCalVideoTranscriptionEmails: true,
   team: { select: { slug: true } },
   schedulingType: true,
   teamId: true,
@@ -43,7 +42,6 @@ const eventTypeSelect: Prisma.EventTypeSelect = {
   userId: true,
   destinationCalendar: true,
   bookingFields: true,
-  calVideoSettings: true,
   parentId: true,
 };
 

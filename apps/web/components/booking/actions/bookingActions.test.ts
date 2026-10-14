@@ -37,7 +37,6 @@ function createMockContext(overrides: Partial<BookingActionContext> = {}): Booki
       fromReschedule: null,
       recurringEventId: null,
       rescheduled: false,
-      isRecorded: false,
       rescheduler: null,
       userPrimaryEmail: "organizer@example.com",
       customInputs: {},

@@ -739,7 +739,6 @@ export class UserRepository {
             organization?: {
               id: number;
               name: string;
-              calVideoLogo?: string | null;
               bannerUrl: string | null;
               slug: string | null;
               metadata: Prisma.JsonValue;

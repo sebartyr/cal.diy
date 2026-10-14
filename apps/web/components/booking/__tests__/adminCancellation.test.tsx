@@ -110,7 +110,6 @@ function someoneElsesBooking(loggedInUser: BookingItemProps["loggedInUser"]): Bo
     fromReschedule: null,
     location: "integrations:jitsi",
     paid: false,
-    isRecorded: false,
     report: null,
     payment: [],
     attendees: [],

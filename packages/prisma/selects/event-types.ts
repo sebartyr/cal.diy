@@ -15,7 +15,6 @@ export const baseEventTypeSelect = {
   lockedTimeZone: true,
   requiresConfirmation: true,
   requiresBookerEmailVerification: true,
-  canSendCalVideoTranscriptionEmails: true,
   seatsPerTimeSlot: true,
 } satisfies Prisma.EventTypeSelect;
 
@@ -35,7 +34,6 @@ export const bookEventTypeSelect = {
   lockTimeZoneToggleOnBookingPage: true,
   lockedTimeZone: true,
   requiresConfirmation: true,
-  canSendCalVideoTranscriptionEmails: true,
   requiresBookerEmailVerification: true,
   metadata: true,
   periodCountCalendarDays: true,

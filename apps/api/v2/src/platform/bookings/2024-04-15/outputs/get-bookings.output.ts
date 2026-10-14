@@ -238,7 +238,11 @@ export class GetBookingsDataEntry {
   references!: Reference[];
 
   @IsBoolean()
-  @ApiProperty({ type: Boolean })
+  @ApiProperty({
+    type: Boolean,
+    deprecated: true,
+    description: "Deprecated: Cal Video recordings were removed, so this is always false.",
+  })
   isRecorded!: boolean;
 
   @IsArray()

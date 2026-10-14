@@ -133,7 +133,8 @@ export class InputEventTypesService_2024_06_14 {
       slug,
       disableRescheduling,
       disableCancelling,
-      calVideoSettings,
+      // Cal Video was removed: still accepted for compatibility, ignored.
+      calVideoSettings: _calVideoSettings,
       ...rest
     } = inputEventType;
     const confirmationPolicyTransformed = this.transformInputConfirmationPolicy(confirmationPolicy);
@@ -160,7 +161,6 @@ export class InputEventTypesService_2024_06_14 {
 
     const disableReschedulingTransformed = this.transformInputDisableRescheduling(disableRescheduling);
     const disableCancellingTransformed = this.transformInputDisableCancelling(disableCancelling);
-    const calVideoSettingsTransformed = this.transformInputCalVideoSettings(calVideoSettings);
 
     const eventType = {
       ...rest,
@@ -185,7 +185,6 @@ export class InputEventTypesService_2024_06_14 {
       ...maxActiveBookingsPerBooker,
       ...disableReschedulingTransformed,
       ...disableCancellingTransformed,
-      ...calVideoSettingsTransformed,
     };
 
     return eventType;
@@ -227,7 +226,8 @@ export class InputEventTypesService_2024_06_14 {
       slug,
       disableRescheduling,
       disableCancelling,
-      calVideoSettings,
+      // Cal Video was removed: still accepted for compatibility, ignored.
+      calVideoSettings: _calVideoSettings,
       ...rest
     } = inputEventType;
     const eventTypeDb = await this.eventTypesRepository.getEventTypeWithMetaData(eventTypeId);
@@ -266,9 +266,6 @@ export class InputEventTypesService_2024_06_14 {
     const disableCancellingTransformed = disableCancelling
       ? this.transformInputDisableCancelling(disableCancelling)
       : {};
-    const calVideoSettingsTransformed = calVideoSettings
-      ? this.transformInputCalVideoSettings(calVideoSettings)
-      : {};
 
     const eventType = {
       ...rest,
@@ -295,7 +292,6 @@ export class InputEventTypesService_2024_06_14 {
       ...maxActiveBookingsPerBooker,
       ...disableReschedulingTransformed,
       ...disableCancellingTransformed,
-      ...calVideoSettingsTransformed,
     };
 
     return eventType;
@@ -572,8 +568,8 @@ export class InputEventTypesService_2024_06_14 {
     await Promise.all(
       inputLocations?.map(async (location) => {
         if (location.type === "integration") {
-          // cal-video is global, so we can skip this check
-          if (location.integration !== "cal-video") {
+          // Jitsi is global, and cal-video now books Jitsi: neither needs a connected credential.
+          if (location.integration !== "cal-video" && location.integration !== "jitsi") {
             await this.checkAppIsValidAndConnected(user, location.integration);
           }
         }
@@ -668,24 +664,6 @@ export class InputEventTypesService_2024_06_14 {
 
     return {
       disableCancelling: disableCancelling.disabled === true,
-    };
-  }
-
-  transformInputCalVideoSettings(calVideoSettings: CreateEventTypeInput_2024_06_14["calVideoSettings"]) {
-    if (!calVideoSettings) {
-      return {};
-    }
-
-    // Extract sendTranscriptionEmails from calVideoSettings and map to canSendCalVideoTranscriptionEmails
-    const { sendTranscriptionEmails, ...restCalVideoSettings } = calVideoSettings;
-
-    const hasOtherSettings = Object.keys(restCalVideoSettings).length > 0;
-
-    return {
-      ...(hasOtherSettings ? { calVideoSettings: restCalVideoSettings } : {}),
-      ...(sendTranscriptionEmails !== undefined
-        ? { canSendCalVideoTranscriptionEmails: sendTranscriptionEmails }
-        : {}),
     };
   }
 }

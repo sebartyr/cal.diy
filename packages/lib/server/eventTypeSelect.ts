@@ -13,7 +13,6 @@ export const eventTypeSelect = {
   length: true,
   title: true,
   requiresConfirmation: true,
-  canSendCalVideoTranscriptionEmails: true,
   requiresConfirmationForFreeEmail: true,
   requiresConfirmationWillBlockSlot: true,
   autoTranslateDescriptionEnabled: true,

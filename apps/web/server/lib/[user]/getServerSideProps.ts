@@ -64,7 +64,6 @@ type UserPageProps = {
     | "lockTimeZoneToggleOnBookingPage"
     | "lockedTimeZone"
     | "requiresConfirmation"
-    | "canSendCalVideoTranscriptionEmails"
     | "requiresBookerEmailVerification"
     | "price"
     | "currency"

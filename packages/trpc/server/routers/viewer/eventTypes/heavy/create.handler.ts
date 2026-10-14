@@ -1,5 +1,4 @@
 import { getDefaultLocations } from "@calcom/app-store/_utils/getDefaultLocations";
-import { DailyLocationType } from "@calcom/app-store/constants";
 import { DeploymentRepository } from "@calcom/features/deployment/repositories/DeploymentRepository";
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
@@ -45,7 +44,6 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
     metadata,
     locations: inputLocations,
     scheduleId,
-    calVideoSettings,
     ...rest
   } = input;
 
@@ -88,8 +86,6 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
     locations = await getDefaultLocations(ctx.user, defaultConferencingAppSlug);
   }
 
-  const isCalVideoLocationActive = locations.some((location) => location.type === DailyLocationType);
-
   const data: Prisma.EventTypeCreateInput = {
     ...rest,
     owner: teamId ? undefined : { connect: { id: userId } },
@@ -99,21 +95,6 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
     locations,
     schedule: scheduleId ? { connect: { id: scheduleId } } : undefined,
   };
-
-  if (isCalVideoLocationActive && calVideoSettings) {
-    data.calVideoSettings = {
-      create: {
-        disableRecordingForGuests: calVideoSettings.disableRecordingForGuests ?? false,
-        disableRecordingForOrganizer: calVideoSettings.disableRecordingForOrganizer ?? false,
-        enableAutomaticTranscription: calVideoSettings.enableAutomaticTranscription ?? false,
-        enableAutomaticRecordingForOrganizer: calVideoSettings.enableAutomaticRecordingForOrganizer ?? false,
-        disableTranscriptionForGuests: calVideoSettings.disableTranscriptionForGuests ?? false,
-        disableTranscriptionForOrganizer: calVideoSettings.disableTranscriptionForOrganizer ?? false,
-        redirectUrlOnExit: calVideoSettings.redirectUrlOnExit ?? null,
-        requireEmailForGuests: calVideoSettings.requireEmailForGuests ?? false,
-      },
-    };
-  }
 
   if (teamId && schedulingType) {
     const isSystemAdmin = ctx.user.role === "ADMIN";

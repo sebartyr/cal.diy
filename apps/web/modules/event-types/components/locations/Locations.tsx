@@ -24,7 +24,7 @@ import { showToast } from "@calcom/ui/components/toast";
 import DefaultLocationSettings from "./DefaultLocationSettings";
 import LocationInput from "./LocationInput";
 
-export type TEventTypeLocation = Pick<EventTypeSetupProps["eventType"], "locations" | "calVideoSettings">;
+export type TEventTypeLocation = Pick<EventTypeSetupProps["eventType"], "locations">;
 export type TLocationOptions = Pick<EventTypeSetupProps, "locationOptions">["locationOptions"];
 export type TDestinationCalendar = { integration: string } | null;
 export type TPrefillLocation = { credentialId?: number; type: string };

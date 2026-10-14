@@ -1,7 +1,5 @@
 import type { appDataSchemas } from "@calcom/app-store/apps.schemas.generated";
-import { DailyLocationType } from "@calcom/app-store/constants";
 import { eventTypeAppMetadataOptionalSchema } from "@calcom/app-store/zod-utils";
-import { CalVideoSettingsRepository } from "@calcom/features/calVideoSettings/repositories/CalVideoSettingsRepository";
 import { HashedLinkRepository } from "@calcom/features/hashedLink/lib/repository/HashedLinkRepository";
 import { HashedLinkService } from "@calcom/features/hashedLink/lib/service/HashedLinkService";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
@@ -14,7 +12,6 @@ import { validateBookerLayouts } from "@calcom/lib/validateBookerLayouts";
 import type { PrismaClient } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
 import { EventTypeAutoTranslatedField, RRTimestampBasis, SchedulingType } from "@calcom/prisma/enums";
-import { eventTypeLocations } from "@calcom/prisma/zod-utils";
 import { TRPCError } from "@trpc/server";
 import type { GetServerSidePropsContext, NextApiResponse } from "next";
 import type { TrpcSessionUser } from "../../../../types";
@@ -89,7 +86,6 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     title: newTitle,
     seatsPerTimeSlot,
     restrictionScheduleId,
-    calVideoSettings,
     hostGroups,
     enablePerHostLocations,
     ...rest
@@ -116,18 +112,6 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
           priority: true,
           weight: true,
           isFixed: true,
-        },
-      },
-      calVideoSettings: {
-        select: {
-          disableRecordingForOrganizer: true,
-          disableRecordingForGuests: true,
-          enableAutomaticTranscription: true,
-          enableAutomaticRecordingForOrganizer: true,
-          requireEmailForGuests: true,
-          disableTranscriptionForGuests: true,
-          disableTranscriptionForOrganizer: true,
-          redirectUrlOnExit: true,
         },
       },
       children: {
@@ -647,24 +631,6 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     }
   }
 
-  if (calVideoSettings) {
-    await CalVideoSettingsRepository.createOrUpdateCalVideoSettings({
-      eventTypeId: id,
-      calVideoSettings,
-    });
-  }
-
-  const parsedEventTypeLocations = eventTypeLocations.safeParse(eventType.locations ?? []);
-
-  const isCalVideoLocationActive = locations
-    ? locations.some((location) => location.type === DailyLocationType)
-    : parsedEventTypeLocations.success &&
-      parsedEventTypeLocations.data?.some((location) => location.type === DailyLocationType);
-
-  if (eventType.calVideoSettings && !isCalVideoLocationActive) {
-    await CalVideoSettingsRepository.deleteCalVideoSettings(id);
-  }
-
   // Logic for updating `fieldTranslations`
   // user has no translations OR user is changing the field
   const hasNoDescriptionTranslations =
@@ -729,17 +695,6 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     return acc;
   }, {});
 
-  // Determine calVideoSettings to pass to children:
-  // - If calVideoSettings provided in input, sync to children
-  // - If Cal Video location removed, delete from children (pass null)
-  // - Otherwise, leave children's settings untouched (pass undefined)
-  let calVideoSettingsForChildren: typeof calVideoSettings | null | undefined;
-  if (calVideoSettings !== undefined) {
-    calVideoSettingsForChildren = calVideoSettings;
-  } else if (eventType.calVideoSettings && !isCalVideoLocationActive) {
-    calVideoSettingsForChildren = null;
-  }
-
   // Handling updates to children event types (managed events types)
   await updateChildrenEventTypes({
     eventTypeId: id,
@@ -750,7 +705,6 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     profileId: ctx.user.profile.id,
     prisma: ctx.prisma,
     updatedValues,
-    calVideoSettings: calVideoSettingsForChildren,
   });
 
   // Clean up empty host groups

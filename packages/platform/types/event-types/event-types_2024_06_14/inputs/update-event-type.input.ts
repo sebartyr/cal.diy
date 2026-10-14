@@ -449,7 +449,8 @@ class BaseUpdateEventTypeInput {
   @ValidateNested()
   @Type(() => CalVideoSettings)
   @DocsPropertyOptional({
-    description: "Cal video settings for the event type",
+    description: "Deprecated: Cal Video was removed. Still accepted for compatibility, but ignored.",
+    deprecated: true,
     type: CalVideoSettings,
   })
   calVideoSettings?: CalVideoSettings;

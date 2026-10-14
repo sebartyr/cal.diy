@@ -4,34 +4,6 @@ import { eventTypeLocations, eventTypeSlug } from "@calcom/lib/zod/eventType";
 import { SchedulingType } from "@calcom/prisma/enums";
 import { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 
-type CalVideoSettings =
-  | {
-      disableRecordingForGuests?: boolean | null;
-      disableRecordingForOrganizer?: boolean | null;
-      enableAutomaticTranscription?: boolean | null;
-      enableAutomaticRecordingForOrganizer?: boolean | null;
-      disableTranscriptionForGuests?: boolean | null;
-      disableTranscriptionForOrganizer?: boolean | null;
-      redirectUrlOnExit?: string | null;
-      requireEmailForGuests?: boolean | null;
-    }
-  | null
-  | undefined;
-
-const calVideoSettingsSchema: z.ZodType<CalVideoSettings> = z
-  .object({
-    disableRecordingForGuests: z.boolean().nullish(),
-    disableRecordingForOrganizer: z.boolean().nullish(),
-    enableAutomaticTranscription: z.boolean().nullish(),
-    enableAutomaticRecordingForOrganizer: z.boolean().nullish(),
-    disableTranscriptionForGuests: z.boolean().nullish(),
-    disableTranscriptionForOrganizer: z.boolean().nullish(),
-    redirectUrlOnExit: z.string().url().nullish(),
-    requireEmailForGuests: z.boolean().nullish(),
-  })
-  .optional()
-  .nullable();
-
 type EventTypeLocation = {
   type: string;
   address?: string;
@@ -81,7 +53,6 @@ export type TCreateEventTypeInput = {
   beforeEventBuffer?: number;
   afterEventBuffer?: number;
   scheduleId?: number;
-  calVideoSettings?: CalVideoSettings;
 };
 
 export const createEventTypeInput: z.ZodType<TCreateEventTypeInput> = z
@@ -101,7 +72,6 @@ export const createEventTypeInput: z.ZodType<TCreateEventTypeInput> = z
     beforeEventBuffer: z.number().int().min(0).optional(),
     afterEventBuffer: z.number().int().min(0).optional(),
     scheduleId: z.number().int().optional(),
-    calVideoSettings: calVideoSettingsSchema,
   })
   .partial({ hidden: true, locations: true })
   .refine((data) => (data.teamId ? data.teamId && data.schedulingType : true), {

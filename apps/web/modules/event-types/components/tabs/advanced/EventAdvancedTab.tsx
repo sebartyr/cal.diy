@@ -80,6 +80,7 @@ export type EventAdvancedTabCustomClassNames = {
   requiresConfirmation?: RequiresConfirmationCustomClassNames;
   disableRescheduling?: DisableReschedulingCustomClassNames;
   bookerEmailVerification?: SettingsToggleClassNames;
+  /** @deprecated Cal Video was removed; this toggle is no longer rendered. */
   canSendCalVideoTranscriptionEmails?: SettingsToggleClassNames;
   calendarNotes?: SettingsToggleClassNames;
   eventDetailsVisibility?: SettingsToggleClassNames;
@@ -509,7 +510,6 @@ export const EventAdvancedTab = ({
   const successRedirectUrlLocked = shouldLockDisableProps("successRedirectUrl");
   const seatsLocked = shouldLockDisableProps("seatsPerTimeSlotEnabled");
   const requiresBookerEmailVerificationProps = shouldLockDisableProps("requiresBookerEmailVerification");
-  const sendCalVideoTranscriptionEmailsProps = shouldLockDisableProps("canSendCalVideoTranscriptionEmails");
   const hideCalendarNotesLocked = shouldLockDisableProps("hideCalendarNotes");
   const hideCalendarEventDetailsLocked = shouldLockDisableProps("hideCalendarEventDetails");
   const eventTypeColorLocked = shouldLockDisableProps("eventTypeColor");
@@ -751,29 +751,6 @@ export const EventAdvancedTab = ({
         </>
       )}
 
-      <Controller
-        name="canSendCalVideoTranscriptionEmails"
-        render={({ field: { value, onChange } }) => (
-          <SettingsToggle
-            labelClassName={classNames(
-              "text-sm",
-              customClassNames?.canSendCalVideoTranscriptionEmails?.label
-            )}
-            toggleSwitchAtTheEnd={true}
-            switchContainerClassName={classNames(
-              "border-subtle rounded-lg border py-6 px-4 sm:px-6",
-              customClassNames?.canSendCalVideoTranscriptionEmails?.container
-            )}
-            title={t("send_cal_video_transcription_emails")}
-            data-testid="send-cal-video-transcription-emails"
-            {...sendCalVideoTranscriptionEmailsProps}
-            description={t("description_send_cal_video_transcription_emails")}
-            descriptionClassName={customClassNames?.canSendCalVideoTranscriptionEmails?.description}
-            checked={value}
-            onCheckedChange={(e) => onChange(e)}
-          />
-        )}
-      />
       {!isPlatform && (
         <Controller
           name="autoTranslateDescriptionEnabled"

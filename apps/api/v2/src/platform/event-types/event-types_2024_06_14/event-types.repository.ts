@@ -16,20 +16,13 @@ export class EventTypesRepository_2024_06_14 {
     userId: number,
     body: Omit<InputEventTransformed_2024_06_14, "destinationCalendar">
   ) {
-    const { calVideoSettings, ...restBody } = body;
-
     return this.dbWrite.prisma.eventType.create({
       data: {
-        ...restBody,
+        ...body,
         userId,
         locations: body.locations,
         bookingFields: body.bookingFields,
         users: { connect: { id: userId } },
-        ...(calVideoSettings && {
-          calVideoSettings: {
-            create: calVideoSettings,
-          },
-        }),
       },
     });
   }
@@ -144,7 +137,6 @@ export class EventTypesRepository_2024_06_14 {
         users: this.usersInclude,
         schedule: true,
         destinationCalendar: true,
-        calVideoSettings: true,
       },
     });
   }
@@ -156,7 +148,6 @@ export class EventTypesRepository_2024_06_14 {
         users: this.usersInclude,
         schedule: true,
         destinationCalendar: true,
-        calVideoSettings: true,
         hosts: true,
       },
     });

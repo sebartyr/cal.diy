@@ -25,7 +25,6 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   requiresConfirmation: false,
   requiresBookerEmailVerification: false,
   metadata: null,
-  canSendCalVideoTranscriptionEmails: true,
   ...overrides,
 });
 
