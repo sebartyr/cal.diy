@@ -11,7 +11,7 @@ const MIGRATION = join(
 describe("drop_removed_app_rows migration", () => {
   it("never deletes the App row of an app that is still in the app store", () => {
     const sql = readFileSync(MIGRATION, "utf8");
-    const removedSlugs = [...sql.matchAll(/^ {2}\('([^']+)'\)/gm)].map(([, slug]) => slug);
+    const removedSlugs = Array.from(sql.matchAll(/^ {2}\('([^']+)'\)/gm), ([, slug]) => slug);
     const currentSlugs = Object.values(appStoreMetadata).map((app) => app.slug);
 
     expect(removedSlugs.length).toBeGreaterThan(0);
