@@ -1,6 +1,8 @@
 import { Task } from "./repository";
 import tasksMap, { tasksConfig } from "./tasks";
 
+const UNKNOWN_TASK_TYPE_RETRY_INTERVAL_MINS = 60;
+
 // Each handler opens its own Prisma queries and outbound HTTP calls; running a whole batch at once
 // exhausts the connection pool and makes handlers time out (P2024).
 const TASK_CONCURRENCY = 10;
@@ -53,7 +55,19 @@ export class TaskProcessor {
       `Processing task ${task.id}, type:${task.type} attempt:${task.attempts} maxAttempts:${task.maxAttempts} lastFailedAttempt:${task.lastFailedAttemptAt}`
     );
     const taskHandlerGetter = tasksMap[task.type as keyof typeof tasksMap];
-    if (!taskHandlerGetter) throw new Error(`Task handler not found for type ${task.type}`);
+    if (!taskHandlerGetter) {
+      // A type with no handler is either removed from the code (rows queued before the
+      // removal) or newer than this instance (rolling deploy). Count it as a failed
+      // attempt and push it back: thrown before Task.retry, it stayed at the head of every
+      // batch forever and could crowd out the tasks that still work.
+      const lastError = `Task handler not found for type ${task.type}`;
+      await Task.retry({
+        taskId: task.id,
+        lastError,
+        minRetryIntervalMins: UNKNOWN_TASK_TYPE_RETRY_INTERVAL_MINS,
+      });
+      throw new Error(lastError);
+    }
     const taskConfig = tasksConfig[task.type as keyof typeof tasksConfig];
     const taskHandler = await taskHandlerGetter();
     return taskHandler(task.payload, task.id)
