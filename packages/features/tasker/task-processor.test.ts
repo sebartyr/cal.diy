@@ -62,6 +62,21 @@ describe("TaskProcessor.processQueue", () => {
     expect(mockTask.retry).not.toHaveBeenCalled();
   });
 
+  it("counts a task whose type has no handler as a failed attempt and pushes it back", async () => {
+    mockTask.getNextBatch.mockResolvedValue([makeTask(1, "sendAnalyticsEvent"), makeTask(2)]);
+
+    await new TaskProcessor().processQueue();
+
+    expect(mockTask.retry).toHaveBeenCalledWith({
+      taskId: "task-1",
+      lastError: "Task handler not found for type sendAnalyticsEvent",
+      minRetryIntervalMins: 60,
+    });
+    // The other tasks of the batch still run.
+    expect(mockTask.succeed).toHaveBeenCalledTimes(1);
+    expect(mockTask.succeed).toHaveBeenCalledWith("task-2");
+  });
+
   it("retries failed tasks with the configured retry interval", async () => {
     mockTask.getNextBatch.mockResolvedValue([makeTask(1, "webhookDelivery"), makeTask(2)]);
     handlers.webhookDelivery.mockRejectedValue(new Error("boom"));
@@ -80,16 +95,6 @@ describe("TaskProcessor.processQueue", () => {
       minRetryIntervalMins: null,
     });
     expect(mockTask.succeed).not.toHaveBeenCalled();
-  });
-
-  it("does not stop the batch when a task type has no handler", async () => {
-    mockTask.getNextBatch.mockResolvedValue([makeTask(1, "unknownType"), makeTask(2)]);
-
-    await new TaskProcessor().processQueue();
-
-    expect(mockTask.retry).not.toHaveBeenCalled();
-    expect(mockTask.succeed).toHaveBeenCalledTimes(1);
-    expect(mockTask.succeed).toHaveBeenCalledWith("task-2");
   });
 
   it("runs at most 10 handlers at the same time", async () => {
