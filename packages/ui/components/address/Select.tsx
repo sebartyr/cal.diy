@@ -1,4 +1,5 @@
 import type { GroupBase, InputProps, Props } from "react-select";
+import { useId } from "react";
 import ReactSelect, { components } from "react-select";
 
 import classNames from "@calcom/ui/classNames";
@@ -27,8 +28,12 @@ function Select<
   IsMulti extends boolean = false,
   Group extends GroupBase<Option> = GroupBase<Option>
 >({ className, ...props }: SelectProps<Option, IsMulti, Group>) {
+  // react-select derives its element ids from a module-level counter, which keeps growing on the
+  // server across requests: the ids never match the client's (hydration mismatch). useId is stable.
+  const instanceId = useId();
   return (
     <ReactSelect
+      instanceId={instanceId}
       theme={(theme) => ({
         ...theme,
         borderRadius: 2,
@@ -68,8 +73,12 @@ export function UnstyledSelect<
   IsMulti extends boolean = false,
   Group extends GroupBase<Option> = GroupBase<Option>
 >({ ...props }: SelectProps<Option, IsMulti, Group>) {
+  // react-select derives its element ids from a module-level counter, which keeps growing on the
+  // server across requests: the ids never match the client's (hydration mismatch). useId is stable.
+  const instanceId = useId();
   return (
     <ReactSelect
+      instanceId={instanceId}
       {...props}
       isSearchable={false}
       theme={(theme) => ({ ...theme, borderRadius: 0, border: "none" })}

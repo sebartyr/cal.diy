@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useId, useState } from "react";
 import type { GroupBase, Props, InputProps, SingleValue, MultiValue } from "react-select";
 import ReactSelect, { components } from "react-select";
 
@@ -29,6 +29,9 @@ function Select<
   IsMulti extends boolean = false,
   Group extends GroupBase<Option> = GroupBase<Option>,
 >({ className, ...props }: SelectProps<Option, IsMulti, Group>) {
+  // react-select derives its element ids from a module-level counter, which keeps growing on the
+  // server across requests: the ids never match the client's (hydration mismatch). useId is stable.
+  const instanceId = useId();
   const [mounted, setMounted] = useState<boolean>(false);
   const { resolvedTheme, forcedTheme } = useGetTheme();
   const hasDarkTheme = !forcedTheme && resolvedTheme === "dark";
@@ -85,6 +88,7 @@ function Select<
 
   return (
     <ReactSelect
+      instanceId={instanceId}
       theme={(theme) => ({
         ...theme,
         borderRadius: 6,
