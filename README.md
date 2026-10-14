@@ -722,61 +722,9 @@ following
 11. Click "Done".
 12. You're good to go. Now you can easily add your Zoom integration in the Cal.diy settings.
 
-### Obtaining Daily API Credentials
-
-1. Open [Daily.co](https://daily.co/) and create an account.
-2. From within your dashboard, go to the [developers](https://dashboard.daily.co/developers) tab.
-3. Copy your API key.
-4. Now paste the API key to your `.env` file into the `DAILY_API_KEY` field in your `.env` file.
-5. If you have the [Daily Scale Plan](https://daily.co/pricing) set the `DAILY_SCALE_PLAN` variable to `true` in order to use features like video recording.
-
-### Obtaining Basecamp Client ID and Secret
-
-1. Visit the [37 Signals Integrations Dashboard](launchpad.37signals.com/integrations) and sign in.
-2. Register a new application by clicking the Register one now link.
-3. Fill in your company details.
-4. Select Basecamp 4 as the product to integrate with.
-5. Set the Redirect URL for OAuth `<Cal.diy URL>/api/integrations/basecamp3/callback` replacing Cal.diy URL with the URI at which your application runs.
-6. Click on done and copy the Client ID and secret into the `BASECAMP3_CLIENT_ID` and `BASECAMP3_CLIENT_SECRET` fields.
-7. Set the `BASECAMP3_CLIENT_SECRET` env variable to `{your_domain} ({support_email})`.
-
-### Obtaining HubSpot Client ID and Secret
-
-1. Open [HubSpot Developer](https://developer.hubspot.com/) and sign into your account, or create a new one.
-2. From within the home of the Developer account page, go to "Manage apps".
-3. Click "Create legacy app" button top right and select public app.
-4. Fill in any information you want in the "App info" tab
-5. Go to tab "Auth"
-6. Now copy the Client ID and Client Secret to your `.env` file into the `HUBSPOT_CLIENT_ID` and `HUBSPOT_CLIENT_SECRET` fields.
-7. Set the Redirect URL for OAuth `<Cal.diy URL>/api/integrations/hubspot/callback` replacing Cal.diy URL with the URI at which your application runs.
-8. In the "Scopes" section at the bottom of the page, make sure you select "Read" and "Write" for scopes called `crm.objects.contacts` and `crm.lists`.
-9. Click the "Save" button at the bottom footer.
-10. You're good to go. Now you can see any booking in Cal.diy created as a meeting in HubSpot for your contacts.
-
-### Obtaining Webex Client ID and Secret
-
-[See Webex Readme](./packages/app-store/webex/)
-
-### Obtaining ZohoCRM Client ID and Secret
-
-1. Open [Zoho API Console](https://api-console.zoho.com/) and sign into your account, or create a new one.
-2. From within the API console page, go to "Applications".
-3. Click "ADD CLIENT" button top right and select "Server-based Applications".
-4. Fill in any information you want in the "Client Details" tab
-5. Go to tab "Client Secret" tab.
-6. Now copy the Client ID and Client Secret to your `.env` file into the `ZOHOCRM_CLIENT_ID` and `ZOHOCRM_CLIENT_SECRET` fields.
-7. Set the Redirect URL for OAuth `<Cal.diy URL>/api/integrations/zohocrm/callback` replacing Cal.diy URL with the URI at which your application runs.
-8. In the "Settings" section check the "Multi-DC" option if you wish to use the same OAuth credentials for all data centers.
-9. Click the "Save"/ "UPDATE" button at the bottom footer.
-10. You're good to go. Now you can easily add your ZohoCRM integration in the Cal.diy settings.
-
 ### Obtaining Zoho Calendar Client ID and Secret
 
 [Follow these steps](./packages/app-store/zohocalendar/)
-
-### Obtaining Zoho Bigin Client ID and Secret
-
-[Follow these steps](./packages/app-store/zoho-bigin/)
 
 ### Obtaining Pipedrive Client ID and Secret
 
