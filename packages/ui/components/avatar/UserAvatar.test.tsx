@@ -37,7 +37,6 @@ describe("tests for UserAvatar component", () => {
         requestedSlug: "steve",
         slug: "steve",
         name: "Org1",
-        calVideoLogo: "",
       },
     };
     const { getByTestId } = render(

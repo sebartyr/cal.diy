@@ -16,7 +16,6 @@ import type {
   TransformFutureBookingsLimitSchema_2024_06_14,
 } from "@calcom/platform-types";
 import type {
-  CalVideoSettings,
   DestinationCalendar,
   EventType,
   Prisma,
@@ -63,7 +62,6 @@ type EventTypeRelations = {
   users: EventTypeUser[];
   schedule: Schedule | null;
   destinationCalendar?: DestinationCalendar | null;
-  calVideoSettings?: CalVideoSettings | null;
 };
 export type DatabaseEventType = EventType & EventTypeRelations;
 
@@ -114,7 +112,6 @@ type Input = Pick<
   | "useEventTypeDestinationCalendarEmail"
   | "hideCalendarEventDetails"
   | "hideOrganizerEmail"
-  | "calVideoSettings"
   | "hidden"
   | "bookingRequiresAuthentication"
   | "maxActiveBookingsPerBooker"
@@ -122,7 +119,6 @@ type Input = Pick<
   | "disableCancelling"
   | "disableRescheduling"
   | "minimumRescheduleNotice"
-  | "canSendCalVideoTranscriptionEmails"
   | "interfaceLanguage"
   | "allowReschedulingPastBookings"
   | "allowReschedulingCancelledBookings"
@@ -169,13 +165,11 @@ export class OutputEventTypesService_2024_06_14 {
       useEventTypeDestinationCalendarEmail,
       hideCalendarEventDetails,
       hideOrganizerEmail,
-      calVideoSettings,
       hidden,
       bookingRequiresAuthentication,
       disableCancelling,
       disableRescheduling,
       minimumRescheduleNotice,
-      canSendCalVideoTranscriptionEmails,
       interfaceLanguage,
       allowReschedulingPastBookings,
       allowReschedulingCancelledBookings,
@@ -220,10 +214,6 @@ export class OutputEventTypesService_2024_06_14 {
       minimumRescheduleNotice
     );
     const disableCancellingOutput = this.transformDisableCancelling(disableCancelling);
-    const calVideoSettingsOutput = this.transformCalVideoSettings(
-      calVideoSettings,
-      canSendCalVideoTranscriptionEmails
-    );
 
     return {
       id,
@@ -266,7 +256,6 @@ export class OutputEventTypesService_2024_06_14 {
       useDestinationCalendarEmail: useEventTypeDestinationCalendarEmail,
       hideCalendarEventDetails,
       hideOrganizerEmail,
-      calVideoSettings: calVideoSettingsOutput,
       hidden,
       bookingRequiresAuthentication,
       bookerActiveBookingsLimit,
@@ -509,19 +498,5 @@ export class OutputEventTypesService_2024_06_14 {
 
   transformDisableCancelling(disableCancelling: boolean | null | undefined) {
     return { disabled: disableCancelling === true };
-  }
-
-  transformCalVideoSettings(
-    calVideoSettings: CalVideoSettings | null | undefined,
-    canSendCalVideoTranscriptionEmails: boolean | null | undefined
-  ) {
-    if (!calVideoSettings && canSendCalVideoTranscriptionEmails === undefined) {
-      return undefined;
-    }
-
-    return {
-      ...calVideoSettings,
-      sendTranscriptionEmails: canSendCalVideoTranscriptionEmails ?? true,
-    };
   }
 }

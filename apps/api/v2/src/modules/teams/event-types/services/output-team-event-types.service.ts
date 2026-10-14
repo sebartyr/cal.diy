@@ -2,7 +2,6 @@ import { SchedulingType } from "@calcom/platform-libraries";
 import { EventTypeMetadata } from "@calcom/platform-libraries/event-types";
 import type { HostPriority, TeamEventTypeResponseHost } from "@calcom/platform-types";
 import type {
-  CalVideoSettings,
   DestinationCalendar,
   EventType,
   Host,
@@ -24,7 +23,6 @@ type EventTypeRelations = {
     Team,
     "bannerUrl" | "name" | "logoUrl" | "slug" | "weekStart" | "brandColor" | "darkBrandColor" | "theme"
   > | null;
-  calVideoSettings?: CalVideoSettings | null;
 };
 export type DatabaseTeamEventType = EventType & EventTypeRelations;
 
@@ -81,7 +79,6 @@ type Input = Pick<
   | "hideCalendarEventDetails"
   | "hideOrganizerEmail"
   | "team"
-  | "calVideoSettings"
   | "hidden"
   | "bookingRequiresAuthentication"
   | "rescheduleWithSameRoundRobinHost"
@@ -90,7 +87,6 @@ type Input = Pick<
   | "disableCancelling"
   | "disableRescheduling"
   | "minimumRescheduleNotice"
-  | "canSendCalVideoTranscriptionEmails"
   | "interfaceLanguage"
   | "allowReschedulingPastBookings"
   | "allowReschedulingCancelledBookings"

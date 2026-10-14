@@ -528,7 +528,6 @@ export async function getBookings({
             .whereRef("originalBooking.uid", "=", "Booking.fromReschedule")
             .as("rescheduler"),
           "Booking.cancelledBy",
-          "Booking.isRecorded",
           "Booking.cancellationReason",
           "Booking.rejectionReason",
           jsonObjectFrom(

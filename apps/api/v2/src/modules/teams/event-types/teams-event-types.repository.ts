@@ -21,7 +21,6 @@ export class TeamsEventTypesRepository {
         schedule: true,
         hosts: true,
         destinationCalendar: true,
-        calVideoSettings: true,
       },
     });
   }
@@ -43,7 +42,6 @@ export class TeamsEventTypesRepository {
             }
           : true,
         destinationCalendar: true,
-        calVideoSettings: true,
         team: {
           select: {
             bannerUrl: true,
@@ -94,7 +92,6 @@ export class TeamsEventTypesRepository {
         schedule: true,
         hosts: true,
         destinationCalendar: true,
-        calVideoSettings: true,
         team: {
           select: {
             bannerUrl: true,
@@ -119,7 +116,6 @@ export class TeamsEventTypesRepository {
         schedule: true,
         hosts: true,
         destinationCalendar: true,
-        calVideoSettings: true,
       },
     });
   }

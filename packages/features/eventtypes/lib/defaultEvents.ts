@@ -143,7 +143,6 @@ const commons = {
   profileId: null,
   profile: null,
   requiresConfirmationWillBlockSlot: false,
-  canSendCalVideoTranscriptionEmails: false,
   instantMeetingExpiryTimeOffsetInSeconds: 0,
   autoTranslateInstantMeetingTitleEnabled: true,
   instantMeetingScheduleId: null,

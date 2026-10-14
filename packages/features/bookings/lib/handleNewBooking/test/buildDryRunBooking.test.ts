@@ -106,7 +106,6 @@ describe("buildDryRunBooking", () => {
       reassignReason: null,
       reassignById: null,
       rescheduled: false,
-      isRecorded: false,
       iCalSequence: 0,
       rating: null,
       ratingFeedback: null,

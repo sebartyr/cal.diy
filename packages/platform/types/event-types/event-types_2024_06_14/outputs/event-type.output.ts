@@ -446,7 +446,8 @@ class BaseEventTypeOutput_2024_06_14 {
   @ValidateNested()
   @Type(() => CalVideoSettings)
   @ApiPropertyOptional({
-    description: "Cal video settings for the event type",
+    description: "Deprecated: Cal Video was removed, so this is no longer returned.",
+    deprecated: true,
     type: CalVideoSettings,
   })
   calVideoSettings?: CalVideoSettings | null;

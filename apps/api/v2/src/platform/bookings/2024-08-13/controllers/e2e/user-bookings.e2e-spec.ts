@@ -2123,7 +2123,7 @@ describe("Bookings Endpoints 2024-08-13", () => {
 
         if (responseDataIsBooking(createdBooking)) {
           expect(
-            createdBooking.location?.startsWith("http") || createdBooking.location === "integrations:daily"
+            createdBooking.location?.startsWith("http") || createdBooking.location === "integrations:jitsi"
           ).toEqual(true);
           await bookingsRepositoryFixture.deleteById(createdBooking.id);
         } else {

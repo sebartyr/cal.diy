@@ -33,7 +33,6 @@ type MembershipEventType = Awaited<
 
 type EventType = Omit<MembershipEventType, "forwardParamsSuccessRedirect"> & {
   children?: { id: number }[];
-  canSendCalVideoTranscriptionEmails?: boolean;
 };
 
 type EventTypeGroup = {

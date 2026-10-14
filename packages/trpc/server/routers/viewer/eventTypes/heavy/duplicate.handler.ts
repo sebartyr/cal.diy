@@ -1,6 +1,5 @@
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { generateHashedLink } from "@calcom/lib/generateHashedLink";
-import { CalVideoSettingsRepository } from "@calcom/features/calVideoSettings/repositories/CalVideoSettingsRepository";
 import { prisma } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
 
@@ -51,18 +50,6 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
         },
         hashedLink: true,
         destinationCalendar: true,
-        calVideoSettings: {
-          select: {
-            disableRecordingForOrganizer: true,
-            disableRecordingForGuests: true,
-            enableAutomaticTranscription: true,
-            enableAutomaticRecordingForOrganizer: true,
-            requireEmailForGuests: true,
-            redirectUrlOnExit: true,
-            disableTranscriptionForGuests: true,
-            disableTranscriptionForOrganizer: true,
-          },
-        },
       },
     });
 
@@ -112,7 +99,6 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
       secondaryEmailId,
       instantMeetingScheduleId: _instantMeetingScheduleId,
       restrictionScheduleId: _restrictionScheduleId,
-      calVideoSettings,
       ...rest
     } = eventType;
 
@@ -198,13 +184,6 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
       }));
       await prisma.hashedLink.createMany({
         data: newHashedLinksData,
-      });
-    }
-
-    if (calVideoSettings) {
-      await CalVideoSettingsRepository.createCalVideoSettings({
-        eventTypeId: newEventType.id,
-        calVideoSettings,
       });
     }
 

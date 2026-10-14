@@ -182,7 +182,6 @@ export type FormValues = {
   restrictionScheduleId: number | null;
   useBookerTimezone: boolean;
   restrictionScheduleName: string | null;
-  calVideoSettings?: CalVideoSettings;
   maxActiveBookingPerBookerOfferReschedule: boolean;
   enablePerHostLocations: boolean;
   requiresCancellationReason?: CancellationReasonRequirement | null;
@@ -352,7 +351,6 @@ export type EventTypeUpdateInput = {
   requiresConfirmationWillBlockSlot?: boolean;
   requiresConfirmationForFreeEmail?: boolean;
   requiresBookerEmailVerification?: boolean;
-  canSendCalVideoTranscriptionEmails?: boolean;
   autoTranslateDescriptionEnabled?: boolean;
   autoTranslateInstantMeetingTitleEnabled?: boolean;
   recurringEvent?: RecurringEventInput;
@@ -408,7 +406,6 @@ export type EventTypeUpdateInput = {
   updatedAt?: Date | null;
 
   // Extended fields (all optional due to .partial())
-  calVideoSettings?: CalVideoSettings;
   customInputs?: CustomInputSchema[];
   destinationCalendar?: DestinationCalendarInput;
   users?: number[];
@@ -481,14 +478,3 @@ export interface EventTypePlatformWrapperRef {
   validateForm: () => Promise<FormValidationResult>;
   handleFormSubmit: (callbacks?: { onSuccess?: () => void; onError?: (error: Error) => void }) => void;
 }
-
-export type CalVideoSettings = {
-  disableRecordingForGuests?: boolean | null;
-  disableRecordingForOrganizer?: boolean | null;
-  enableAutomaticTranscription?: boolean | null;
-  enableAutomaticRecordingForOrganizer?: boolean | null;
-  disableTranscriptionForGuests?: boolean | null;
-  disableTranscriptionForOrganizer?: boolean | null;
-  redirectUrlOnExit?: string | null;
-  requireEmailForGuests?: boolean | null;
-} | null;

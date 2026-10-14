@@ -116,36 +116,6 @@ model HostLocation {
   @@index([eventTypeId])
 }
 
-model CalVideoSettings {
-  eventTypeId Int       @id
-  eventType   EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
-
-  disableRecordingForOrganizer         Boolean  @default(false)
-  disableRecordingForGuests            Boolean  @default(false)
-  enableAutomaticTranscription         Boolean  @default(false)
-  enableAutomaticRecordingForOrganizer Boolean  @default(false)
-  redirectUrlOnExit                    String?
-  disableTranscriptionForGuests        Boolean  @default(false)
-  disableTranscriptionForOrganizer     Boolean  @default(false)
-  requireEmailForGuests                Boolean  @default(false)
-  createdAt                            DateTime @default(now())
-  updatedAt                            DateTime @updatedAt
-}
-
-model VideoCallGuest {
-  id         String    @id @default(uuid())
-  bookingUid String
-  email      String
-  name       String
-  joinedAt   DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  @@unique([bookingUid, email])
-  @@index([bookingUid])
-  @@index([email])
-}
-
 enum CancellationReasonRequirement {
   MANDATORY_BOTH
   MANDATORY_HOST_ONLY
@@ -177,36 +147,35 @@ model EventType {
   profileId Int?
   profile   Profile? @relation(fields: [profileId], references: [id])
 
-  team                               Team?                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId                             Int?
-  hashedLink                         HashedLink[]
-  bookings                           Booking[]
-  availability                       Availability[]
-  webhooks                           Webhook[]
-  destinationCalendar                DestinationCalendar?
-  useEventLevelSelectedCalendars     Boolean                @default(false)
-  eventName                          String?
-  customInputs                       EventTypeCustomInput[]
-  parentId                           Int?
-  parent                             EventType?             @relation("managed_eventtype", fields: [parentId], references: [id], onDelete: Cascade)
-  children                           EventType[]            @relation("managed_eventtype")
+  team                              Team?                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId                            Int?
+  hashedLink                        HashedLink[]
+  bookings                          Booking[]
+  availability                      Availability[]
+  webhooks                          Webhook[]
+  destinationCalendar               DestinationCalendar?
+  useEventLevelSelectedCalendars    Boolean                @default(false)
+  eventName                         String?
+  customInputs                      EventTypeCustomInput[]
+  parentId                          Int?
+  parent                            EventType?             @relation("managed_eventtype", fields: [parentId], references: [id], onDelete: Cascade)
+  children                          EventType[]            @relation("managed_eventtype")
   /// @zod.import(["import { eventTypeBookingFields } from '../../zod-utils'"]).custom.use(eventTypeBookingFields)
-  bookingFields                      Json?
-  timeZone                           String?
-  periodType                         PeriodType             @default(UNLIMITED)
+  bookingFields                     Json?
+  timeZone                          String?
+  periodType                        PeriodType             @default(UNLIMITED)
   /// @zod.import(["import { coerceToDate } from '../../zod-utils'"]).custom.use(coerceToDate)
-  periodStartDate                    DateTime?
+  periodStartDate                   DateTime?
   /// @zod.import(["import { coerceToDate } from '../../zod-utils'"]).custom.use(coerceToDate)
-  periodEndDate                      DateTime?
-  periodDays                         Int?
-  periodCountCalendarDays            Boolean?
-  lockTimeZoneToggleOnBookingPage    Boolean                @default(false)
-  lockedTimeZone                     String?
-  requiresConfirmation               Boolean                @default(false)
-  requiresConfirmationWillBlockSlot  Boolean                @default(false)
-  requiresConfirmationForFreeEmail   Boolean                @default(false)
-  requiresBookerEmailVerification    Boolean                @default(false)
-  canSendCalVideoTranscriptionEmails Boolean                @default(true)
+  periodEndDate                     DateTime?
+  periodDays                        Int?
+  periodCountCalendarDays           Boolean?
+  lockTimeZoneToggleOnBookingPage   Boolean                @default(false)
+  lockedTimeZone                    String?
+  requiresConfirmation              Boolean                @default(false)
+  requiresConfirmationWillBlockSlot Boolean                @default(false)
+  requiresConfirmationForFreeEmail  Boolean                @default(false)
+  requiresBookerEmailVerification   Boolean                @default(false)
 
   autoTranslateDescriptionEnabled          Boolean                @default(false)
   autoTranslateInstantMeetingTitleEnabled  Boolean                @default(true)
@@ -268,7 +237,6 @@ model EventType {
   maxActiveBookingPerBookerOfferReschedule Boolean                @default(false)
   /// @zod.import(["import { emailSchema } from '../../zod-utils'"]).custom.use(emailSchema)
   customReplyToEmail                       String?
-  calVideoSettings                         CalVideoSettings?
 
   /// @zod.import(["import { eventTypeColor } from '../../zod-utils'"]).custom.use(eventTypeColor)
   eventTypeColor                   Json?
@@ -566,7 +534,6 @@ model Team {
   /// @zod.string.min(1)
   slug                   String?
   logoUrl                String?
-  calVideoLogo           String?
   appLogo                String?
   appIconLogo            String?
   bio                    String?
@@ -895,7 +862,6 @@ model Booking {
   seatsReferences        BookingSeat[]
   /// @zod.import(["import { bookingMetadataSchema } from '../../zod-utils'"]).custom.use(bookingMetadataSchema)
   metadata               Json?
-  isRecorded             Boolean                    @default(false)
   iCalUID                String?                    @default("")
   iCalSequence           Int                        @default(0)
   instantMeetingToken    InstantMeetingToken?

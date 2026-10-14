@@ -49,16 +49,6 @@ export type InputEventTransformed_2024_06_14 = Omit<
   disableRescheduling?: boolean;
   disableCancelling?: boolean;
   minimumRescheduleNotice?: number | null;
-  canSendCalVideoTranscriptionEmails?: boolean;
-  calVideoSettings?: {
-    disableRecordingForOrganizer?: boolean;
-    disableRecordingForGuests?: boolean;
-    redirectUrlOnExit?: string | null;
-    enableAutomaticRecordingForOrganizer?: boolean;
-    enableAutomaticTranscription?: boolean;
-    disableTranscriptionForGuests?: boolean;
-    disableTranscriptionForOrganizer?: boolean;
-  };
 } & Partial<
     Pick<ConfirmationPolicyTransformedSchema, "requiresConfirmation" | "requiresConfirmationWillBlockSlot">
   > &

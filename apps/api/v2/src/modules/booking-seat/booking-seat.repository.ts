@@ -61,7 +61,6 @@ export class BookingSeatRepository {
             recurringEventId: true,
             smsReminderNumber: true,
             scheduledJobs: true,
-            isRecorded: true,
             iCalUID: true,
             iCalSequence: true,
             rating: true,

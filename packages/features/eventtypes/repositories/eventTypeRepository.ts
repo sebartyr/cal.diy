@@ -123,7 +123,6 @@ const completeEventTypeSelect = {
   lockedTimeZone: true,
   requiresConfirmation: true,
   requiresConfirmationForFreeEmail: true,
-  canSendCalVideoTranscriptionEmails: true,
   requiresConfirmationWillBlockSlot: true,
   requiresBookerEmailVerification: true,
   autoTranslateDescriptionEnabled: true,
@@ -318,18 +317,6 @@ const completeEventTypeSelect = {
   maxLeadThreshold: true,
   includeNoShowInRRCalculation: true,
   useEventLevelSelectedCalendars: true,
-  calVideoSettings: {
-    select: {
-      disableRecordingForGuests: true,
-      disableRecordingForOrganizer: true,
-      enableAutomaticTranscription: true,
-      enableAutomaticRecordingForOrganizer: true,
-      disableTranscriptionForGuests: true,
-      disableTranscriptionForOrganizer: true,
-      redirectUrlOnExit: true,
-      requireEmailForGuests: true,
-    },
-  },
 } satisfies Prisma.EventTypeSelect;
 
 export class EventTypeRepository implements IEventTypesRepository {
@@ -409,7 +396,6 @@ export class EventTypeRepository implements IEventTypesRepository {
     return await this.prismaClient.eventType.create({
       data: this.generateCreateEventTypeData(data),
       include: {
-        calVideoSettings: true,
       },
     });
   }
