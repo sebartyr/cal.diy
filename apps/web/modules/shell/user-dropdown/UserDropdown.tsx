@@ -51,6 +51,10 @@ interface UserDropdownProps {
 export function UserDropdown({ small }: UserDropdownProps) {
   const { t } = useLocale();
   const { data: user, isPending } = useMeQuery();
+  // The server and the first client render can disagree on isPending (the "me" query may be
+  // resolved on one side only), so the trigger is only disabled once mounted on the client.
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -109,11 +113,7 @@ export function UserDropdown({ small }: UserDropdownProps) {
   return (
     <Menu open={menuOpen} onOpenChange={setMenuOpen}>
       <MenuTrigger
-        // Coerce to a real boolean. `isPending` from useMeQuery can briefly
-        // be `null`/`undefined` on the client side while React-Query is
-        // resolving, which produced a hydration mismatch when the server
-        // saw `true` and the client saw `null`.
-        disabled={Boolean(isPending)}
+        disabled={isMounted && Boolean(isPending)}
         render={
           <button
             data-testid="user-dropdown-trigger-button"
