@@ -10,15 +10,7 @@ We now need to setup platform OAuth client and OAuth 2.0 client that can be test
 
 ### If you want to create clients by seeding the database automatically
 
-1. Setup root environment that are re-used in the root `.env` and in the platform examples app - open the root `.env` and set values for the platform OAuth client. The id and secret can be random values.
-```
-SEED_PLATFORM_OAUTH_CLIENT_ID=
-SEED_PLATFORM_OAUTH_CLIENT_SECRET=
-```
-Then you need to copy these values to the platform examples app environment.
-- Rename `packages/platform/examples/base/.env.example` to `packages/platform/examples/base/.env`. There will be many environment variables already populated to make it easier for you.
-- copy the value of `SEED_PLATFORM_OAUTH_CLIENT_ID` into `packages/platform/examples/base/.env` `NEXT_PUBLIC_X_CAL_ID`
-- copy the value of `SEED_PLATFORM_OAUTH_CLIENT_SECRET` into `packages/platform/examples/base/.env` `X_CAL_SECRET_KEY`
+1. The seed does not create the platform OAuth client: create it as described in "If you want to create clients manually" below, then come back for the OAuth 2.0 client.
 
 Then, we need to setup platform OAuth 2.0 client. We will need an id, and then hashed and plain secrets. To generate them you can:
 ```

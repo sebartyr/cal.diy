@@ -11,7 +11,6 @@ declare namespace NodeJS {
     /** @deprecated use `NEXT_PUBLIC_WEBAPP_URL` */
     readonly NEXT_PUBLIC_BASE_URL: string | undefined;
     /** @deprecated use `NEXT_PUBLIC_WEBSITE_URL` */
-    readonly NEXT_PUBLIC_APP_URL: string | undefined;
     readonly NEXTAUTH_SECRET: string | undefined;
     readonly NEXT_PUBLIC_AVAILABILITY_SCHEDULE_INTERVAL: string | undefined;
     readonly MS_GRAPH_CLIENT_ID: string | undefined;
@@ -30,19 +29,11 @@ declare namespace NodeJS {
     readonly STRIPE_PRIVATE_KEY: string | undefined;
     readonly STRIPE_CLIENT_ID: string | undefined;
     readonly STRIPE_WEBHOOK_SECRET: string | undefined;
-    readonly STRIPE_TEAM_PRODUCT_ID: `prod_${string}` | undefined;
     readonly PAYMENT_FEE_PERCENTAGE: number | undefined;
     readonly PAYMENT_FEE_FIXED: number | undefined;
-    readonly AWAITING_PAYMENT_EMAIL_DELAY_MINUTES: number | undefined;
-    readonly NEXT_PUBLIC_POSTHOG_KEY: string | undefined;
-    readonly NEXT_PUBLIC_POSTHOG_HOST: string | undefined;
-    readonly WEBSITE_BASE_URL: string | undefined;
     /** @deprecated use `NEXT_PUBLIC_WEBSITE_URL` */
-    readonly NEXT_PUBLIC_WEBSITE_BASE_URL: string;
     readonly NEXT_PUBLIC_WEBSITE_URL: string;
-    readonly APP_BASE_URL: string | undefined;
     /** @deprecated use `NEXT_PUBLIC_WEBAPP_URL` */
-    readonly NEXT_PUBLIC_APP_BASE_URL: string;
     readonly NEXT_PUBLIC_WEBAPP_URL: string;
     /** The Environment that the app is deployed an running on. */
     readonly VERCEL_ENV: "production" | "preview" | "development" | undefined;
