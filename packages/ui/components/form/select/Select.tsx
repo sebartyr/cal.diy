@@ -34,6 +34,9 @@ export const Select = <
   };
 }) => {
   const { classNames, innerClassNames, menuPlacement = "auto", ...restProps } = props;
+  // react-select derives its element ids from a module-level counter, which keeps growing on the
+  // server across requests: the ids never match the client's (hydration mismatch). useId is stable.
+  const instanceId = React.useId();
   const reactSelectProps = React.useMemo(() => {
     return getReactSelectProps<Option, IsMulti, Group>({
       components: components || {},
@@ -47,6 +50,7 @@ export const Select = <
   // We cant create a generate function for this as we can't force state changes - onSelect styles dont change for example
   return (
     <ReactSelect
+      instanceId={instanceId}
       {...reactSelectProps}
       menuPlacement={menuPlacement}
       styles={{
