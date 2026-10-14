@@ -40,7 +40,7 @@ interface AppListProps {
   listClassName?: string;
   appCardClassName?: string;
   appCardMenuClassName?: string;
-  defaultConferencingApp: DefaultConferencingApp | undefined;
+  defaultConferencingApp: DefaultConferencingApp | null | undefined;
   handleUpdateUserDefaultConferencingApp: (params: UpdateUsersDefaultConferencingAppParams) => void;
   handleBulkUpdateDefaultLocation: (params: BulkUpdatParams) => void;
   isBulkUpdateDefaultLocationPending: boolean;

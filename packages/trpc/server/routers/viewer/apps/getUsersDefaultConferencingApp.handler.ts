@@ -10,5 +10,6 @@ type GetUsersDefaultConferencingAppOptions = {
 export const getUsersDefaultConferencingAppHandler = async ({
   ctx,
 }: GetUsersDefaultConferencingAppOptions) => {
-  return userMetadata.parse(ctx.user.metadata)?.defaultConferencingApp;
+  // React Query rejects undefined query data; null means "no default set".
+  return userMetadata.parse(ctx.user.metadata)?.defaultConferencingApp ?? null;
 };
