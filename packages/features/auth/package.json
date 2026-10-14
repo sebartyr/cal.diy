@@ -14,7 +14,7 @@
     "@calcom/trpc": "workspace:*",
     "@calcom/ui": "workspace:*",
     "bcryptjs": "2.4.3",
-    "handlebars": "4.7.9",
+    "handlebars": "4.7.10",
     "jose": "4.15.9",
     "lru-cache": "9.0.3",
     "next-auth": "4.24.15",
