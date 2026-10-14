@@ -607,6 +607,29 @@ export class BookingRepository implements IBookingRepository {
     });
   }
 
+  async findByUidIncludeVideoReferences({ bookingUid }: { bookingUid: string }) {
+    return await this.prismaClient.booking.findUnique({
+      where: {
+        uid: bookingUid,
+      },
+      select: {
+        uid: true,
+        references: {
+          where: {
+            deleted: null,
+            type: { endsWith: "_video" },
+          },
+          select: {
+            id: true,
+            type: true,
+            meetingUrl: true,
+          },
+          orderBy: { id: "desc" },
+        },
+      },
+    });
+  }
+
   async findByUidIncludeReport({ bookingUid }: { bookingUid: string }) {
     return await this.prismaClient.booking.findUnique({
       where: {
