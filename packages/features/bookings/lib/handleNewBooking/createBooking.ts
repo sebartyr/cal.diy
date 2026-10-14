@@ -72,6 +72,8 @@ type CreateBookingParams = {
   originalRescheduledBooking: OriginalRescheduledBooking;
   creationSource?: CreationSource;
   tracking?: Tracking;
+  // Later occurrences of a recurring series are booked without an availability check.
+  skipSlotConflictCheck?: boolean;
 };
 
 function updateEventDetails(
@@ -95,6 +97,7 @@ const _createBooking = async ({
   rescheduledBy,
   creationSource,
   tracking,
+  skipSlotConflictCheck = false,
 }: CreateBookingParams & { rescheduledBy: string | undefined }) => {
   updateEventDetails(evt, originalRescheduledBooking);
 
@@ -114,7 +117,8 @@ const _createBooking = async ({
     bookingAndAssociatedData,
     originalRescheduledBooking,
     eventType.paymentAppData,
-    eventType.organizerUser
+    eventType.organizerUser,
+    skipSlotConflictCheck
   );
 };
 
@@ -124,7 +128,8 @@ async function saveBooking(
   bookingAndAssociatedData: ReturnType<typeof buildNewBookingData>,
   originalRescheduledBooking: OriginalRescheduledBooking,
   paymentAppData: PaymentAppData,
-  organizerUser: CreateBookingParams["eventType"]["organizerUser"]
+  organizerUser: CreateBookingParams["eventType"]["organizerUser"],
+  skipSlotConflictCheck: boolean
 ) {
   const { newBookingData, originalBookingUpdateDataForCancellation } = bookingAndAssociatedData;
   const createBookingObj = {
@@ -178,7 +183,13 @@ async function saveBooking(
     const { startTime, endTime, status: bookingStatus } = newBookingData;
     const willBeAccepted = bookingStatus === undefined || bookingStatus === BookingStatus.ACCEPTED;
 
-    if (startTime instanceof Date && endTime instanceof Date && willBeAccepted && organizerUser.id) {
+    if (
+      !skipSlotConflictCheck &&
+      startTime instanceof Date &&
+      endTime instanceof Date &&
+      willBeAccepted &&
+      organizerUser.id
+    ) {
       const { userPart, slotPart } = lockKeyForBookingSlot(organizerUser.id, startTime);
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${userPart}::int4, ${slotPart}::int4)`;
 

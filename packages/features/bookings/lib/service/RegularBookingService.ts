@@ -432,6 +432,20 @@ export interface IBookingServiceDependencies {
   webhookProducer: IWebhookProducerService;
 }
 
+/**
+ * A recurring series only checks availability for its first
+ * `numSlotsToCheckForAvailability` occurrences; the later ones are booked even
+ * when they conflict. The slot re-check in createBooking must not reject them.
+ */
+function isUncheckedRecurringOccurrence(bookingData: {
+  currentRecurringIndex?: number;
+  numSlotsToCheckForAvailability?: number;
+}): boolean {
+  const { currentRecurringIndex, numSlotsToCheckForAvailability } = bookingData;
+  if (currentRecurringIndex === undefined || numSlotsToCheckForAvailability === undefined) return false;
+  return currentRecurringIndex >= numSlotsToCheckForAvailability;
+}
+
 async function handler(
   this: RegularBookingService,
   input: BookingHandlerInput,
@@ -1674,6 +1688,7 @@ async function handler(
         originalRescheduledBooking,
         creationSource: input.bookingData.creationSource,
         tracking: reqBody.tracking,
+        skipSlotConflictCheck: isUncheckedRecurringOccurrence(input.bookingData),
       });
 
       if (booking?.userId) {
