@@ -23,6 +23,7 @@ import { useSession } from "next-auth/react";
 import { appWithTranslation } from "next-i18next";
 import type { SSRConfig } from "next-i18next/dist/types/types";
 import { ThemeProvider } from "next-themes";
+import { themeScriptProps } from "./getThemeProviderProps";
 import { NuqsAdapter } from "nuqs/adapters/next/pages";
 import type { PropsWithChildren, ReactNode } from "react";
 import { useEffect } from "react";
@@ -245,7 +246,8 @@ function getThemeProviderProps({
     // next-themes doesn't listen to changes on storageKey. So we need to force a re-render when storageKey changes
     // This is how login to dashboard soft navigation changes theme from light to dark
     key: storageKey,
-    attribute: "class",
+    attribute: "class" as const,
+    scriptProps: themeScriptProps,
   };
 }
 

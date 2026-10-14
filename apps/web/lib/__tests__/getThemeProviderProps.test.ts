@@ -22,6 +22,8 @@ describe("getThemeProviderProps", () => {
     const expectedStorageKey = "app-theme";
     const appThemeExpectedProps = {
       attribute: "class",
+      // jsdom defines window, so the client-side theme script props apply.
+      scriptProps: { type: "application/json" },
       storageKey: expectedStorageKey,
       key: expectedStorageKey,
       nonce: "test-nonce",
@@ -80,6 +82,8 @@ describe("getThemeProviderProps", () => {
   describe("Booking Page Theme Support", () => {
     const bookingPageExpectedProps = {
       attribute: "class",
+      // jsdom defines window, so the client-side theme script props apply.
+      scriptProps: { type: "application/json" },
       nonce: "test-nonce",
       enableColorScheme: false,
     };
@@ -127,6 +131,8 @@ describe("getThemeProviderProps", () => {
 
     const embedPageExpectedProps = {
       attribute: "class",
+      // jsdom defines window, so the client-side theme script props apply.
+      scriptProps: { type: "application/json" },
       nonce: "test-nonce",
       enableColorScheme: false,
       enableSystem: true,
