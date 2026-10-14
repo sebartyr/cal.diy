@@ -1,6 +1,7 @@
 import { AppSettings } from "@calcom/app-store/_components/AppSettings";
 import type { ConnectedApps } from "@calcom/app-store/_utils/getConnectedApps";
 import { InstallAppButton } from "@calcom/app-store/InstallAppButton";
+import { FALLBACK_CONFERENCING_APP_SLUG } from "@calcom/app-store/constants";
 import { type EventLocationType, getLocationFromApp } from "@calcom/app-store/locations";
 import type { AppCardApp } from "@calcom/app-store/types";
 import type { UpdateUsersDefaultConferencingAppParams } from "@calcom/features/apps/components/AppSetDefaultLinkDialog";
@@ -80,7 +81,7 @@ export const AppList = ({
     const appSlug = item?.slug;
     const appIsDefault =
       appSlug === defaultConferencingApp?.appSlug ||
-      (appSlug === "daily-video" && !defaultConferencingApp?.appSlug);
+      (appSlug === FALLBACK_CONFERENCING_APP_SLUG && !defaultConferencingApp?.appSlug);
     return (
       <AppListCardComponent
         key={item.name}

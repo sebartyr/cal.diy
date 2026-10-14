@@ -80,7 +80,7 @@ describe("EditLocationDialog", () => {
                 teamName: null,
               },
               {
-                value: "integrations:daily",
+                value: "integrations:jitsi",
                 label: "Cal Video (Default)",
                 disabled: false,
                 icon: "/app-store/dailyvideo/icon.svg",

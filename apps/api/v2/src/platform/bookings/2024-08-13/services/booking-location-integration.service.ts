@@ -1,6 +1,6 @@
 import type { BookingWithUserAndEventDetails, CalendarEvent } from "@calcom/platform-libraries";
 import { BookingReferenceRepository, updateEvent } from "@calcom/platform-libraries";
-import { createMeeting, FAKE_DAILY_CREDENTIAL } from "@calcom/platform-libraries/conferencing";
+import { createMeeting, FAKE_JITSI_CREDENTIAL } from "@calcom/platform-libraries/conferencing";
 import type { Integration_2024_08_13 } from "@calcom/platform-types";
 import type {
   BookingOutput_2024_08_13,
@@ -101,8 +101,10 @@ export class BookingLocationIntegrationService_2024_08_13 {
         return this.handleGoogleMeetLocation(ctx);
       case "office365-video":
         return this.handleMSTeamsLocation(ctx);
+      // Cal Video was removed; "cal-video" is still accepted and now books a Jitsi meeting.
       case "cal-video":
-        return this.handleCalVideoLocation(ctx);
+      case "jitsi":
+        return this.handleJitsiLocation(ctx);
       default:
         // all other integrations (Zoom, Webex, etc.) use VideoApiAdapter
         return this.handleVideoApiIntegration(ctx);
@@ -115,11 +117,11 @@ export class BookingLocationIntegrationService_2024_08_13 {
     );
 
     if (!hasGoogleCalendar) {
-      this.logger.log(`Google Meet requested but no Google Calendar found. Falling back to Cal Video.`);
-      return this.handleCalVideoLocation({
+      this.logger.log(`Google Meet requested but no Google Calendar found. Falling back to Jitsi.`);
+      return this.handleJitsiLocation({
         ...ctx,
-        integrationSlug: "cal-video",
-        internalLocation: "integrations:daily",
+        integrationSlug: "jitsi",
+        internalLocation: "integrations:jitsi",
       });
     }
 
@@ -138,8 +140,8 @@ export class BookingLocationIntegrationService_2024_08_13 {
     return this.handleVideoApiIntegration(ctx);
   }
 
-  private async handleCalVideoLocation(ctx: IntegrationHandlerContext): Promise<BookingLocationResponse> {
-    const credential = { ...FAKE_DAILY_CREDENTIAL };
+  private async handleJitsiLocation(ctx: IntegrationHandlerContext): Promise<BookingLocationResponse> {
+    const credential = { ...FAKE_JITSI_CREDENTIAL };
 
     await this.bookingVideoService.deleteOldVideoMeetingIfNeeded(ctx.existingBooking.id);
 
@@ -152,11 +154,11 @@ export class BookingLocationIntegrationService_2024_08_13 {
 
     if (!meetingResult.createdEvent) {
       this.logger.error(
-        `Failed to create Cal Video meeting`,
+        `Failed to create Jitsi meeting`,
         JSON.stringify({ success: meetingResult.success, type: meetingResult.type })
       );
       throw new BadRequestException(
-        `Failed to create Cal Video meeting. Please ensure DAILY_API_KEY is set and the daily-video app is enabled.`
+        `Failed to create Jitsi meeting. Please ensure the jitsi app is enabled.`
       );
     }
 
@@ -164,7 +166,7 @@ export class BookingLocationIntegrationService_2024_08_13 {
     const videoCallUrl = createdEvent.url;
     const bookingLocation = videoCallUrl || ctx.internalLocation;
 
-    // FAKE_DAILY_CREDENTIAL has id: 0, so we don't include credentialId
+    // FAKE_JITSI_CREDENTIAL has id: 0, so we don't include credentialId
     const newReference = {
       type: credential.type,
       uid: createdEvent.id?.toString() || "",

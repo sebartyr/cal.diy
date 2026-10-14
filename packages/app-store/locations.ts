@@ -11,7 +11,6 @@ import { isValidPhoneNumber } from "libphonenumber-js/max";
 import { z } from "zod";
 import type { EventLocationTypeFromAppMeta } from "../types/App";
 import {
-  DailyLocationType as importedDailyLocationType,
   JitsiLocationType as importedJitsiLocationType,
   MeetLocationType as importedMeetLocationType,
   MSTeamsLocationType as importedMSTeamsLocationType,
@@ -19,7 +18,6 @@ import {
 
 export const MeetLocationType = importedMeetLocationType;
 export const MSTeamsLocationType = importedMSTeamsLocationType;
-export const DailyLocationType = importedDailyLocationType;
 export const JitsiLocationType = importedJitsiLocationType;
 
 export type DefaultEventLocationType = {
@@ -72,8 +70,6 @@ export type EventLocationTypeFromApp = Ensure<
 > & { supportsCustomLabel?: boolean; organizerInputLabel?: string };
 
 export type EventLocationType = DefaultEventLocationType | EventLocationTypeFromApp;
-
-export const CalVideoLocationType = DailyLocationType;
 
 /**
  * This isn't an actual location app type. It is a special value that informs to use the Organizer's default conferencing app during booking
@@ -305,8 +301,11 @@ export const isStaticLocationType = (locationType: string): boolean => {
   return Object.values(DefaultEventLocationTypeEnum).includes(locationType as DefaultEventLocationTypeEnum);
 };
 
-export const isCalVideoLocation = (locationType: string): boolean => {
-  return locationType === DailyLocationType;
+// Global apps (e.g. Jitsi) are available to everyone without a per-user installation.
+export const isGlobalAppLocation = (locationType: string): boolean => {
+  return Object.values(appStoreMetadata).some(
+    (meta) => meta.isGlobal && meta.appData?.location?.type === locationType
+  );
 };
 
 export const getAppSlugFromLocationType = (locationType: string): string | null => {
@@ -434,7 +433,7 @@ export const getLocationValueForDB = (
   });
 
   if (bookingLocation.trim().length === 0) {
-    bookingLocation = DailyLocationType;
+    bookingLocation = JitsiLocationType;
   }
 
   return { bookingLocation, conferenceCredentialId };

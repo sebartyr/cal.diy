@@ -9,7 +9,7 @@ test.describe("AppListCard", async () => {
     const user = await users.create({});
     await user.apiLogin();
 
-    await page.goto("/apps/installed/conferencing?hl=daily-video");
+    await page.goto("/apps/installed/conferencing?hl=jitsi");
 
     await page.waitForLoadState();
 

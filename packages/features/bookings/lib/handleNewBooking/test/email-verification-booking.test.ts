@@ -80,7 +80,7 @@ describe("handleNewBooking - Email Verification", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });
@@ -144,7 +144,7 @@ describe("handleNewBooking - Email Verification", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
             verificationCode: "invalid-code",
           },
@@ -209,7 +209,7 @@ describe("handleNewBooking - Email Verification", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
             verificationCode: "valid-code",
           },
@@ -274,7 +274,7 @@ describe("handleNewBooking - Email Verification", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
             verificationCode: "some-code",
           },
@@ -337,7 +337,7 @@ describe("handleNewBooking - Email Verification", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });
@@ -415,7 +415,7 @@ describe("handleNewBooking - Email Verification", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });

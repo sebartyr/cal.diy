@@ -123,16 +123,16 @@ describe("handleNewBooking", () => {
               },
             ],
             organizer,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -150,7 +150,7 @@ describe("handleNewBooking", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             start: startDateTimeOrganizerTz.format(),
             end: endDateTimeOrganizerTz.format(),
@@ -170,7 +170,7 @@ describe("handleNewBooking", () => {
 
         expect(createdBooking).toEqual(
           expect.objectContaining({
-            location: BookingLocations.CalVideo,
+            location: BookingLocations.Jitsi,
           })
         );
 
@@ -182,11 +182,11 @@ describe("handleNewBooking", () => {
           status: BookingStatus.ACCEPTED,
           references: [
             {
-              type: appStoreMetadata.dailyvideo.type,
+              type: appStoreMetadata.jitsivideo.type,
               uid: "MOCK_ID",
               meetingId: "MOCK_ID",
               meetingPassword: "MOCK_PASS",
-              meetingUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              meetingUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               type: appStoreMetadata.googlecalendar.type,
@@ -199,7 +199,7 @@ describe("handleNewBooking", () => {
         });
 
         expectSuccessfulCalendarEventCreationInCalendar(calendarMock, {
-          videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+          videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
           // We won't be sending evt.destinationCalendar in this case.
           // Google Calendar in this case fallbacks to the "primary" calendar - https://github.com/calcom/cal.diy/blob/7d5dad7fea78ff24dddbe44f1da5d7e08e1ff568/packages/app-store/googlecalendar/lib/CalendarService.ts#L217
           // Not sure if it's the correct behaviour. Right now, it isn't possible to have an organizer with connected calendar but no destination calendar - As soon as the Google Calendar app is installed, a destination calendar is created.

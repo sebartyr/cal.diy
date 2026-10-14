@@ -108,7 +108,7 @@ function someoneElsesBooking(loggedInUser: BookingItemProps["loggedInUser"]): Bo
     endTime: new Date(inOneDay + 30 * 60 * 1000).toISOString(),
     recurringEventId: null,
     fromReschedule: null,
-    location: "integrations:daily",
+    location: "integrations:jitsi",
     paid: false,
     isRecorded: false,
     report: null,

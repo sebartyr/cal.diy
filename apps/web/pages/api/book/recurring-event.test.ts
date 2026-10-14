@@ -106,16 +106,16 @@ describe("handleNewBooking", () => {
               ],
 
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
             videoMeetingData: {
               id: "MOCK_ID",
               password: "MOCK_PASS",
-              url: `http://mock-dailyvideo.example.com/meeting-1`,
+              url: `http://mock-jitsivideo.example.com/meeting-1`,
             },
           });
 
@@ -137,7 +137,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: "integrations:daily" },
+                location: { optionValue: "", value: "integrations:jitsi" },
               },
             },
           });
@@ -169,7 +169,7 @@ describe("handleNewBooking", () => {
 
             expect(createdBooking).toEqual(
               expect.objectContaining({
-                location: "integrations:daily",
+                location: "integrations:jitsi",
               })
             );
 
@@ -182,11 +182,11 @@ describe("handleNewBooking", () => {
               recurringEventId: mockBookingData.recurringEventId,
               references: [
                 {
-                  type: "daily_video",
+                  type: "jitsi_video",
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com/meeting-1",
+                  meetingUrl: "http://mock-jitsivideo.example.com/meeting-1",
                 },
                 {
                   type: "google_calendar",
@@ -200,10 +200,10 @@ describe("handleNewBooking", () => {
             expectBookingCreatedWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: "integrations:daily",
+              location: "integrations:jitsi",
               subscriberUrl: "http://my-webhook.example.com",
               //FIXME: All recurring bookings seem to have the same URL. https://github.com/calcom/cal.diy/issues/11955
-              videoCallUrl: `${WEBAPP_URL}/video/${createdBookings[0].uid}`,
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             });
           }
 
@@ -234,19 +234,19 @@ describe("handleNewBooking", () => {
           expectSuccessfulCalendarEventCreationInCalendar(calendarMock, [
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
           ]);
         },
@@ -322,16 +322,16 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
             videoMeetingData: {
               id: "MOCK_ID",
               password: "MOCK_PASS",
-              url: `http://mock-dailyvideo.example.com/meeting-1`,
+              url: `http://mock-jitsivideo.example.com/meeting-1`,
             },
           });
 
@@ -353,7 +353,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: "integrations:daily" },
+                location: { optionValue: "", value: "integrations:jitsi" },
               },
             },
           });
@@ -454,16 +454,16 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
             videoMeetingData: {
               id: "MOCK_ID",
               password: "MOCK_PASS",
-              url: `http://mock-dailyvideo.example.com/meeting-1`,
+              url: `http://mock-jitsivideo.example.com/meeting-1`,
             },
           });
 
@@ -484,7 +484,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: "integrations:daily" },
+                location: { optionValue: "", value: "integrations:jitsi" },
               },
             },
           });
@@ -516,7 +516,7 @@ describe("handleNewBooking", () => {
 
             expect(createdBooking).toEqual(
               expect.objectContaining({
-                location: "integrations:daily",
+                location: "integrations:jitsi",
               })
             );
 
@@ -529,11 +529,11 @@ describe("handleNewBooking", () => {
               recurringEventId: mockBookingData.recurringEventId,
               references: [
                 {
-                  type: "daily_video",
+                  type: "jitsi_video",
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com/meeting-1",
+                  meetingUrl: "http://mock-jitsivideo.example.com/meeting-1",
                 },
                 {
                   type: "google_calendar",
@@ -547,10 +547,10 @@ describe("handleNewBooking", () => {
             expectBookingCreatedWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: "integrations:daily",
+              location: "integrations:jitsi",
               subscriberUrl: "http://my-webhook.example.com",
               //FIXME: File a bug - All recurring bookings seem to have the same URL. They should have same CalVideo URL which could mean that future recurring meetings would have already expired by the time they are needed.
-              videoCallUrl: `${WEBAPP_URL}/video/${createdBookings[0].uid}`,
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             });
           }
 
@@ -575,19 +575,19 @@ describe("handleNewBooking", () => {
           expectSuccessfulCalendarEventCreationInCalendar(calendarMock, [
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
           ]);
         },
@@ -670,16 +670,16 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
             videoMeetingData: {
               id: "MOCK_ID",
               password: "MOCK_PASS",
-              url: `http://mock-dailyvideo.example.com/meeting-1`,
+              url: `http://mock-jitsivideo.example.com/meeting-1`,
             },
           });
 
@@ -700,7 +700,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: "integrations:daily" },
+                location: { optionValue: "", value: "integrations:jitsi" },
               },
             },
           });
@@ -732,7 +732,7 @@ describe("handleNewBooking", () => {
 
             expect(createdBooking).toEqual(
               expect.objectContaining({
-                location: "integrations:daily",
+                location: "integrations:jitsi",
               })
             );
 
@@ -745,11 +745,11 @@ describe("handleNewBooking", () => {
               recurringEventId: mockBookingData.recurringEventId,
               references: [
                 {
-                  type: "daily_video",
+                  type: "jitsi_video",
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com/meeting-1",
+                  meetingUrl: "http://mock-jitsivideo.example.com/meeting-1",
                 },
                 {
                   type: "google_calendar",
@@ -763,10 +763,10 @@ describe("handleNewBooking", () => {
             expectBookingCreatedWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: "integrations:daily",
+              location: "integrations:jitsi",
               subscriberUrl: "http://my-webhook.example.com",
               //FIXME: File a bug - All recurring bookings seem to have the same URL. They should have same CalVideo URL which could mean that future recurring meetings would have already expired by the time they are needed.
-              videoCallUrl: `${WEBAPP_URL}/video/${createdBookings[0].uid}`,
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             });
           }
 
@@ -791,19 +791,19 @@ describe("handleNewBooking", () => {
           expectSuccessfulCalendarEventCreationInCalendar(calendarMock, [
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
             {
               calendarId: "event-type-1@google-calendar.com",
-              videoCallUrl: "http://mock-dailyvideo.example.com/meeting-1",
+              videoCallUrl: "http://mock-jitsivideo.example.com/meeting-1",
             },
           ]);
         },
@@ -925,16 +925,16 @@ describe("handleNewBooking", () => {
             ],
             organizer,
             usersApartFromOrganizer: otherTeamMembers,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -956,7 +956,7 @@ describe("handleNewBooking", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });
@@ -1080,16 +1080,16 @@ describe("handleNewBooking", () => {
             ],
             organizer,
             usersApartFromOrganizer: otherTeamMembers,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -1111,7 +1111,7 @@ describe("handleNewBooking", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });
@@ -1126,7 +1126,7 @@ describe("handleNewBooking", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });
@@ -1301,16 +1301,16 @@ describe("handleNewBooking", () => {
             ],
             organizer,
             usersApartFromOrganizer: otherTeamMembers,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -1332,7 +1332,7 @@ describe("handleNewBooking", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });
@@ -1347,7 +1347,7 @@ describe("handleNewBooking", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: "integrations:daily" },
+              location: { optionValue: "", value: "integrations:jitsi" },
             },
           },
         });

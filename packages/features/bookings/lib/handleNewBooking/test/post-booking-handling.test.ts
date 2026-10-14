@@ -139,7 +139,7 @@ describe("Post-Booking Events - Hashed Link Usage", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             hashedLink: hashedLinkData.link,
             hasHashedBookingLink: true,
@@ -153,7 +153,7 @@ describe("Post-Booking Events - Hashed Link Usage", () => {
         await expectBookingToBeInDatabase({
           description: "",
           uid: bookingResponse.uid,
-          location: BookingLocations.CalVideo,
+          location: BookingLocations.Jitsi,
           responses: expect.objectContaining({
             email: booker.email,
             name: booker.name,
@@ -248,7 +248,7 @@ describe("Post-Booking Events - Hashed Link Usage", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             hashedLink: hashedLinkData.link,
             hasHashedBookingLink: true,
@@ -263,7 +263,7 @@ describe("Post-Booking Events - Hashed Link Usage", () => {
         if (bookingResponse.uid) {
           await expectBookingToBeInDatabase({
             description: "",
-            location: BookingLocations.CalVideo,
+            location: BookingLocations.Jitsi,
             responses: expect.objectContaining({
               email: booker.email,
               name: booker.name,
@@ -343,7 +343,7 @@ describe("Post-Booking Events - Hashed Link Usage", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             hashedLink: hashedLinkData.link,
             hasHashedBookingLink: true,
@@ -438,7 +438,7 @@ describe("Post-Booking Events - Hashed Link Usage", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             hasHashedBookingLink: true,
             hashedLink: hashedLinkData.link,
@@ -453,7 +453,7 @@ describe("Post-Booking Events - Hashed Link Usage", () => {
         await expectBookingToBeInDatabase({
           description: "",
           uid: bookingResponse.uid,
-          location: BookingLocations.CalVideo,
+          location: BookingLocations.Jitsi,
           responses: expect.objectContaining({
             email: booker.email,
             name: booker.name,

@@ -22,76 +22,74 @@ describe("shouldEnableApp", () => {
   });
 
   describe("Apps with key schemas", () => {
+    // zoomvideo requires client_id and client_secret
     it("should return false when keys are null", () => {
-      // dailyvideo requires api_key and has scale_plan with default
-      const result = shouldEnableApp("dailyvideo", null);
+      const result = shouldEnableApp("zoomvideo", null);
       expect(result).toBe(false);
     });
 
     it("should return false when keys are undefined", () => {
-      const result = shouldEnableApp("dailyvideo", undefined);
+      const result = shouldEnableApp("zoomvideo", undefined);
       expect(result).toBe(false);
     });
 
     it("should return false when keys is an empty object", () => {
-      // Empty object doesn't have required api_key field
-      const result = shouldEnableApp("dailyvideo", {});
+      const result = shouldEnableApp("zoomvideo", {});
       expect(result).toBe(false);
     });
 
     it("should return false when keys is an array", () => {
-      const result = shouldEnableApp("dailyvideo", [] as any);
+      const result = shouldEnableApp("zoomvideo", [] as any);
       expect(result).toBe(false);
     });
 
     it("should return false when keys is a string", () => {
-      const result = shouldEnableApp("dailyvideo", "invalid" as any);
+      const result = shouldEnableApp("zoomvideo", "invalid" as any);
       expect(result).toBe(false);
     });
 
     it("should return false when keys is a number", () => {
-      const result = shouldEnableApp("dailyvideo", 123 as any);
+      const result = shouldEnableApp("zoomvideo", 123 as any);
       expect(result).toBe(false);
     });
 
     it("should return false when required keys are missing", () => {
-      // Missing required api_key field
-      const result = shouldEnableApp("dailyvideo", {
-        scale_plan: "true",
+      const result = shouldEnableApp("zoomvideo", {
+        client_id: "client-id",
       });
       expect(result).toBe(false);
     });
 
     it("should return false when required keys are empty strings", () => {
-      // api_key is empty string, which violates .min(1)
-      const result = shouldEnableApp("dailyvideo", {
-        api_key: "",
-        scale_plan: "false",
+      const result = shouldEnableApp("zoomvideo", {
+        client_id: "",
+        client_secret: "client-secret",
       });
       expect(result).toBe(false);
     });
 
     it("should return true when all required keys are present and valid", () => {
-      const result = shouldEnableApp("dailyvideo", {
-        api_key: "valid-api-key",
-        scale_plan: "false",
+      const result = shouldEnableApp("zoomvideo", {
+        client_id: "client-id",
+        client_secret: "client-secret",
       });
       expect(result).toBe(true);
     });
 
     it("should return true when required keys are present and optional fields use defaults", () => {
-      // scale_plan has a default, so we can omit it
-      const result = shouldEnableApp("dailyvideo", {
-        api_key: "valid-api-key",
+      // openvisio's meetingUrlPattern has a default, so it can be omitted
+      const result = shouldEnableApp("openvisio", {
+        apiBaseUrl: "https://visio.clever.cloud",
+        clientId: "client-id",
+        clientSecret: "client-secret",
       });
       expect(result).toBe(true);
     });
 
     it("should return false when keys have wrong types", () => {
-      // api_key should be string, not number
-      const result = shouldEnableApp("dailyvideo", {
-        api_key: 123 as any,
-        scale_plan: "false",
+      const result = shouldEnableApp("zoomvideo", {
+        client_id: 123 as any,
+        client_secret: "client-secret",
       });
       expect(result).toBe(false);
     });
@@ -127,37 +125,27 @@ describe("shouldEnableApp", () => {
     });
   });
   
-  describe("Apps with empty key schemas (user-configured apps like PayPal, GTM)", () => {
+  describe("Apps with empty key schemas (user-configured apps like QR code, mock payment)", () => {
     // These apps have `appKeysSchema = z.object({})` - they don't need server-side keys
     // Users configure them after installation, so they should always be enabled
 
-    it("should return true for PayPal when keys are null", () => {
-      const result = shouldEnableApp("paypal", null);
+    it("should return true for QR code when keys are null", () => {
+      const result = shouldEnableApp("qr_code", null);
       expect(result).toBe(true);
     });
 
-    it("should return true for PayPal when keys are undefined", () => {
-      const result = shouldEnableApp("paypal", undefined);
+    it("should return true for QR code when keys are undefined", () => {
+      const result = shouldEnableApp("qr_code", undefined);
       expect(result).toBe(true);
     });
 
-    it("should return true for PayPal when keys are empty object", () => {
-      const result = shouldEnableApp("paypal", {});
+    it("should return true for QR code when keys are empty object", () => {
+      const result = shouldEnableApp("qr_code", {});
       expect(result).toBe(true);
     });
 
-    it("should return true for GTM when keys are null", () => {
-      const result = shouldEnableApp("gtm", null);
-      expect(result).toBe(true);
-    });
-
-    it("should return true for GTM when keys are undefined", () => {
-      const result = shouldEnableApp("gtm", undefined);
-      expect(result).toBe(true);
-    });
-
-    it("should return true for GA4 when keys are null", () => {
-      const result = shouldEnableApp("ga4", null);
+    it("should return true for mock payment app when keys are null", () => {
+      const result = shouldEnableApp("mock-payment-app", null);
       expect(result).toBe(true);
     });
   });

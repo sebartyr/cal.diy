@@ -73,11 +73,11 @@ describe("handleSeats", () => {
       );
 
       mockSuccessfulVideoMeetingCreation({
-        metadataLookupKey: "dailyvideo",
+        metadataLookupKey: "jitsivideo",
         videoMeetingData: {
           id: "MOCK_ID",
           password: "MOCK_PASS",
-          url: `http://mock-dailyvideo.example.com/meeting-1`,
+          url: `http://mock-jitsivideo.example.com/meeting-1`,
         },
       });
 
@@ -87,7 +87,7 @@ describe("handleSeats", () => {
           responses: {
             email: booker.email,
             name: booker.name,
-            location: { optionValue: "", value: BookingLocations.CalVideo },
+            location: { optionValue: "", value: BookingLocations.Jitsi },
           },
         },
       });
@@ -151,11 +151,11 @@ describe("handleSeats", () => {
               },
               references: [
                 {
-                  type: appStoreMetadata.dailyvideo.type,
+                  type: appStoreMetadata.jitsivideo.type,
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com",
+                  meetingUrl: "http://mock-jitsivideo.example.com",
                   credentialId: null,
                 },
               ],
@@ -166,11 +166,11 @@ describe("handleSeats", () => {
       );
 
       mockSuccessfulVideoMeetingCreation({
-        metadataLookupKey: "dailyvideo",
+        metadataLookupKey: "jitsivideo",
         videoMeetingData: {
           id: "MOCK_ID",
           password: "MOCK_PASS",
-          url: `http://mock-dailyvideo.example.com/meeting-1`,
+          url: `http://mock-jitsivideo.example.com/meeting-1`,
         },
       });
 
@@ -182,7 +182,7 @@ describe("handleSeats", () => {
           responses: {
             email: booker.email,
             name: booker.name,
-            location: { optionValue: "", value: BookingLocations.CalVideo },
+            location: { optionValue: "", value: BookingLocations.Jitsi },
           },
           bookingUid: bookingUid,
           user: reqBookingUser,
@@ -296,11 +296,11 @@ describe("handleSeats", () => {
               },
               references: [
                 {
-                  type: appStoreMetadata.dailyvideo.type,
+                  type: appStoreMetadata.jitsivideo.type,
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com",
+                  meetingUrl: "http://mock-jitsivideo.example.com",
                   credentialId: null,
                 },
               ],
@@ -311,11 +311,11 @@ describe("handleSeats", () => {
       );
 
       mockSuccessfulVideoMeetingCreation({
-        metadataLookupKey: "dailyvideo",
+        metadataLookupKey: "jitsivideo",
         videoMeetingData: {
           id: "MOCK_ID",
           password: "MOCK_PASS",
-          url: `http://mock-dailyvideo.example.com/meeting-1`,
+          url: `http://mock-jitsivideo.example.com/meeting-1`,
         },
       });
 
@@ -328,7 +328,7 @@ describe("handleSeats", () => {
           responses: {
             email: booker.email,
             name: booker.name,
-            location: { optionValue: "", value: BookingLocations.CalVideo },
+            location: { optionValue: "", value: BookingLocations.Jitsi },
           },
           bookingUid: bookingUid,
           user: reqBookingUser,
@@ -437,11 +437,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -466,11 +466,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -482,7 +482,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             bookingUid: bookingUid,
             user: reqBookingUser,
@@ -564,11 +564,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -593,11 +593,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -609,7 +609,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             user: reqBookingUser,
           },
@@ -689,11 +689,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -718,11 +718,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -734,7 +734,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             bookingUid: bookingUid,
             user: reqBookingUser,
@@ -799,11 +799,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -840,11 +840,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -856,7 +856,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             bookingUid: bookingUid,
             user: reqBookingUser,
@@ -954,11 +954,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -986,16 +986,16 @@ describe("handleSeats", () => {
             ],
             organizer,
             usersApartFromOrganizer: otherTeamMembers,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -1007,7 +1007,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             bookingUid: bookingUid,
             user: reqBookingUser,
@@ -1119,11 +1119,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -1155,11 +1155,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -1184,11 +1184,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -1200,7 +1200,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: "booking-seat-2",
             start: secondBookingStartTime,
@@ -1292,7 +1292,7 @@ describe("handleSeats", () => {
         const secondBookingStartTime = `${plus2DateString}T04:00:00Z`;
         const secondBookingEndTime = `${plus2DateString}T04:30:00Z`;
 
-        const meetingUrl = "http://mock-dailyvideo.example.com/meeting-with-url";
+        const meetingUrl = "http://mock-jitsivideo.example.com/meeting-with-url";
 
         await createBookingScenario(
           getScenarioData({
@@ -1324,7 +1324,7 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
@@ -1359,7 +1359,7 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID_2",
                     meetingId: "MOCK_ID_2",
                     meetingPassword: "MOCK_PASS_2",
@@ -1387,7 +1387,7 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
@@ -1403,7 +1403,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: "booking-seat-2",
             start: secondBookingStartTime,
@@ -1460,7 +1460,7 @@ describe("handleSeats", () => {
         const secondBookingStartTime = `${plus2DateString}T04:00:00Z`;
         const secondBookingEndTime = `${plus2DateString}T04:30:00Z`;
 
-        const meetingUrl = "http://mock-dailyvideo.example.com/meeting-with-url";
+        const meetingUrl = "http://mock-jitsivideo.example.com/meeting-with-url";
 
         await createBookingScenario(
           getScenarioData({
@@ -1492,7 +1492,7 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
@@ -1521,11 +1521,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "NEW_MOCK_ID",
             password: "NEW_MOCK_PASS",
-            url: "http://mock-dailyvideo.example.com/new-meeting",
+            url: "http://mock-jitsivideo.example.com/new-meeting",
           },
         });
 
@@ -1544,7 +1544,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: "booking-seat-2",
             start: secondBookingStartTime,
@@ -1631,11 +1631,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -1661,11 +1661,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -1677,7 +1677,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: "booking-seat-2",
             start: secondBookingStartTime,
@@ -1791,11 +1791,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -1807,11 +1807,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -1823,7 +1823,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: "booking-seat-2",
             start: secondBookingStartTime,
@@ -1915,11 +1915,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -1954,11 +1954,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -2065,11 +2065,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2093,11 +2093,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -2212,11 +2212,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2262,11 +2262,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -2278,7 +2278,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: firstBookingUid,
             start: secondBookingStartTime,
@@ -2373,11 +2373,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2418,11 +2418,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2458,11 +2458,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -2474,7 +2474,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: firstBookingUid,
             start: secondBookingStartTime,
@@ -2580,11 +2580,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2625,11 +2625,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2665,11 +2665,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -2681,7 +2681,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: firstBookingUid,
             start: secondBookingStartTime,
@@ -2756,11 +2756,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2809,11 +2809,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -2825,7 +2825,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: firstBookingUid,
             start: secondBookingStartTime,
@@ -2898,11 +2898,11 @@ describe("handleSeats", () => {
                 },
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                 ],
@@ -2937,11 +2937,11 @@ describe("handleSeats", () => {
         );
 
         mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
           videoMeetingData: {
             id: "MOCK_ID",
             password: "MOCK_PASS",
-            url: `http://mock-dailyvideo.example.com/meeting-1`,
+            url: `http://mock-jitsivideo.example.com/meeting-1`,
           },
         });
 
@@ -2952,7 +2952,7 @@ describe("handleSeats", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
             rescheduleUid: firstBookingUid,
             cancelledBy: organizer.email,

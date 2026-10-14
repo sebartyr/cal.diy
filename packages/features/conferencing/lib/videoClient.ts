@@ -1,17 +1,15 @@
 import short from "short-uuid";
 import { v5 as uuidv5 } from "uuid";
 
-import { DailyLocationType } from "@calcom/app-store/constants";
-import { getDailyAppKeys } from "@calcom/app-store/dailyvideo/lib/getDailyAppKeys";
+import { JitsiLocationType } from "@calcom/app-store/constants";
 import { getVideoAdapters } from "@calcom/app-store/getVideoAdapters";
+import { FAKE_JITSI_CREDENTIAL } from "@calcom/app-store/jitsivideo/lib/fakeCredential";
 import { sendBrokenIntegrationEmail } from "@calcom/emails/integration-email-service";
 import { getUid } from "@calcom/lib/CalEventParser";
-import { CAL_VIDEO, CAL_VIDEO_TYPE } from "@calcom/lib/constants";
 import logger from "@calcom/lib/logger";
 import { getPiiFreeCalendarEvent, getPiiFreeCredential } from "@calcom/lib/piiFreeData";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { prisma } from "@calcom/prisma";
-import type { GetRecordingsResponseSchema, GetAccessLinkResponseSchema } from "@calcom/prisma/zod-utils";
 import type { CalendarEvent, EventBusyDate } from "@calcom/types/Calendar";
 import type { CredentialPayload, CredentialForCalendarService } from "@calcom/types/Credential";
 import type { EventResult, PartialReference } from "@calcom/types/EventManager";
@@ -90,10 +88,10 @@ const createMeeting = async (
       safeStringify(err),
       safeStringify({ calEvent: getPiiFreeCalendarEvent(calEvent) })
     );
-    // Default to calVideo
-    const defaultMeeting = await createMeetingWithCalVideo(calEvent);
+    // Fall back to Jitsi, which replaced Cal Video as the default conferencing app.
+    const defaultMeeting = await createMeetingWithJitsi(calEvent);
     if (defaultMeeting) {
-      calEvent.location = DailyLocationType;
+      calEvent.location = JitsiLocationType;
     }
 
     returnObject = { ...returnObject, originalEvent: calEvent, createdEvent: defaultMeeting };
@@ -163,285 +161,30 @@ const deleteMeeting = async (
   return Promise.resolve({});
 };
 
-// @TODO: This is a temporary solution to create a meeting with cal.com video as fallback url
-const createMeetingWithCalVideo = async (calEvent: CalendarEvent) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
+/**
+ * Fallback when the chosen video adapter fails to create a meeting. Jitsi needs no API key
+ * and reads nothing from its credential, so a synthetic one is enough. Failures are swallowed:
+ * the caller already reports the original error, and a missing fallback must not mask it.
+ *
+ * Like the normal path, it honours App.enabled: an admin who disabled Jitsi gets no Jitsi
+ * meeting, whether Jitsi itself or another provider failed.
+ */
+const createMeetingWithJitsi = async (calEvent: CalendarEvent) => {
   try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    return;
+    const jitsiApp = await prisma.app.findUnique({
+      where: { slug: FAKE_JITSI_CREDENTIAL.appId ?? "" },
+      select: { enabled: true },
+    });
+    if (!jitsiApp?.enabled) {
+      log.warn("Jitsi fallback skipped: the jitsi app is disabled or not seeded");
+      return undefined;
+    }
+    const [videoAdapter] = await getVideoAdapters([FAKE_JITSI_CREDENTIAL]);
+    return await videoAdapter?.createMeeting(calEvent);
+  } catch (error) {
+    log.error("Jitsi fallback meeting creation failed", safeStringify(error));
+    return undefined;
   }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-  return videoAdapter?.createMeeting(calEvent);
 };
 
-export const createInstantMeetingWithCalVideo = async (endTime: string) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-  return videoAdapter?.createInstantCalVideoRoom?.(endTime);
-};
-
-const getRecordingsOfCalVideoByRoomName = async (
-  roomName: string
-): Promise<GetRecordingsResponseSchema | undefined> => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    console.error("Error: Cal video provider is not installed.");
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-  return videoAdapter?.getRecordings?.(roomName);
-};
-
-const getDownloadLinkOfCalVideoByRecordingId = async (
-  recordingId: string
-): Promise<GetAccessLinkResponseSchema | undefined> => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    console.error("Error: Cal video provider is not installed.");
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-  return videoAdapter?.getRecordingDownloadLink?.(recordingId);
-};
-
-const getAllTranscriptsAccessLinkFromRoomName = async (roomName: string) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    console.error("Error: Cal video provider is not installed.");
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-  return videoAdapter?.getAllTranscriptsAccessLinkFromRoomName?.(roomName);
-};
-
-const getAllTranscriptsAccessLinkFromMeetingId = async (meetingId: string) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    console.error("Error: Cal video provider is not installed.");
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-  return videoAdapter?.getAllTranscriptsAccessLinkFromMeetingId?.(meetingId);
-};
-
-const submitBatchProcessorTranscriptionJob = async (recordingId: string) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    console.error("Error: Cal video provider is not installed.");
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-
-  return videoAdapter?.submitBatchProcessorJob?.({
-    preset: "transcript",
-    inParams: {
-      sourceType: "recordingId",
-      recordingId: recordingId,
-    },
-    outParams: {
-      s3Config: {
-        s3KeyTemplate: "transcript",
-      },
-    },
-  });
-};
-
-const getTranscriptsAccessLinkFromRecordingId = async (recordingId: string) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    console.error("Error: Cal video provider is not installed.");
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-
-  return videoAdapter?.getTranscriptsAccessLinkFromRecordingId?.(recordingId);
-};
-
-const checkIfRoomNameMatchesInRecording = async (roomName: string, recordingId: string) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch {
-    console.error("Error: Cal video provider is not installed.");
-    return;
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-
-  return videoAdapter?.checkIfRoomNameMatchesInRecording?.(roomName, recordingId);
-};
-
-const getCalVideoMeetingSessionsByRoomName = async (roomName: string) => {
-  let dailyAppKeys: Awaited<ReturnType<typeof getDailyAppKeys>>;
-  try {
-    dailyAppKeys = await getDailyAppKeys();
-  } catch (e) {
-    console.error("Error: Cal video provider is not installed.");
-    return { data: [] };
-  }
-  const [videoAdapter] = await getVideoAdapters([
-    {
-      id: 0,
-      appId: CAL_VIDEO,
-      type: CAL_VIDEO_TYPE,
-      userId: null,
-      user: { email: "" },
-      teamId: null,
-      key: dailyAppKeys,
-      encryptedKey: null,
-      invalid: false,
-      delegationCredentialId: null,
-    },
-  ]);
-
-  return videoAdapter?.getMeetingInformation?.(roomName) ?? { data: [] };
-};
-
-export {
-  getBusyVideoTimes,
-  createMeeting,
-  updateMeeting,
-  deleteMeeting,
-  getRecordingsOfCalVideoByRoomName,
-  getDownloadLinkOfCalVideoByRecordingId,
-  getAllTranscriptsAccessLinkFromRoomName,
-  getAllTranscriptsAccessLinkFromMeetingId,
-  submitBatchProcessorTranscriptionJob,
-  getTranscriptsAccessLinkFromRecordingId,
-  checkIfRoomNameMatchesInRecording,
-  getCalVideoMeetingSessionsByRoomName,
-};
+export { getBusyVideoTimes, createMeeting, updateMeeting, deleteMeeting };

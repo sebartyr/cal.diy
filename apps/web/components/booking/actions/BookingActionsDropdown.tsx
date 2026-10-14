@@ -91,18 +91,6 @@ export function BookingActionsDropdown({
   // Use store for all other dialog states
   const chargeCardDialogIsOpen = useBookingActionsStoreContext((state) => state.chargeCardDialogIsOpen);
   const setChargeCardDialogIsOpen = useBookingActionsStoreContext((state) => state.setChargeCardDialogIsOpen);
-  const viewRecordingsDialogIsOpen = useBookingActionsStoreContext(
-    (state) => state.viewRecordingsDialogIsOpen
-  );
-  const setViewRecordingsDialogIsOpen = useBookingActionsStoreContext(
-    (state) => state.setViewRecordingsDialogIsOpen
-  );
-  const meetingSessionDetailsDialogIsOpen = useBookingActionsStoreContext(
-    (state) => state.meetingSessionDetailsDialogIsOpen
-  );
-  const setMeetingSessionDetailsDialogIsOpen = useBookingActionsStoreContext(
-    (state) => state.setMeetingSessionDetailsDialogIsOpen
-  );
   const isNoShowDialogOpen = useBookingActionsStoreContext((state) => state.isNoShowDialogOpen);
   const setIsNoShowDialogOpen = useBookingActionsStoreContext((state) => state.setIsNoShowDialogOpen);
   const isOpenRescheduleDialog = useBookingActionsStoreContext((state) => state.isOpenRescheduleDialog);
@@ -185,11 +173,6 @@ export function BookingActionsDropdown({
 
   const isHost = isActingAsBookingHost(booking);
 
-  const isCalVideoLocation =
-    !booking.location ||
-    booking.location === "integrations:daily" ||
-    (typeof booking.location === "string" && booking.location.trim() === "");
-
   const isDisabledCancelling = booking.eventType.disableCancelling;
   const isDisabledRescheduling = booking.eventType.disableRescheduling;
 
@@ -234,7 +217,6 @@ export function BookingActionsDropdown({
     isTabUnconfirmed,
     isDisabledCancelling,
     isDisabledRescheduling,
-    isCalVideoLocation,
     showPendingPayment,
     isAttendee,
     cardCharged,
@@ -287,11 +269,7 @@ export function BookingActionsDropdown({
   const afterEventActions: ActionType[] = baseAfterEventActions.map((action) => ({
     ...action,
     onClick:
-      action.id === "view_recordings"
-        ? () => setViewRecordingsDialogIsOpen(true)
-        : action.id === "meeting_session_details"
-          ? () => setMeetingSessionDetailsDialogIsOpen(true)
-          : action.id === "charge_card"
+      action.id === "charge_card"
             ? () => setChargeCardDialogIsOpen(true)
             : action.id === "no_show"
               ? () => {
@@ -308,8 +286,7 @@ export function BookingActionsDropdown({
               : undefined,
     disabled:
       action.disabled ||
-      (action.id === "no_show" && !(isBookingInPast || isOngoing)) ||
-      (action.id === "view_recordings" && !booking.isRecorded),
+      (action.id === "no_show" && !(isBookingInPast || isOngoing)),
   })) as ActionType[];
 
   const reportAction = getReportAction(actionContext);
@@ -444,7 +421,6 @@ export function BookingActionsDropdown({
           paymentCurrency={booking.payment[0].currency}
         />
       )}
-      {/* Cal video recording dialogs removed (enterprise) */}
       {isNoShowDialogOpen && (
         <NoShowAttendeesDialog
           bookingUid={booking.uid}

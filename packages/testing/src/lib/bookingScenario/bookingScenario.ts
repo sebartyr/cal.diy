@@ -1417,16 +1417,10 @@ export const TestData = {
         redirect_uris: ["http://localhost:3000/auth/callback"],
       },
     },
-    "daily-video": {
-      ...appStoreMetadata.dailyvideo,
-      keys: {
-        expiry_date: Infinity,
-        api_key: "",
-        scale_plan: "false",
-        client_id: "client_id",
-        client_secret: "client_secret",
-        redirect_uris: ["http://localhost:3000/auth/callback"],
-      },
+    // Jitsi replaced Cal Video as the default, global conferencing app. It needs no keys.
+    jitsi: {
+      ...appStoreMetadata.jitsivideo,
+      keys: {},
     },
     zoomvideo: {
       ...appStoreMetadata.zoomvideo,
@@ -1629,7 +1623,8 @@ export function mockNoTranslations() {
 }
 
 export enum BookingLocations {
-  CalVideo = "integrations:daily",
+  // Replaced CalVideo when Cal Video was removed; Jitsi is the default conferencing location.
+  Jitsi = "integrations:jitsi",
   ZoomVideo = "integrations:zoom",
   GoogleMeet = "integrations:google:meet",
 }
@@ -2191,10 +2186,11 @@ export function getMockBookingReference(
   bookingReference: Partial<BookingReference> & Pick<BookingReference, "type" | "uid" | "credentialId">
 ) {
   let credentialId = bookingReference.credentialId;
-  if (bookingReference.type === appStoreMetadata.dailyvideo.type) {
-    // Right now we seems to be storing credentialId for `dailyvideo` in BookingReference as null. Another possible value is 0 in there.
+  if (bookingReference.type === appStoreMetadata.jitsivideo.type) {
+    // A global app's reference is stored with a null credentialId (its synthetic credential has
+    // id 0). Jitsi took over that role from Cal Video.
     credentialId = null;
-    log.debug("Ensuring null credentialId for dailyvideo");
+    log.debug("Ensuring null credentialId for jitsivideo");
   }
   return {
     ...bookingReference,

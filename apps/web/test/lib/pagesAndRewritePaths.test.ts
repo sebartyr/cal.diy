@@ -19,7 +19,6 @@ describe("pagesAndRewritePaths", () => {
       "reschedule",
       "settings",
       "upgrade",
-      "video",
       "bookings",
       "event-types",
       "icons",

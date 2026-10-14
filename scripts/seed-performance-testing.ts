@@ -5,7 +5,7 @@
  */
 import { uuid } from "short-uuid";
 
-import dailyMeta from "@calcom/app-store/dailyvideo/_metadata";
+import jitsiMeta from "@calcom/app-store/jitsivideo/_metadata";
 import googleMeetMeta from "@calcom/app-store/googlevideo/_metadata";
 import zoomMeta from "@calcom/app-store/zoomvideo/_metadata";
 import dayjs from "@calcom/dayjs";
@@ -85,7 +85,7 @@ async function _createManyDifferentUsersWithDifferentEventTypesAndBookings({
           title: "Daily Event",
           slug: "daily",
           length: 60,
-          locations: [{ type: dailyMeta.appData?.location?.type }],
+          locations: [{ type: jitsiMeta.appData?.location?.type }],
         },
         {
           title: "Google Meet",
@@ -289,7 +289,7 @@ async function createAUserWithManyBookings() {
         title: "Daily Event",
         slug: "daily",
         length: 60,
-        locations: [{ type: dailyMeta.appData?.location?.type }],
+        locations: [{ type: jitsiMeta.appData?.location?.type }],
         _numBookings: 100,
       },
       {

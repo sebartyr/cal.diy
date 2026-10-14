@@ -18,6 +18,7 @@ import {
   CONFERENCING_APPS,
   CAL_VIDEO,
   GOOGLE_MEET,
+  JITSI,
   ZOOM,
   OFFICE_365_VIDEO,
 } from "@calcom/platform-constants";
@@ -113,13 +114,15 @@ export class ConferencingService {
   }
 
   async setDefaultConferencingApp(user: UserWithProfile, app: string) {
-    // cal-video is global, so we can skip this check
-    if (app !== CAL_VIDEO) {
-      await this.checkAppIsValidAndConnected(user, app);
+    // Cal Video was removed: it is still accepted and now selects Jitsi, which is global, so
+    // neither needs a connected credential.
+    const appSlug = app === CAL_VIDEO ? JITSI : app;
+    if (appSlug !== JITSI) {
+      await this.checkAppIsValidAndConnected(user, appSlug);
     }
-    const updatedUser = await this.usersRepository.setDefaultConferencingApp(user.id, app);
+    const updatedUser = await this.usersRepository.setDefaultConferencingApp(user.id, appSlug);
     const metadata = updatedUser.metadata as { defaultConferencingApp?: { appSlug?: string } };
-    if (metadata?.defaultConferencingApp?.appSlug !== app) {
+    if (metadata?.defaultConferencingApp?.appSlug !== appSlug) {
       throw new InternalServerErrorException(`Could not set ${app} as default conferencing app`);
     }
     return true;

@@ -1,4 +1,3 @@
-import type { TGetTranscriptAccessLink } from "@calcom/app-store/dailyvideo/zod";
 import type { TimeUnit, WebhookTriggerEvents } from "@calcom/prisma/enums";
 import type { CalendarEvent, ConferenceData, Person } from "@calcom/types/Calendar";
 import type { WebhookVersion } from "../interface/IWebhookRepository";
@@ -494,7 +493,9 @@ export type BookingNoShowUpdatedPayload = {
 
 export type TranscriptionGeneratedPayload = {
   downloadLinks?: {
-    transcription: TGetTranscriptAccessLink["transcription"];
+    // Inlined from the removed dailyvideo app. Kept so subscribers typing this payload do
+    // not break, even though Cal Video removal means it is never emitted any more.
+    transcription: Array<{ format: string; link: string }>;
     recording: string;
   };
 };

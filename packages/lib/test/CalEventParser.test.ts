@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   getLocation,
-  getPublicVideoCallUrl,
   getVideoCallPassword,
   getVideoCallUrlFromCalEvent,
 } from "../CalEventParser";
@@ -23,7 +22,7 @@ describe("getLocation", () => {
   it("should return a meetingUrl for video call meetings", () => {
     const calEvent = buildCalendarEvent({
       videoCallData: buildVideoCallData({
-        type: "daily_video",
+        type: "jitsi_video",
       }),
     });
 
@@ -49,31 +48,25 @@ describe("getLocation", () => {
 });
 
 describe("getVideoCallUrl", () => {
-  it("should return an app public url instead of meeting url for daily call meetings", () => {
+  it("should return the meeting url stored by the video app", () => {
     const calEvent = buildCalendarEvent({
       videoCallData: buildVideoCallData({
-        type: "daily_video",
+        type: "jitsi_video",
       }),
     });
 
-    expect(getVideoCallUrlFromCalEvent(calEvent)).toEqual(getPublicVideoCallUrl(calEvent.uid));
+    expect(getVideoCallUrlFromCalEvent(calEvent)).toEqual(calEvent.videoCallData?.url);
   });
 });
 
 describe("getVideoCallPassword", () => {
-  it("should return an empty password for daily call meetings", () => {
-    const calEvent = buildCalendarEvent({
-      videoCallData: buildVideoCallData({
-        type: "daily_video",
-      }),
-    });
-
-    expect(getVideoCallPassword(calEvent.videoCallData)).toEqual("");
-  });
-  it("should return original password for other video call meetings", () => {
+  it("should return the original password of the video call", () => {
     const calEvent = buildCalendarEvent();
 
-    expect(calEvent?.videoCallData?.type).not.toBe("daily_video");
     expect(getVideoCallPassword(calEvent.videoCallData)).toEqual(calEvent?.videoCallData?.password);
+  });
+
+  it("should return an empty password when there is no video call", () => {
+    expect(getVideoCallPassword(undefined)).toEqual("");
   });
 });

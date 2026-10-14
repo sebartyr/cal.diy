@@ -15,7 +15,6 @@ import { BookingLocationIntegrationService_2024_08_13 } from "@/platform/booking
 import { BookingReferencesService_2024_08_13 } from "@/platform/bookings/2024-08-13/services/booking-references.service";
 import { BookingVideoService_2024_08_13 } from "@/platform/bookings/2024-08-13/services/booking-video.service";
 import { BookingsService_2024_08_13 } from "@/platform/bookings/2024-08-13/services/bookings.service";
-import { CalVideoOutputService } from "@/platform/bookings/2024-08-13/services/cal-video.output.service";
 import { CalVideoService } from "@/platform/bookings/2024-08-13/services/cal-video.service";
 import { ErrorsBookingsService_2024_08_13 } from "@/platform/bookings/2024-08-13/services/errors.service";
 import { InputBookingsService_2024_08_13 } from "@/platform/bookings/2024-08-13/services/input.service";
@@ -101,7 +100,6 @@ import { UsersModule } from "@/modules/users/users.module";
     BookingReferencesService_2024_08_13,
     BookingReferencesRepository_2024_08_13,
     CalVideoService,
-    CalVideoOutputService,
     BookingPbacGuard,
     BookingLocationCalendarSyncService_2024_08_13,
     BookingLocationCredentialService_2024_08_13,

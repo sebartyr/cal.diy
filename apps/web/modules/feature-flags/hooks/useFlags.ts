@@ -11,7 +11,6 @@ const initialData: AppFlags = {
   "organizer-request-email-v2": false,
   "delegation-credential": false,
   "salesforce-crm-tasker": false,
-  "cal-video-log-in-overlay": false,
   "restriction-schedule": false,
   "calendar-subscription-cache": false,
   "calendar-subscription-sync": false,

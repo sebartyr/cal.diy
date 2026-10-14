@@ -85,7 +85,7 @@ describe("transformLocationsApiToInternal", () => {
       },
     ];
 
-    const expectedOutput = [{ type: "integrations:daily" }];
+    const expectedOutput = [{ type: "integrations:jitsi" }];
 
     const result = transformLocationsApiToInternal(input);
 

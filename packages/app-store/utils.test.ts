@@ -10,12 +10,12 @@ describe("sanitizeAppForViewer", () => {
   it("should remove key, credential, and credentials properties", () => {
     const mockCredential: CredentialDataWithTeamName = {
       id: 1,
-      type: "daily_video",
+      type: "jitsi_video",
       key: { api_key: "secret-api-key" },
       userId: 1,
       user: { email: "test@example.com" },
       teamId: null,
-      appId: "daily-video",
+      appId: "jitsi",
       invalid: false,
       delegatedTo: null,
       delegatedToId: null,
@@ -29,7 +29,7 @@ describe("sanitizeAppForViewer", () => {
       credentials: CredentialDataWithTeamName[];
       locationOption: LocationOption | null;
     } = {
-      type: "daily_video",
+      type: "jitsi_video",
       name: "Daily Video",
       description: "Video conferencing",
       variant: "conferencing",
@@ -56,7 +56,7 @@ describe("sanitizeAppForViewer", () => {
     expect(sanitized).not.toHaveProperty("credentials");
 
     // Should have all other properties
-    expect(sanitized).toHaveProperty("type", "daily_video");
+    expect(sanitized).toHaveProperty("type", "jitsi_video");
     expect(sanitized).toHaveProperty("name", "Daily Video");
     expect(sanitized).toHaveProperty("slug", "daily-video");
     expect(sanitized).toHaveProperty("locationOption");

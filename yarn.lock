@@ -1992,7 +1992,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@calcom/app-store@workspace:packages/app-store"
   dependencies:
-    "@calcom/dailyvideo": "workspace:*"
     "@calcom/dayjs": "workspace:*"
     "@calcom/features": "workspace:*"
     "@calcom/i18n": "workspace:*"
@@ -2117,16 +2116,6 @@ __metadata:
     tailwindcss-radix: "npm:4.0.2"
     tw-animate-css: "npm:1.4.0"
     typescript: "npm:5.9.3"
-  languageName: unknown
-  linkType: soft
-
-"@calcom/dailyvideo@workspace:*, @calcom/dailyvideo@workspace:packages/app-store/dailyvideo":
-  version: 0.0.0-use.local
-  resolution: "@calcom/dailyvideo@workspace:packages/app-store/dailyvideo"
-  dependencies:
-    "@calcom/lib": "workspace:*"
-    "@calcom/prisma": "workspace:*"
-    "@calcom/types": "workspace:*"
   languageName: unknown
   linkType: soft
 

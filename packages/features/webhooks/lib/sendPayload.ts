@@ -1,7 +1,6 @@
 import { createHmac } from "node:crypto";
 import { compile } from "handlebars";
 
-import type { TGetTranscriptAccessLink } from "@calcom/app-store/dailyvideo/zod";
 import { getHumanReadableLocationValue } from "@calcom/app-store/locations";
 import type { WebhookSubscriber, PaymentData } from "@calcom/features/webhooks/lib/dto/types";
 import { getUTCOffsetByTimezone } from "@calcom/lib/dayjs";
@@ -43,7 +42,9 @@ export type BookingNoShowUpdatedPayload = {
 
 export type TranscriptionGeneratedPayload = {
   downloadLinks?: {
-    transcription: TGetTranscriptAccessLink["transcription"];
+    // Inlined from the removed dailyvideo app. Kept so subscribers typing this payload do
+    // not break, even though Cal Video removal means it is never emitted any more.
+    transcription: Array<{ format: string; link: string }>;
     recording?: string;
   };
 };

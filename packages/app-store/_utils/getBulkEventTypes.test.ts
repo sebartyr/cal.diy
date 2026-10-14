@@ -14,8 +14,8 @@ vi.mock("@calcom/prisma", () => ({
 
 vi.mock("../utils", () => ({
   getAppFromLocationValue: vi.fn((locationType: string) => {
-    if (locationType === "integrations:daily") {
-      return { logo: "/daily-logo.svg" };
+    if (locationType === "integrations:jitsi") {
+      return { logo: "/jitsi-logo.svg" };
     }
     if (locationType === "integrations:google:meet") {
       return { logo: "/google-meet-logo.svg" };
@@ -190,7 +190,7 @@ describe("filterEventTypesWhereLocationUpdateIsAllowed", () => {
         parentId: null,
         metadata: {},
         title: "Test Event",
-        locations: [{ type: "integrations:daily" }],
+        locations: [{ type: "integrations:jitsi" }],
       },
     ];
 
@@ -212,7 +212,7 @@ describe("getBulkUserEventTypes", () => {
       {
         id: 1,
         title: "Regular Event",
-        locations: [{ type: "integrations:daily" }] as Prisma.JsonValue,
+        locations: [{ type: "integrations:jitsi" }] as Prisma.JsonValue,
         metadata: {} as Prisma.JsonValue,
         parentId: null,
       },
@@ -232,7 +232,7 @@ describe("getBulkUserEventTypes", () => {
       {
         id: 3,
         title: "Child Event - Locked",
-        locations: [{ type: "integrations:daily" }] as Prisma.JsonValue,
+        locations: [{ type: "integrations:jitsi" }] as Prisma.JsonValue,
         metadata: {
           managedEventConfig: {
             unlockedFields: {
@@ -252,7 +252,7 @@ describe("getBulkUserEventTypes", () => {
     expect(result.eventTypes).toHaveLength(2);
     expect(result.eventTypes[0].id).toBe(1);
     expect(result.eventTypes[0].title).toBe("Regular Event");
-    expect(result.eventTypes[0].logo).toBe("/daily-logo.svg");
+    expect(result.eventTypes[0].logo).toBe("/jitsi-logo.svg");
     expect(result.eventTypes[1].id).toBe(2);
     expect(result.eventTypes[1].title).toBe("Child Event - Unlocked");
     expect(result.eventTypes[1].logo).toBe("/google-meet-logo.svg");
@@ -281,14 +281,14 @@ describe("getBulkUserEventTypes", () => {
       {
         id: 10,
         title: "Event 1",
-        locations: [{ type: "integrations:daily" }] as Prisma.JsonValue,
+        locations: [{ type: "integrations:jitsi" }] as Prisma.JsonValue,
         metadata: {} as Prisma.JsonValue,
         parentId: null,
       },
       {
         id: 11,
         title: "Event 2",
-        locations: [{ type: "integrations:daily" }] as Prisma.JsonValue,
+        locations: [{ type: "integrations:jitsi" }] as Prisma.JsonValue,
         metadata: {} as Prisma.JsonValue,
         parentId: null,
       },
@@ -310,7 +310,7 @@ describe("getBulkUserEventTypes", () => {
       {
         id: 20,
         title: "Locked Event 1",
-        locations: [{ type: "integrations:daily" }] as Prisma.JsonValue,
+        locations: [{ type: "integrations:jitsi" }] as Prisma.JsonValue,
         metadata: {
           managedEventConfig: {
             unlockedFields: {},
@@ -321,7 +321,7 @@ describe("getBulkUserEventTypes", () => {
       {
         id: 21,
         title: "Locked Event 2",
-        locations: [{ type: "integrations:daily" }] as Prisma.JsonValue,
+        locations: [{ type: "integrations:jitsi" }] as Prisma.JsonValue,
         metadata: {
           managedEventConfig: {
             unlockedFields: {
@@ -362,6 +362,6 @@ describe("getBulkUserEventTypes", () => {
 
     expect(result.eventTypes).toHaveLength(1);
     expect(result.eventTypes[0].id).toBe(30);
-    expect(result.eventTypes[0].logo).toBe("/daily-logo.svg");
+    expect(result.eventTypes[0].logo).toBe("/jitsi-logo.svg");
   });
 });

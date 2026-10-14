@@ -607,6 +607,29 @@ export class BookingRepository implements IBookingRepository {
     });
   }
 
+  async findByUidIncludeVideoReferences({ bookingUid }: { bookingUid: string }) {
+    return await this.prismaClient.booking.findUnique({
+      where: {
+        uid: bookingUid,
+      },
+      select: {
+        uid: true,
+        references: {
+          where: {
+            deleted: null,
+            type: { endsWith: "_video" },
+          },
+          select: {
+            id: true,
+            type: true,
+            meetingUrl: true,
+          },
+          orderBy: { id: "desc" },
+        },
+      },
+    });
+  }
+
   async findByUidIncludeReport({ bookingUid }: { bookingUid: string }) {
     return await this.prismaClient.booking.findUnique({
       where: {
@@ -909,79 +932,6 @@ export class BookingRepository implements IBookingRepository {
           // Ascending order ensures that the first attendee in the list is the booker and others are guests
           // See why it is important https://github.com/calcom/cal.diy/pull/20935
           // TODO: Ideally we should return `booker` property directly from the booking
-          orderBy: {
-            id: "asc",
-          },
-        },
-      },
-    });
-  }
-
-  async findBookingIncludeCalVideoSettingsAndReferences({ bookingUid }: { bookingUid: string }) {
-    return await this.prismaClient.booking.findUnique({
-      where: {
-        uid: bookingUid,
-      },
-      select: {
-        ...bookingMinimalSelect,
-        uid: true,
-        description: true,
-        isRecorded: true,
-        eventType: {
-          select: {
-            id: true,
-            hideOrganizerEmail: true,
-            hosts: {
-              select: {
-                userId: true,
-                user: {
-                  select: {
-                    email: true,
-                  },
-                },
-              },
-            },
-            users: {
-              select: {
-                id: true,
-                email: true,
-              },
-            },
-            calVideoSettings: {
-              select: {
-                disableRecordingForGuests: true,
-                disableRecordingForOrganizer: true,
-                enableAutomaticTranscription: true,
-                enableAutomaticRecordingForOrganizer: true,
-                disableTranscriptionForGuests: true,
-                disableTranscriptionForOrganizer: true,
-                redirectUrlOnExit: true,
-                requireEmailForGuests: true,
-              },
-            },
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            timeZone: true,
-            name: true,
-            email: true,
-            username: true,
-          },
-        },
-        references: {
-          select: {
-            id: true,
-            uid: true,
-            type: true,
-            meetingUrl: true,
-            meetingPassword: true,
-          },
-          where: {
-            type: "daily_video",
-            deleted: null,
-          },
           orderBy: {
             id: "asc",
           },
@@ -1745,19 +1695,6 @@ export class BookingRepository implements IBookingRepository {
           },
         },
       },
-    });
-  }
-
-  async updateRecordedStatus({
-    bookingUid,
-    isRecorded,
-  }: {
-    bookingUid: string;
-    isRecorded: boolean;
-  }): Promise<void> {
-    await this.prismaClient.booking.update({
-      where: { uid: bookingUid },
-      data: { isRecorded },
     });
   }
 

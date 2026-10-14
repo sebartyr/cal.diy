@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import process from "node:process";
-import dailyMeta from "@calcom/app-store/dailyvideo/_metadata";
+import jitsiMeta from "@calcom/app-store/jitsivideo/_metadata";
 import googleMeetMeta from "@calcom/app-store/googlevideo/_metadata";
 import zoomMeta from "@calcom/app-store/zoomvideo/_metadata";
 import dayjs from "@calcom/dayjs";
@@ -603,7 +603,7 @@ async function seedPerHostLocationsInAcmeOrg() {
     data: {
       userId: owner.id,
       eventTypeId: eventType.id,
-      type: "integrations:daily",
+      type: "integrations:jitsi",
     },
   });
 
@@ -627,7 +627,7 @@ async function seedPerHostLocationsInAcmeOrg() {
 
   console.log(
     `Seeded per-host locations in Acme Org for event "${eventType.slug}" (id=${eventType.id}): ` +
-      `owner1->Cal Video, member0->Link, member2->Phone`
+      `owner1->Jitsi, member0->Link, member2->Phone`
   );
 }
 
@@ -745,7 +745,7 @@ async function main() {
         title: "Daily Event",
         slug: "daily",
         length: 60,
-        locations: [{ type: dailyMeta.appData?.location?.type }],
+        locations: [{ type: jitsiMeta.appData?.location?.type }],
       },
       {
         title: "Google Meet",

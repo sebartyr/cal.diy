@@ -32,7 +32,7 @@ const buildBooking = (id: number) => ({
   title: `Booking ${id}`,
   startTime,
   endTime,
-  location: "integrations:daily",
+  location: "integrations:jitsi",
   responses: { name: "Attendee", email: "attendee@example.com" },
   status: "ACCEPTED",
 });
@@ -95,7 +95,7 @@ describe("scheduleTrigger bulk writes", () => {
         id: 1,
         uid: "uid-1",
         title: "Booking 1",
-        location: "integrations:daily",
+        location: "integrations:jitsi",
         eventType: { bookingFields: null },
         attendees: [{ name: "Attendee", email: "attendee@example.com" }],
         responses: {

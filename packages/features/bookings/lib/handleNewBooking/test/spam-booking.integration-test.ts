@@ -121,7 +121,7 @@ describe("handleNewBooking - Spam Detection", () => {
               },
             ],
             organizer,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
@@ -138,7 +138,7 @@ describe("handleNewBooking - Spam Detection", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
           },
         });
@@ -195,7 +195,7 @@ describe("handleNewBooking - Spam Detection", () => {
               },
             ],
             organizer,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
@@ -208,7 +208,7 @@ describe("handleNewBooking - Spam Detection", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
           },
         });
@@ -264,7 +264,7 @@ describe("handleNewBooking - Spam Detection", () => {
               },
             ],
             organizer,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
@@ -281,7 +281,7 @@ describe("handleNewBooking - Spam Detection", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
           },
         });
@@ -332,7 +332,7 @@ describe("handleNewBooking - Spam Detection", () => {
               },
             ],
             organizer,
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
@@ -349,7 +349,7 @@ describe("handleNewBooking - Spam Detection", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
           },
         });

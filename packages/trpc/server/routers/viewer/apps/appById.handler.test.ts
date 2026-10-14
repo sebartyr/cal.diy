@@ -44,15 +44,15 @@ describe("appByIdHandler", () => {
   });
 
   it("should not expose key field for globally installed apps", async () => {
-    const secretApiKey = "secret-daily-api-key-12345";
+    const secretApiKey = "secret-jitsi-api-key-12345";
     const mockCredential: CredentialDataWithTeamName = {
       id: 0,
-      type: "daily_video",
+      type: "jitsi_video",
       key: { apikey: secretApiKey },
       userId: 0,
       user: { email: "" },
       teamId: null,
-      appId: "daily-video",
+      appId: "jitsi",
       invalid: false,
       delegatedTo: null,
       delegatedToId: null,
@@ -67,15 +67,15 @@ describe("appByIdHandler", () => {
       credentials: CredentialDataWithTeamName[];
       locationOption: LocationOption | null;
     } = {
-      type: "daily_video",
-      name: "Cal Video",
+      type: "jitsi_video",
+      name: "Jitsi Video",
       description: "Video conferencing",
       variant: "conferencing",
-      slug: "daily-video",
+      slug: "jitsi",
       categories: ["conferencing"],
       logo: "icon.svg",
       publisher: "Cal.diy",
-      url: "https://daily.co",
+      url: "https://jitsi.org/jitsi-meet/",
       email: "help@cal.com",
       isGlobal: true,
       // This is the sensitive key that should NOT be exposed
@@ -83,14 +83,14 @@ describe("appByIdHandler", () => {
       credential: mockCredential,
       credentials: [mockCredential],
       locationOption: {
-        value: "integrations:daily",
-        label: "Cal Video",
+        value: "integrations:jitsi",
+        label: "Jitsi Video",
       },
       appData: {
         location: {
           linkType: "dynamic",
-          type: "integrations:daily",
-          label: "Cal Video",
+          type: "integrations:jitsi",
+          label: "Jitsi Video",
         },
       },
     };
@@ -100,7 +100,7 @@ describe("appByIdHandler", () => {
 
     const result = await appByIdHandler({
       ctx: { user: mockUser },
-      input: { appId: "daily-video" } as TAppByIdInputSchema,
+      input: { appId: "jitsi" } as TAppByIdInputSchema,
     });
 
     // Verify that key is NOT in the response
@@ -109,8 +109,8 @@ describe("appByIdHandler", () => {
     expect(result).not.toHaveProperty("credentials");
 
     // Verify that other properties are preserved
-    expect(result).toHaveProperty("slug", "daily-video");
-    expect(result).toHaveProperty("name", "Cal Video");
+    expect(result).toHaveProperty("slug", "jitsi");
+    expect(result).toHaveProperty("name", "Jitsi Video");
     expect(result).toHaveProperty("isGlobal", true);
     expect(result).toHaveProperty("locationOption");
     expect(result).toHaveProperty("isInstalled", 1);

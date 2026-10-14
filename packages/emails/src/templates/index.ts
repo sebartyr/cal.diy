@@ -13,8 +13,6 @@ export { AttendeeUpdatedEmail } from "./AttendeeUpdatedEmail";
 export { AttendeeWasRequestedToRescheduleEmail } from "./AttendeeWasRequestedToRescheduleEmail";
 export { BookingRedirectEmailNotification } from "./BookingRedirectEmailNotification";
 export { BrokenIntegrationEmail } from "./BrokenIntegrationEmail";
-export { DailyVideoDownloadRecordingEmail } from "./DailyVideoDownloadRecordingEmail";
-export { DailyVideoDownloadTranscriptEmail } from "./DailyVideoDownloadTranscriptEmail";
 export { DisabledAppEmail } from "./DisabledAppEmail";
 export { FeedbackEmail } from "./FeedbackEmail";
 export { ForgotPasswordEmail } from "./ForgotPasswordEmail";

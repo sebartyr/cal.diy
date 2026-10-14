@@ -229,7 +229,7 @@ describe("BookingReferenceRepository Integration Tests", () => {
     it("should persist soft-deleted records in database", async () => {
       const reference = await prisma.bookingReference.create({
         data: {
-          type: "daily_video",
+          type: "jitsi_video",
           uid: "daily-ref",
           meetingId: "daily-meeting",
           credentialId: testCredential.id,
@@ -240,7 +240,7 @@ describe("BookingReferenceRepository Integration Tests", () => {
 
       const newReferences = [
         {
-          type: "daily_video",
+          type: "jitsi_video",
           uid: "new-daily-ref",
           meetingId: "new-daily-meeting",
           credentialId: testCredential.id,
@@ -268,80 +268,6 @@ describe("BookingReferenceRepository Integration Tests", () => {
       if (newRef) {
         createdBookingReferenceIds.push(newRef.id);
       }
-    });
-  });
-
-  describe("findDailyVideoReferenceByRoomName", () => {
-    it("should find active daily video references", async () => {
-      const roomName = "test-daily-room-123";
-      const dailyRef = await prisma.bookingReference.create({
-        data: {
-          type: "daily_video",
-          uid: roomName,
-          meetingId: roomName,
-          credentialId: testCredential.id,
-          bookingId: testBooking.id,
-        },
-      });
-      createdBookingReferenceIds.push(dailyRef.id);
-
-      const result = await BookingReferenceRepository.findDailyVideoReferenceByRoomName({
-        roomName,
-      });
-
-      expect(result).toBeDefined();
-      expect(result?.id).toBe(dailyRef.id);
-      expect(result?.uid).toBe(roomName);
-      expect(result?.deleted).toBe(null);
-    });
-
-    it("should exclude soft-deleted daily video references", async () => {
-      const roomName = "test-daily-room-deleted-456";
-      const dailyRef = await prisma.bookingReference.create({
-        data: {
-          type: "daily_video",
-          uid: roomName,
-          meetingId: roomName,
-          credentialId: testCredential.id,
-          bookingId: testBooking.id,
-          deleted: true,
-        },
-      });
-      createdBookingReferenceIds.push(dailyRef.id);
-
-      const result = await BookingReferenceRepository.findDailyVideoReferenceByRoomName({
-        roomName,
-      });
-
-      expect(result).toBeNull();
-    });
-
-    it("should return null when room name does not exist", async () => {
-      const result = await BookingReferenceRepository.findDailyVideoReferenceByRoomName({
-        roomName: "non-existent-room",
-      });
-
-      expect(result).toBeNull();
-    });
-
-    it("should not return daily video references without a booking", async () => {
-      const roomName = "test-daily-room-no-booking";
-      const dailyRef = await prisma.bookingReference.create({
-        data: {
-          type: "daily_video",
-          uid: roomName,
-          meetingId: roomName,
-          credentialId: testCredential.id,
-          bookingId: null,
-        },
-      });
-      createdBookingReferenceIds.push(dailyRef.id);
-
-      const result = await BookingReferenceRepository.findDailyVideoReferenceByRoomName({
-        roomName,
-      });
-
-      expect(result).toBeNull();
     });
   });
 
