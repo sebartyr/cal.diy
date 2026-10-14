@@ -1,12 +1,10 @@
-import type { z } from "zod";
-
 import type { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
-
+import type { z } from "zod";
 import type { appDataSchemas } from "../../apps.schemas.generated";
-import type { appDataSchema, paymentOptionEnum } from "../../stripepayment/zod";
 import type { EventTypeAppsList } from "../../utils";
 import { eventTypeMetaDataSchemaWithTypedApps } from "../../zod-utils";
 import { getEventTypeAppData } from "../getEventTypeAppData";
+import type { paymentAppDataSchema, paymentOptionEnum } from "./paymentAppDataSchema";
 
 export function getPaymentAppData(
   _eventType: {
@@ -38,8 +36,8 @@ export function getPaymentAppData(
   // @TODO: a lot of unknowns types here can be improved later
   const paymentAppIds = (Object.keys(metadataApps) as Array<keyof typeof appDataSchemas>).filter(
     (app) =>
-      (metadataApps[app as appId] as unknown as z.infer<typeof appDataSchema>)?.price &&
-      (metadataApps[app as appId] as unknown as z.infer<typeof appDataSchema>)?.enabled
+      (metadataApps[app as appId] as unknown as z.infer<typeof paymentAppDataSchema>)?.price &&
+      (metadataApps[app as appId] as unknown as z.infer<typeof paymentAppDataSchema>)?.enabled
   );
 
   // Event type should only have one payment app data
@@ -57,7 +55,16 @@ export function getPaymentAppData(
   for (const appId of paymentAppIds) {
     const appData = getEventTypeAppData(eventType, appId, forcedGet);
     if (appData && paymentAppData === null) {
-      const data = appData as { enabled?: boolean; price?: number; currency?: string; paymentOption?: string; credentialId?: number; refundPolicy?: string; refundDaysCount?: number; refundCountCalendarDays?: boolean };
+      const data = appData as {
+        enabled?: boolean;
+        price?: number;
+        currency?: string;
+        paymentOption?: string;
+        credentialId?: number;
+        refundPolicy?: string;
+        refundDaysCount?: number;
+        refundCountCalendarDays?: boolean;
+      };
       paymentAppData = {
         enabled: data.enabled ?? false,
         price: data.price ?? 0,

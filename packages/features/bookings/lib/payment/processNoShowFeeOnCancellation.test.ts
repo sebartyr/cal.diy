@@ -60,7 +60,7 @@ describe("processNoShowFeeOnCancellation", () => {
   const mockHoldPayment: Payment = {
     id: 1,
     uid: "payment-123",
-    appId: "stripe",
+    appId: "mock-payment-app",
     bookingId: 1,
     amount: 5000,
     fee: 0,
@@ -89,7 +89,7 @@ describe("processNoShowFeeOnCancellation", () => {
       vi.mocked(handleNoShowFee).mockResolvedValue({
         id: 999,
         uid: "payment-charged-123",
-        appId: "stripe",
+        appId: "mock-payment-app",
         bookingId: 1,
         amount: 5000,
         fee: 0,
@@ -123,7 +123,7 @@ describe("processNoShowFeeOnCancellation", () => {
       vi.mocked(handleNoShowFee).mockResolvedValue({
         id: 999,
         uid: "payment-charged-123",
-        appId: "stripe",
+        appId: "mock-payment-app",
         bookingId: 1,
         amount: 5000,
         fee: 0,
@@ -248,7 +248,7 @@ describe("processNoShowFeeOnCancellation", () => {
       vi.mocked(handleNoShowFee).mockResolvedValue({
         id: 999,
         uid: "payment-charged-123",
-        appId: "stripe",
+        appId: "mock-payment-app",
         bookingId: 1,
         amount: 5000,
         fee: 0,
@@ -288,7 +288,7 @@ describe("processNoShowFeeOnCancellation", () => {
       vi.mocked(handleNoShowFee).mockResolvedValue({
         id: 999,
         uid: "payment-charged-123",
-        appId: "stripe",
+        appId: "mock-payment-app",
         bookingId: 1,
         amount: 5000,
         fee: 0,
@@ -345,7 +345,7 @@ describe("processNoShowFeeOnCancellation", () => {
       vi.mocked(handleNoShowFee).mockResolvedValue({
         id: 999,
         uid: "payment-charged-123",
-        appId: "stripe",
+        appId: "mock-payment-app",
         bookingId: 1,
         amount: 5000,
         fee: 0,
@@ -416,7 +416,7 @@ describe("processNoShowFeeOnCancellation", () => {
       vi.mocked(handleNoShowFee).mockResolvedValue({
         id: 999,
         uid: "payment-charged-123",
-        appId: "stripe",
+        appId: "mock-payment-app",
         bookingId: 1,
         amount: 5000,
         fee: 0,
@@ -447,16 +447,18 @@ describe("processNoShowFeeOnCancellation", () => {
         ...mockBooking,
         eventType: {
           ...mockBooking.eventType,
+          // The metadata goes through eventTypeMetaDataSchemaWithTypedApps, which drops any app
+          // key or field it does not know. mock-payment-app is the only payment app left and its
+          // schema has no autoChargeNoShowFee* fields (those were stripe's), so only fields it
+          // declares are used here; anything else would be stripped and the comparison below
+          // would fail for a reason unrelated to the code under test.
           metadata: {
             apps: {
-              stripe: {
+              "mock-payment-app": {
                 enabled: true,
                 price: 1000,
                 currency: "usd",
-                autoChargeNoShowFeeIfCancelled: true,
                 paymentOption: "HOLD",
-                autoChargeNoShowFeeTimeValue: 2,
-                autoChargeNoShowFeeTimeUnit: "hours",
               },
             },
           },
@@ -467,7 +469,7 @@ describe("processNoShowFeeOnCancellation", () => {
       vi.mocked(handleNoShowFee).mockResolvedValue({
         id: 999,
         uid: "payment-charged-123",
-        appId: "stripe",
+        appId: "mock-payment-app",
         bookingId: 1,
         amount: 5000,
         fee: 0,

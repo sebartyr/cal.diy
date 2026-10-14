@@ -1,8 +1,7 @@
-import type { Page } from "@playwright/test";
-import { v4 as uuidv4 } from "uuid";
-
 import { prisma } from "@calcom/prisma";
 import type { Payment } from "@calcom/prisma/client";
+import type { Page } from "@playwright/test";
+import { v4 as uuidv4 } from "uuid";
 
 type PaymentFixture = ReturnType<typeof createPaymentFixture>;
 
@@ -24,7 +23,8 @@ export const createPaymentsFixture = (page: Page) => {
           refunded,
           app: {
             connect: {
-              slug: "stripe",
+              // stripe was removed; mock-payment-app is the only payment app left.
+              slug: "mock-payment-app",
             },
           },
           data: {},

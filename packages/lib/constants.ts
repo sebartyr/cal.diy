@@ -173,9 +173,10 @@ export const DEFAULT_DARK_BRAND_COLOR = "#deddee";
 
 export const TOP_BANNER_HEIGHT = 40;
 
-export const IS_PREMIUM_USERNAME_ENABLED =
-  (IS_CALCOM || (process.env.NEXT_PUBLIC_IS_E2E && IS_STRIPE_ENABLED)) &&
-  process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PLAN_PRICE_MONTHLY;
+// Premium usernames were sold through the stripepayment app, which has been removed. The flag
+// used to derive from IS_CALCOM and the Stripe env vars; it is pinned to false so that setting
+// those vars can never route signup to a handler, or a payment provider, that no longer exists.
+export const IS_PREMIUM_USERNAME_ENABLED = false;
 
 // Max number of invites to join a team/org that can be sent at once
 export const MAX_NB_INVITES = 100;

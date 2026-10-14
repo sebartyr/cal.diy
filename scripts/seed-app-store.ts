@@ -2,14 +2,15 @@
  * @deprecated
  * This file is deprecated. The only use of this file is to seed the database for E2E tests. Each test should take care of seeding it's own data going forward.
  */
-import dotEnv from "dotenv";
-import path from "node:path"
 
-import { appStoreMetadata } from "@calcom/app-store/appStoreMetaData";
+import path from "node:path";
+import process from "node:process";
 import { shouldEnableApp } from "@calcom/app-store/_utils/validateAppKeys";
+import { appStoreMetadata } from "@calcom/app-store/appStoreMetaData";
 import prisma from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import { AppCategories } from "@calcom/prisma/enums";
+import dotEnv from "dotenv";
 
 dotEnv.config({ path: path.resolve(__dirname, "../.env") });
 dotEnv.config({ path: path.resolve(__dirname, "../.env.appStore") });
@@ -128,10 +129,6 @@ export default async function main() {
       client_id: process.env.MS_GRAPH_CLIENT_ID,
       client_secret: process.env.MS_GRAPH_CLIENT_SECRET,
     });
-    await createApp("msteams", "office365video", ["conferencing"], "office365_video", {
-      client_id: process.env.MS_GRAPH_CLIENT_ID,
-      client_secret: process.env.MS_GRAPH_CLIENT_SECRET,
-    });
   }
   if (
     process.env.LARK_OPEN_APP_ID &&
@@ -213,25 +210,6 @@ export default async function main() {
   if (process.env.HUDDLE01_API_TOKEN) {
     await createApp("huddle01", "huddle01video", ["conferencing"], "huddle01_video", {
       apiKey: process.env.HUDDLE01_API_TOKEN,
-    });
-  }
-
-  // Payment apps
-  if (
-    process.env.STRIPE_CLIENT_ID &&
-    process.env.STRIPE_PRIVATE_KEY &&
-    process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY &&
-    process.env.STRIPE_WEBHOOK_SECRET &&
-    process.env.PAYMENT_FEE_FIXED &&
-    process.env.PAYMENT_FEE_PERCENTAGE
-  ) {
-    await createApp("stripe", "stripepayment", ["payment"], "stripe_payment", {
-      client_id: process.env.STRIPE_CLIENT_ID,
-      client_secret: process.env.STRIPE_PRIVATE_KEY,
-      payment_fee_fixed: Number(process.env.PAYMENT_FEE_FIXED),
-      payment_fee_percentage: Number(process.env.PAYMENT_FEE_PERCENTAGE),
-      public_key: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY,
-      webhook_secret: process.env.STRIPE_WEBHOOK_SECRET,
     });
   }
 

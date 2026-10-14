@@ -45,30 +45,6 @@ const userIncludes = {
   credentials: true,
 } satisfies Prisma.UserInclude;
 
-type InstallStripeParamsSkipTrue = {
-  eventTypeIds?: number[];
-  skip: true;
-};
-
-type InstallStripeParamsSkipFalse = {
-  skip: false;
-  eventTypeIds: number[];
-};
-type InstallStripeParamsUnion = InstallStripeParamsSkipTrue | InstallStripeParamsSkipFalse;
-type InstallStripeTeamPramas = InstallStripeParamsUnion & {
-  page: Page;
-  teamId: number;
-};
-type InstallStripePersonalPramas = InstallStripeParamsUnion & {
-  page: Page;
-};
-
-type InstallStripeParams = InstallStripeParamsUnion & {
-  redirectUrl: string;
-  buttonSelector: string;
-  page: Page;
-};
-
 const _userWithEventTypes = {
   include: userIncludes,
 } satisfies Prisma.UserDefaultArgs;
@@ -632,23 +608,49 @@ const createUserFixture = (user: UserWithIncludes, page: Page) => {
     eventTypes: user.eventTypes,
     self,
     apiLogin: async (navigateToUrl?: string, password?: string) =>
-      apiLogin({ ...(await self()), password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1` }, store.page, navigateToUrl),
+      apiLogin(
+        {
+          ...(await self()),
+          password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1`,
+        },
+        store.page,
+        navigateToUrl
+      ),
     /** Don't forget to close context at the end */
     apiLoginOnNewBrowser: async (browser: Browser, password?: string) => {
       const newContext = await browser.newContext();
       const newPage = await newContext.newPage();
-      await apiLogin({ ...(await self()), password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1` }, newPage);
+      await apiLogin(
+        {
+          ...(await self()),
+          password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1`,
+        },
+        newPage
+      );
       // Don't forget to: newContext.close();
       return [newContext, newPage] as const;
     },
     /**
      * @deprecated use apiLogin instead
      */
-    login: async (password?: string) => login({ ...(await self()), password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1` }, store.page),
+    login: async (password?: string) =>
+      login(
+        {
+          ...(await self()),
+          password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1`,
+        },
+        store.page
+      ),
     loginOnNewBrowser: async (browser: Browser, password?: string) => {
       const newContext = await browser.newContext();
       const newPage = await newContext.newPage();
-      await login({ ...(await self()), password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1` }, newPage);
+      await login(
+        {
+          ...(await self()),
+          password: password ?? `${user.username!.charAt(0).toUpperCase()}${user.username!.slice(1)}1`,
+        },
+        newPage
+      );
       // Don't forget to: newContext.close();
       return [newContext, newPage] as const;
     },
@@ -755,15 +757,6 @@ const createUserFixture = (user: UserWithIncludes, page: Page) => {
         },
       });
     },
-    setupEventWithPrice: async (eventType: Pick<EventType, "id">, slug: string) =>
-      setupEventWithPrice(eventType, slug, store.page),
-    bookAndPayEvent: async (eventType: Pick<EventType, "slug">) =>
-      bookAndPayEvent(user, eventType, store.page),
-    makePaymentUsingStripe: async () => makePaymentUsingStripe(store.page),
-    installStripePersonal: async (params: InstallStripeParamsUnion) =>
-      installStripePersonal({ page: store.page, ...params }),
-    installStripeTeam: async (params: InstallStripeParamsUnion & { teamId: number }) =>
-      installStripeTeam({ page: store.page, ...params }),
     // this is for development only aimed to inject debugging messages in the metadata field of the user
     debug: async (message: string | Record<string, JSONValue>) => {
       await prisma.user.update({
@@ -772,7 +765,6 @@ const createUserFixture = (user: UserWithIncludes, page: Page) => {
       });
     },
     delete: async () => await prisma.user.delete({ where: { id: store.user.id } }),
-    confirmPendingPayment: async () => confirmPendingPayment(store.page),
     getFirstProfile: async () => {
       return prisma.profile.findFirstOrThrow({
         where: {
@@ -911,37 +903,6 @@ const createUser = (
   }
 };
 
-async function confirmPendingPayment(page: Page) {
-  await page.waitForURL(/\/booking\/*/);
-
-  const url = page.url();
-
-  const params = new URLSearchParams(url.split("?")[1]);
-
-  const id = params.get("payment_intent");
-
-  if (!id) throw new Error(`Payment intent not found in url ${url}`);
-
-  const payload = JSON.stringify(
-    { type: "payment_intent.succeeded", data: { object: { id } }, account: "e2e_test" },
-    null,
-    2
-  );
-
-  const signature = stripe.webhooks.generateTestHeaderString({
-    payload,
-    secret: process.env.STRIPE_WEBHOOK_SECRET as string,
-  });
-
-  const response = await page.request.post("/api/integrations/stripepayment/webhook", {
-    data: payload,
-    headers: { "stripe-signature": signature },
-  });
-
-  if (response.status() !== 200)
-    throw new Error(`Failed to confirm payment. Response: ${await response.text()}`);
-}
-
 // login using a replay of an E2E routine.
 export async function login(
   user: Pick<User, "username"> & Partial<Pick<User, "email">> & { password?: string | null },
@@ -1042,88 +1003,3 @@ export async function apiLogin(
 
   return response;
 }
-
-export async function setupEventWithPrice(eventType: Pick<EventType, "id">, slug: string, page: Page) {
-  await page.goto(`/event-types/${eventType?.id}?tabName=apps`);
-  await page.locator(`[data-testid='${slug}-app-switch']`).first().click();
-  await page.getByPlaceholder("Price").fill("100");
-  await page.getByTestId("update-eventtype").click();
-}
-
-export async function bookAndPayEvent(
-  user: Pick<User, "username">,
-  eventType: Pick<EventType, "slug">,
-  page: Page
-) {
-  // booking process with stripe integration
-  await page.goto(`${user.username}/${eventType?.slug}`);
-  await selectFirstAvailableTimeSlotNextMonth(page);
-  // --- fill form
-  await page.fill('[name="name"]', "Stripe Stripeson");
-  await page.fill('[name="email"]', "test@example.com");
-
-  await Promise.all([page.waitForURL("/payment/*"), page.press('[name="email"]', "Enter")]);
-
-  await makePaymentUsingStripe(page);
-}
-
-export async function makePaymentUsingStripe(page: Page) {
-  const stripeElement = await page.locator(".StripeElement").first();
-  const stripeFrame = stripeElement.frameLocator("iframe").first();
-  await stripeFrame.locator('[name="number"]').fill("4242 4242 4242 4242");
-  const now = new Date();
-  await stripeFrame.locator('[name="expiry"]').fill(`${now.getMonth() + 1} / ${now.getFullYear() + 1}`);
-  await stripeFrame.locator('[name="cvc"]').fill("111");
-  const postcalCodeIsVisible = await stripeFrame.locator('[name="postalCode"]').isVisible();
-  if (postcalCodeIsVisible) {
-    await stripeFrame.locator('[name="postalCode"]').fill("111111");
-  }
-  await page.click('button:has-text("Pay now")');
-}
-
-const installStripePersonal = async (params: InstallStripePersonalPramas) => {
-  const redirectUrl = `apps/installation/event-types?slug=stripe`;
-  const buttonSelector = '[data-testid="install-app-button-personal"]';
-  await installStripe({ redirectUrl, buttonSelector, ...params });
-};
-
-const installStripeTeam = async ({ teamId, ...params }: InstallStripeTeamPramas) => {
-  const redirectUrl = `apps/installation/event-types?slug=stripe&teamId=${teamId}`;
-  const buttonSelector = `[data-testid="install-app-button-team${teamId}"]`;
-  await installStripe({ redirectUrl, buttonSelector, ...params });
-};
-const installStripe = async ({
-  page,
-  skip,
-  eventTypeIds,
-  redirectUrl,
-  buttonSelector,
-}: InstallStripeParams) => {
-  await page.goto("/apps/stripe");
-  /** We start the Stripe flow */
-  await page.click('[data-testid="install-app-button"]');
-  await page.click(buttonSelector);
-
-  await page.waitForURL("https://connect.stripe.com/oauth/v2/authorize?*");
-  /** We skip filling Stripe forms (testing mode only) */
-  await page.click('[id="skip-account-app"]');
-  await page.waitForURL(redirectUrl);
-  if (skip) {
-    await page.click('[data-testid="set-up-later"]');
-    return;
-  }
-  for (const id of eventTypeIds) {
-    await page.click(`[data-testid="select-event-type-${id}"]`);
-  }
-  await page.click(`[data-testid="save-event-types"]`);
-  for (let index = 0; index < eventTypeIds.length; index++) {
-    await page.locator('[data-testid="stripe-price-input"]').nth(index).fill(`1${index}`);
-  }
-  await page.click(`[data-testid="configure-step-save"]`);
-  await page.waitForURL(`event-types`);
-  for (let index = 0; index < eventTypeIds.length; index++) {
-    await page.goto(`event-types/${eventTypeIds[index]}?tabName=apps`);
-    await expect(page.getByTestId(`stripe-app-switch`)).toBeChecked();
-    await expect(page.getByTestId(`stripe-price-input`)).toHaveValue(`1${index}`);
-  }
-};

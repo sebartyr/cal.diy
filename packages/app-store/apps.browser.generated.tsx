@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 export const InstallAppButtonMap = {
   exchange2013calendar: dynamic(() => import("./exchange2013calendar/components/InstallAppButton")),
   exchange2016calendar: dynamic(() => import("./exchange2016calendar/components/InstallAppButton")),
-  office365video: dynamic(() => import("./office365video/components/InstallAppButton")),
 };
 export const AppSettingsComponentsMap = {
   "general-app-settings": dynamic(
@@ -17,7 +16,6 @@ export const EventTypeAddonMap = {
   "mock-payment-app": dynamic(() => import("./mock-payment-app/components/EventTypeAppCardInterface")),
   "pipedrive-crm": dynamic(() => import("./pipedrive-crm/components/EventTypeAppCardInterface")),
   qr_code: dynamic(() => import("./qr_code/components/EventTypeAppCardInterface")),
-  stripepayment: dynamic(() => import("./stripepayment/components/EventTypeAppCardInterface")),
   "booking-pages-tag": dynamic(
     () => import("./templates/booking-pages-tag/components/EventTypeAppCardInterface")
   ),
@@ -27,5 +25,4 @@ export const EventTypeAddonMap = {
 };
 export const EventTypeSettingsMap = {
   qr_code: dynamic(() => import("./qr_code/components/EventTypeAppSettingsInterface")),
-  stripepayment: dynamic(() => import("./stripepayment/components/EventTypeAppSettingsInterface")),
 };

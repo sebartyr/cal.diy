@@ -1,8 +1,6 @@
-import type { z } from "zod";
-
 import type { eventTypeMetaDataSchemaWithTypedApps } from "@calcom/app-store/zod-utils";
 import type { BookerEventForAppData } from "@calcom/features/bookings/types.server";
-
+import type { z } from "zod";
 import type { CommonAppData } from "./commonAppDataType";
 
 export type EventTypeApps = NonNullable<
@@ -32,22 +30,8 @@ export const getEventTypeAppData = <T extends EventTypeAppsList>(
         }
       : null;
   }
-  // Backward compatibility for existing event types.
-  // TODO: After the new AppStore EventType App flow is stable, write a migration to migrate metadata to new format which will let us remove this compatibility code
-  // Migration isn't being done right now, to allow a revert if needed
-  const legacyAppsData = {
-    stripe: {
-      enabled: !!eventType.price,
-      // Price default is 0 in DB. So, it would always be non nullish.
-      price: eventType.price,
-      // Currency default is "usd" in DB.So, it would also be available always
-      currency: eventType.currency,
-      paymentOption: "ON_BOOKING",
-    },
-  } as const;
-
-  // TODO: This assertion helps typescript hint that only one of the app's data can be returned
-  const legacyAppData = legacyAppsData[appId as Extract<T, keyof typeof legacyAppsData>];
-  const allowDataGet = forcedGet ? true : legacyAppData?.enabled;
-  return allowDataGet ? legacyAppData : null;
+  // The legacy branch for event types storing their price on the price/currency columns rather
+  // than in metadata.apps served the stripe app only, which has been removed. No event type in
+  // this deployment has a non-zero price.
+  return null;
 };

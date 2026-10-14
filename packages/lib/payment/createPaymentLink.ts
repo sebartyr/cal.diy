@@ -1,6 +1,6 @@
-
+// Builds the generic /payment/<uid> URL. Lived in the stripepayment app until it was
+// removed, though it has never had anything Stripe-specific in it.
 import { WEBSITE_URL } from "@calcom/lib/constants";
-
 // biome-ignore lint/style/useNodejsImportProtocol: No node env
 import { stringify } from "querystring";
 

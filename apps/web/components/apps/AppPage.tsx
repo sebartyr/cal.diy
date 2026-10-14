@@ -21,7 +21,6 @@ import { Badge } from "@calcom/ui/components/badge";
 import { Button } from "@calcom/ui/components/button";
 import {
   BookOpenIcon,
-  CircleAlertIcon,
   ExternalLinkIcon,
   FileIcon,
   FlagIcon,
@@ -383,21 +382,6 @@ export const AppPage = ({
           </header>
         </div>
         {installOrDisconnectAppButton()}
-
-        {slug === "msteams" && (
-          <div className="bg-info mt-4 rounded-md px-4 py-3">
-            <div className="items-start space-x-2.5">
-              <div className="text-info flex items-start">
-                <div>
-                  <CircleAlertIcon className="mr-2 mt-1 font-semibold" />
-                </div>
-                <div>
-                  <span className="font-semibold">{t("msteams_calendar_warning_body")}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {dependencies &&
           (!dependencyData.isPending ? (

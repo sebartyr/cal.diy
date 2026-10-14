@@ -34,7 +34,6 @@
     "framer-motion": "10.12.8",
     "react-select": "5.8.0",
     "react-sticky-box": "2.0.4",
-    "stripe": "9.16.0",
     "web-push": "3.6.7",
     "zustand": "4.5.2"
   },

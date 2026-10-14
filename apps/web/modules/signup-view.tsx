@@ -1,10 +1,7 @@
 "use client";
 
-import getStripe from "@calcom/app-store/stripepayment/lib/client";
-import { getPremiumPlanPriceValue } from "@calcom/app-store/stripepayment/lib/utils";
 import {
   fetchSignup,
-  hasCheckoutSession,
   isAccountUnderReview,
   isUserAlreadyExistsError,
 } from "@calcom/features/auth/signup/lib/fetchSignup";
@@ -36,7 +33,7 @@ import { Button } from "@calcom/ui/components/button";
 import { CheckboxField, Form, PasswordField, SelectField, TextField } from "@calcom/ui/components/form";
 import { Icon } from "@calcom/ui/components/icon";
 import { showToast } from "@calcom/ui/components/toast";
-import { InfoIcon, ShieldCheckIcon, StarIcon } from "@coss/ui/icons";
+import { InfoIcon, ShieldCheckIcon } from "@coss/ui/icons";
 import { Analytics as DubAnalytics } from "@dub/analytics/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { getServerSideProps } from "@lib/signup/getServerSideProps";
@@ -165,16 +162,6 @@ function UsernameField({
                 <InfoIcon className="mr-1 inline-block h-4 w-4" />
                 <p>{t("already_in_use_error")}</p>
               </div>
-            ) : premium ? (
-              <div data-testid="premium-username-warning" className="flex items-center">
-                <StarIcon className="mr-1 inline-block h-4 w-4" />
-                <p>
-                  {t("premium_username", {
-                    price: getPremiumPlanPriceValue(),
-                    interpolation: { escapeValue: false },
-                  })}
-                </p>
-              </div>
             ) : null}
           </div>
         </div>
@@ -265,17 +252,6 @@ export default function Signup({
           setTimeout(() => {
             router.push(`/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
           }, 3000);
-          return;
-        }
-
-        if (hasCheckoutSession(result)) {
-          const stripe = await getStripe();
-          if (stripe) {
-            const { error } = await stripe.redirectToCheckout({
-              sessionId: result.error.checkoutSessionId,
-            });
-            if (error) console.warn(error.message);
-          }
           return;
         }
 
@@ -511,15 +487,8 @@ export default function Signup({
                           setPremium={(value) => setPremiumUsername(value)}
                           addOnLeading={
                             orgSlug
-                              ? truncateDomain(
-                                  `${WEBAPP_URL.replace(
-                                    URL_PROTOCOL_REGEX,
-                                    ""
-                                  )}/`
-                                )
-                              : truncateDomain(
-                                  `${WEBSITE_URL.replace(URL_PROTOCOL_REGEX, "")}/`
-                                )
+                              ? truncateDomain(`${WEBAPP_URL.replace(URL_PROTOCOL_REGEX, "")}/`)
+                              : truncateDomain(`${WEBSITE_URL.replace(URL_PROTOCOL_REGEX, "")}/`)
                           }
                         />
                       ) : null}
@@ -588,9 +557,7 @@ export default function Signup({
                           isSubmitting ||
                           usernameTaken
                         }>
-                        {premiumUsername && !usernameTaken
-                          ? `${t("get_started")} (${getPremiumPlanPriceValue()})`
-                          : t("get_started")}
+                        {t("get_started")}
                       </Button>
                     </Form>
                   </div>

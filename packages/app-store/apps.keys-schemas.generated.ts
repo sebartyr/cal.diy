@@ -10,11 +10,9 @@ import { appKeysSchema as jitsivideo_zod_ts } from "./jitsivideo/zod";
 import { appKeysSchema as larkcalendar_zod_ts } from "./larkcalendar/zod";
 import { appKeysSchema as mock_payment_app_zod_ts } from "./mock-payment-app/zod";
 import { appKeysSchema as office365calendar_zod_ts } from "./office365calendar/zod";
-import { appKeysSchema as office365video_zod_ts } from "./office365video/zod";
 import { appKeysSchema as openvisio_zod_ts } from "./openvisio/zod";
 import { appKeysSchema as pipedrive_crm_zod_ts } from "./pipedrive-crm/zod";
 import { appKeysSchema as qr_code_zod_ts } from "./qr_code/zod";
-import { appKeysSchema as stripepayment_zod_ts } from "./stripepayment/zod";
 import { appKeysSchema as booking_pages_tag_zod_ts } from "./templates/booking-pages-tag/zod";
 import { appKeysSchema as event_type_app_card_zod_ts } from "./templates/event-type-app-card/zod";
 import { appKeysSchema as zohocalendar_zod_ts } from "./zohocalendar/zod";
@@ -28,11 +26,9 @@ export const appKeysSchemas = {
   larkcalendar: larkcalendar_zod_ts,
   "mock-payment-app": mock_payment_app_zod_ts,
   office365calendar: office365calendar_zod_ts,
-  office365video: office365video_zod_ts,
   openvisio: openvisio_zod_ts,
   "pipedrive-crm": pipedrive_crm_zod_ts,
   qr_code: qr_code_zod_ts,
-  stripe: stripepayment_zod_ts,
   "booking-pages-tag": booking_pages_tag_zod_ts,
   "event-type-app-card": event_type_app_card_zod_ts,
   zohocalendar: zohocalendar_zod_ts,

@@ -1954,7 +1954,7 @@ __metadata:
     reflect-metadata: "npm:0.1.14"
     rxjs: "npm:7.8.2"
     source-map-support: "npm:0.5.21"
-    stripe: "npm:15.4.0"
+    stripe: "npm:9.16.0"
     supertest: "npm:6.3.4"
     ts-jest: "npm:29.1.4"
     ts-loader: "npm:9.5.1"
@@ -1997,7 +1997,6 @@ __metadata:
     "@calcom/features": "workspace:*"
     "@calcom/i18n": "workspace:*"
     "@calcom/lib": "workspace:*"
-    "@calcom/office365video": "workspace:*"
     "@calcom/testing": "workspace:*"
     "@calcom/types": "workspace:*"
     "@calcom/ui": "workspace:*"
@@ -2169,7 +2168,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@calcom/emails@workspace:*, @calcom/emails@workspace:packages/emails":
+"@calcom/emails@workspace:packages/emails":
   version: 0.0.0-use.local
   resolution: "@calcom/emails@workspace:packages/emails"
   dependencies:
@@ -2347,7 +2346,6 @@ __metadata:
     framer-motion: "npm:10.12.8"
     react-select: "npm:5.8.0"
     react-sticky-box: "npm:2.0.4"
-    stripe: "npm:9.16.0"
     trigger.dev: "npm:4.3.2"
     web-push: "npm:3.6.7"
     zustand: "npm:4.5.2"
@@ -2493,16 +2491,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@calcom/office365video@workspace:*, @calcom/office365video@workspace:packages/app-store/office365video":
-  version: 0.0.0-use.local
-  resolution: "@calcom/office365video@workspace:packages/app-store/office365video"
-  dependencies:
-    "@calcom/lib": "workspace:*"
-    "@calcom/prisma": "workspace:*"
-    "@calcom/types": "workspace:*"
-  languageName: unknown
-  linkType: soft
-
 "@calcom/openvisio@workspace:packages/app-store/openvisio":
   version: 0.0.0-use.local
   resolution: "@calcom/openvisio@workspace:packages/app-store/openvisio"
@@ -2620,26 +2608,6 @@ __metadata:
   dependencies:
     "@calcom/lib": "workspace:*"
     "@calcom/types": "workspace:*"
-  languageName: unknown
-  linkType: soft
-
-"@calcom/stripepayment@workspace:packages/app-store/stripepayment":
-  version: 0.0.0-use.local
-  resolution: "@calcom/stripepayment@workspace:packages/app-store/stripepayment"
-  dependencies:
-    "@calcom/app-store": "workspace:*"
-    "@calcom/dayjs": "workspace:*"
-    "@calcom/emails": "workspace:*"
-    "@calcom/features": "workspace:*"
-    "@calcom/lib": "workspace:*"
-    "@calcom/prisma": "workspace:*"
-    "@calcom/types": "workspace:*"
-    "@stripe/react-stripe-js": "npm:1.10.0"
-    "@stripe/stripe-js": "npm:1.35.0"
-    stripe: "npm:9.16.0"
-    ts-node: "npm:10.9.2"
-    uuid: "npm:8.3.2"
-    zod: "npm:3.25.76"
   languageName: unknown
   linkType: soft
 
@@ -2851,7 +2819,6 @@ __metadata:
     "@types/react": "npm:18.0.26"
     "@types/remove-markdown": "npm:0.3.1"
     "@types/sanitize-html": "npm:2.9.0"
-    "@types/stripe": "npm:8.0.417"
     "@types/turndown": "npm:5.0.1"
     "@types/uuid": "npm:8.3.1"
     "@upstash/redis": "npm:1.35.2"
@@ -2919,7 +2886,6 @@ __metadata:
     sharp: "npm:0.35.4"
     short-uuid: "npm:4.2.0"
     sonner: "npm:1.7.4"
-    stripe: "npm:9.16.0"
     superjson: "npm:1.9.1"
     tailwindcss: "npm:4.1.17"
     ts-node: "npm:10.9.2"
@@ -15516,15 +15482,6 @@ __metadata:
   version: 2.0.5
   resolution: "@types/statuses@npm:2.0.5"
   checksum: 10/3f2609f660b45a878c6782f2fb2cef9f08bbd4e89194bf7512e747b8a73b056839be1ad6f64b1353765528cd8a5e93adeffc471cde24d0d9f7b528264e7154e5
-  languageName: node
-  linkType: hard
-
-"@types/stripe@npm:8.0.417":
-  version: 8.0.417
-  resolution: "@types/stripe@npm:8.0.417"
-  dependencies:
-    stripe: "npm:*"
-  checksum: 10/9ce7a189ef35d10da2b0a1947a53526024d62a7475f97dcf937c447dbc625b93ef4aeff1748b7ff661e68ef5380f72d5b2d5d08b70d36e878ac736d5c85d7bb8
   languageName: node
   linkType: hard
 
@@ -35409,16 +35366,6 @@ __metadata:
   version: 2.0.1
   resolution: "strip-json-comments@npm:2.0.1"
   checksum: 10/1074ccb63270d32ca28edfb0a281c96b94dc679077828135141f27d52a5a398ef5e78bcf22809d23cadc2b81dfbe345eb5fd8699b385c8b1128907dec4a7d1e1
-  languageName: node
-  linkType: hard
-
-"stripe@npm:*, stripe@npm:15.4.0":
-  version: 15.4.0
-  resolution: "stripe@npm:15.4.0"
-  dependencies:
-    "@types/node": "npm:>=8.1.0"
-    qs: "npm:^6.11.0"
-  checksum: 10/4501aa80eb6fb07a50ff0763c65b4620add39d0ed096779ef4c60671ff3552ca2069dee47c2bc20c783324a7c139c4566a813fef6c315cd2ecd69c4b3ac43849
   languageName: node
   linkType: hard
 
