@@ -659,6 +659,91 @@ describe("handleNewBooking", () => {
         timeout
       );
 
+      test(
+        `should reschedule a booking to a slot that overlaps the booking being rescheduled
+          1. Should not treat the booking being rescheduled as a conflict
+          2. Should cancel the existing booking and create the new one
+    `,
+        async () => {
+          const handleNewBooking = getNewBookingHandler();
+          const booker = getBooker({
+            email: "booker@example.com",
+            name: "Booker",
+          });
+
+          const organizer = getOrganizer({
+            name: "Organizer",
+            email: "organizer@example.com",
+            id: 101,
+            schedules: [TestData.schedules.IstWorkHours],
+          });
+
+          const { dateString: plus1DateString } = getDate({ dateIncrement: 1 });
+          const uidOfBookingToBeRescheduled = "overlapping-reschedule-uid";
+          await createBookingScenario(
+            getScenarioData({
+              eventTypes: [
+                {
+                  id: 1,
+                  slotInterval: 15,
+                  length: 30,
+                  locations: [{ type: "link", link: "https://example.com/meet" }],
+                  users: [
+                    {
+                      id: 101,
+                    },
+                  ],
+                },
+              ],
+              bookings: [
+                {
+                  uid: uidOfBookingToBeRescheduled,
+                  eventTypeId: 1,
+                  userId: 101,
+                  status: BookingStatus.ACCEPTED,
+                  startTime: `${plus1DateString}T05:00:00.000Z`,
+                  endTime: `${plus1DateString}T05:30:00.000Z`,
+                },
+              ],
+              organizer,
+            })
+          );
+
+          const mockBookingData = getMockRequestDataForBooking({
+            data: {
+              eventTypeId: 1,
+              rescheduleUid: uidOfBookingToBeRescheduled,
+              start: `${plus1DateString}T05:15:00.000Z`,
+              end: `${plus1DateString}T05:45:00.000Z`,
+              responses: {
+                email: booker.email,
+                name: booker.name,
+                location: { optionValue: "", value: "link" },
+              },
+            },
+          });
+
+          const createdBooking = await handleNewBooking({
+            bookingData: mockBookingData,
+          });
+
+          expect(createdBooking.startTime?.toISOString()).toBe(`${plus1DateString}T05:15:00.000Z`);
+          expect(createdBooking.endTime?.toISOString()).toBe(`${plus1DateString}T05:45:00.000Z`);
+
+          await expectBookingToBeInDatabase({
+            uid: uidOfBookingToBeRescheduled,
+            status: BookingStatus.CANCELLED,
+          });
+          await expectBookingToBeInDatabase({
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            uid: createdBooking.uid!,
+            status: BookingStatus.ACCEPTED,
+            fromReschedule: uidOfBookingToBeRescheduled,
+          });
+        },
+        timeout
+      );
+
       describe("Event Type that requires confirmation", () => {
         test(
           `should reschedule a booking that requires confirmation in PENDING state - When a booker(who is not the organizer himself) is doing the reschedule

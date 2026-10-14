@@ -185,12 +185,18 @@ async function saveBooking(
       // Re-check for an overlapping accepted booking. The lock guarantees
       // serial execution from this point forward for the same (user, slot)
       // pair, so a row visible here is final.
+      //
+      // The booking being rescheduled is still ACCEPTED at this point (it is
+      // cancelled just below, in this same transaction), so it must not count
+      // as a conflict: otherwise moving a booking to a slot that overlaps its
+      // current one always fails.
       const conflict = await tx.booking.findFirst({
         where: {
           userId: organizerUser.id,
           status: BookingStatus.ACCEPTED,
           startTime: { lt: endTime },
           endTime: { gt: startTime },
+          ...(originalRescheduledBooking ? { id: { not: originalRescheduledBooking.id } } : {}),
         },
         select: { id: true, uid: true, startTime: true },
       });
