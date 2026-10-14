@@ -559,6 +559,11 @@ const nextConfig = (phase: string): NextConfig => {
           permanent: true,
         },
         {
+          source: "/call/:path*",
+          destination: "/video/:path*",
+          permanent: false,
+        },
+        {
           source: "/api/auth/:path*",
           has: [
             {

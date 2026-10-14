@@ -165,9 +165,20 @@ const deleteMeeting = async (
  * Fallback when the chosen video adapter fails to create a meeting. Jitsi needs no API key
  * and reads nothing from its credential, so a synthetic one is enough. Failures are swallowed:
  * the caller already reports the original error, and a missing fallback must not mask it.
+ *
+ * Like the normal path, it honours App.enabled: an admin who disabled Jitsi gets no Jitsi
+ * meeting, whether Jitsi itself or another provider failed.
  */
 const createMeetingWithJitsi = async (calEvent: CalendarEvent) => {
   try {
+    const jitsiApp = await prisma.app.findUnique({
+      where: { slug: FAKE_JITSI_CREDENTIAL.appId ?? "" },
+      select: { enabled: true },
+    });
+    if (!jitsiApp?.enabled) {
+      log.warn("Jitsi fallback skipped: the jitsi app is disabled or not seeded");
+      return undefined;
+    }
     const [videoAdapter] = await getVideoAdapters([FAKE_JITSI_CREDENTIAL]);
     return await videoAdapter?.createMeeting(calEvent);
   } catch (error) {
