@@ -20,7 +20,7 @@ const thirtyMinutesVideo: EventTypeWithLocation = {
   length: 30,
   slug: "thirty-minutes-video",
   title: "30 Minutes",
-  locations: [{ type: "integrations:daily" }],
+  locations: [{ type: "integrations:jitsi" }],
 };
 
 const sixtyMinutes: BaseEventType = {
@@ -33,7 +33,7 @@ const sixtyMinutesVideo: EventTypeWithLocation = {
   length: 60,
   slug: "sixty-minutes-video",
   title: "60 Minutes",
-  locations: [{ type: "integrations:daily" }],
+  locations: [{ type: "integrations:jitsi" }],
 };
 
 export const DEFAULT_EVENT_TYPES = {

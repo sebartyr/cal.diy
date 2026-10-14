@@ -227,7 +227,10 @@ export class BookingsController_2024_08_13 {
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @ApiOperation({
     summary: "Get all the recordings for the booking",
-    description: `Fetches all the recordings for the booking \`:bookingUid\`. Requires authentication and proper authorization. Access is granted if you are the booking organizer, team admin or org admin/owner.
+    deprecated: true,
+    description: `Deprecated: Cal Video was removed, so this endpoint always returns an empty list for an existing booking.
+
+    Fetches all the recordings for the booking \`:bookingUid\`. Requires authentication and proper authorization. Access is granted if you are the booking organizer, team admin or org admin/owner.
 
     <Note>cal-api-version: \`2024-08-13\` is required in the request header.</Note>
     `,
@@ -248,7 +251,10 @@ export class BookingsController_2024_08_13 {
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @ApiOperation({
     summary: "Get Cal Video real time transcript download links for the booking",
-    description: `Fetches all the transcript download links for the booking \`:bookingUid\`
+    deprecated: true,
+    description: `Deprecated: Cal Video was removed, so this endpoint always returns an empty list for an existing booking.
+
+    Fetches all the transcript download links for the booking \`:bookingUid\`
 
     <Note>
     Transcripts are generated when clicking "Transcribe" during a Cal Video meeting. Download links are valid for 1 hour only - make a new request to generate fresh links after expiration.
@@ -571,7 +577,10 @@ export class BookingsController_2024_08_13 {
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @ApiOperation({
     summary: "Get Video Meeting Sessions. Only supported for Cal Video",
-    description: `Requires authentication and proper authorization. Access is granted if you are the booking organizer, team admin or org admin/owner.
+    deprecated: true,
+    description: `Deprecated: Cal Video was removed, so this endpoint always returns an empty list for an existing booking.
+
+    Requires authentication and proper authorization. Access is granted if you are the booking organizer, team admin or org admin/owner.
 
     <Note>cal-api-version: \`2024-08-13\` is required in the request header.</Note>`,
   })

@@ -1,6 +1,6 @@
 import type { CredentialForCalendarService } from "@calcom/platform-libraries";
 import { CredentialRepository } from "@calcom/platform-libraries";
-import { deleteMeeting, FAKE_DAILY_CREDENTIAL } from "@calcom/platform-libraries/conferencing";
+import { deleteMeeting, FAKE_JITSI_CREDENTIAL } from "@calcom/platform-libraries/conferencing";
 import { Injectable, Logger } from "@nestjs/common";
 import { BookingsRepository_2024_08_13 } from "@/platform/bookings/2024-08-13/repositories/bookings.repository";
 
@@ -86,8 +86,9 @@ export class BookingVideoService_2024_08_13 {
       delegationCredentialId: string | null;
     }>
   ): Promise<CredentialForCalendarService | null> {
-    if (integrationSlug === "cal-video") {
-      return { ...FAKE_DAILY_CREDENTIAL };
+    // Jitsi is global and has no per-user credential; "cal-video" now maps to Jitsi.
+    if (integrationSlug === "cal-video" || integrationSlug === "jitsi") {
+      return { ...FAKE_JITSI_CREDENTIAL };
     }
 
     const integrationToCredentialTypeMap = {

@@ -108,7 +108,7 @@ describe("transformLocationsInternalToApi", () => {
     expect(result).toEqual(expectedOutput);
   });
 
-  it("should reverse transform integration location", () => {
+  it("should reverse transform a legacy Cal Video integration location", () => {
     const transformedLocation = [
       {
         type: "integrations:daily" as const,

@@ -12,7 +12,8 @@ import type {
 } from "../internal/locations";
 
 export const apiToInternalintegrationsMapping = {
-  "cal-video": "integrations:daily",
+  // Cal Video was removed: "cal-video" is still accepted on input and now books Jitsi.
+  "cal-video": "integrations:jitsi",
   "google-meet": "integrations:google:meet",
   "office365-video": "integrations:office365_video",
   zoom: "integrations:zoom",

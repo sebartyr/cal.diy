@@ -23,8 +23,12 @@ export const ZOOM_TYPE = "zoom_video";
 export const OFFICE_365_VIDEO = "msteams";
 export const OFFICE_365_VIDEO_TYPE = "office365_video";
 
+// Cal Video was removed; these identify it in data written before then, and API clients may
+// still send CAL_VIDEO, which now resolves to JITSI.
 export const CAL_VIDEO = "daily-video";
 export const CAL_VIDEO_TYPE = "daily_video";
+
+export const JITSI = "jitsi";
 
 export const CONFERENCING_APPS = [GOOGLE_MEET, ZOOM, OFFICE_365_VIDEO];
 export const APPS_TYPE_ID_MAPPING = {
