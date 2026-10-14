@@ -84,6 +84,47 @@ function buildParsedBooking(booking: BookingItemProps) {
   };
 }
 
+/**
+ * Link rendered inside ConditionalLink, which is itself an <a>: a nested <a> is invalid HTML and a
+ * hydration error. Same behaviour (opens href without triggering the booking link), no <a>.
+ */
+const InnerLink = ({
+  href,
+  newTab = false,
+  title,
+  className,
+  children,
+}: {
+  href: string;
+  newTab?: boolean;
+  title?: string;
+  className?: string;
+  children: React.ReactNode;
+}) => {
+  const open = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (newTab) {
+      window.open(href, "_blank", "noopener,noreferrer");
+    } else {
+      window.location.href = href;
+    }
+  };
+  return (
+    <span
+      role="link"
+      tabIndex={0}
+      title={title}
+      className={className}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") open(e);
+      }}>
+      {children}
+    </span>
+  );
+};
+
 const ConditionalLink = ({
   children,
   onClick,
@@ -312,12 +353,10 @@ function BookingListItem(booking: BookingItemProps) {
                     {(provider?.label ||
                       (typeof locationToDisplay === "string" && locationToDisplay?.startsWith("https://"))) &&
                       locationToDisplay.startsWith("http") && (
-                        <a
+                        <InnerLink
                           href={locationToDisplay}
-                          onClick={(e) => e.stopPropagation()}
-                          target="_blank"
+                          newTab
                           title={locationToDisplay}
-                          rel="noreferrer"
                           className="text-sm leading-6 text-blue-600 hover:underline dark:text-blue-400">
                           <div className="flex items-center gap-2">
                             {provider?.iconUrl && (
@@ -334,7 +373,7 @@ function BookingListItem(booking: BookingItemProps) {
                               ? t("join_event_location", { eventLocationType: provider?.label })
                               : t("join_meeting")}
                           </div>
-                        </a>
+                        </InnerLink>
                       )}
                   </div>
                 )}
@@ -442,12 +481,10 @@ function BookingListItem(booking: BookingItemProps) {
                   {(provider?.label ||
                     (typeof locationToDisplay === "string" && locationToDisplay?.startsWith("https://"))) &&
                     locationToDisplay.startsWith("http") && (
-                      <a
+                      <InnerLink
                         href={locationToDisplay}
-                        onClick={(e) => e.stopPropagation()}
-                        target="_blank"
+                        newTab
                         title={locationToDisplay}
-                        rel="noreferrer"
                         className="text-sm leading-6 text-blue-600 hover:underline dark:text-blue-400">
                         <div className="flex items-center gap-2">
                           {provider?.iconUrl && (
@@ -463,7 +500,7 @@ function BookingListItem(booking: BookingItemProps) {
                             ? t("join_event_location", { eventLocationType: provider?.label })
                             : t("join_meeting")}
                         </div>
-                      </a>
+                      </InnerLink>
                     )}
                 </div>
               )}
@@ -742,13 +779,9 @@ const FirstAttendee = ({
     return <span className="inline-block">{user.name || ""}</span>;
   }
   return (
-    <a
-      key={user.email}
-      className="hover:text-blue-500"
-      href={`mailto:${user.email}`}
-      onClick={(e) => e.stopPropagation()}>
+    <InnerLink key={user.email} className="hover:text-blue-500 cursor-pointer" href={`mailto:${user.email}`}>
       {user.name || user.email}
-    </a>
+    </InnerLink>
   );
 };
 

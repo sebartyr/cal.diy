@@ -281,16 +281,26 @@ type RowToRender<TData> = {
   virtualItem?: VirtualItem;
 };
 
-function SeparatorRowRenderer({ separator, className }: { separator: SeparatorRow; className?: string }) {
+function SeparatorRowRenderer({
+  separator,
+  className,
+  colSpan,
+}: {
+  separator: SeparatorRow;
+  className?: string;
+  colSpan: number;
+}) {
+  // A cell, not a div: a <tr> may only contain <td>/<th> (a div there is a hydration error).
   return (
-    <div
+    <td
+      colSpan={colSpan}
       className={classNames(
         "bg-cal-muted text-emphasis w-full px-3 py-2 font-semibold",
         separator.className,
         className
       )}>
       {separator.label}
-    </div>
+    </td>
   );
 }
 
@@ -381,7 +391,11 @@ function DataTableBody<TData>({
                 }),
               }}
               className="hover:bg-subtle border-muted flex w-full border-b">
-              <SeparatorRowRenderer separator={row.original as SeparatorRow} className={separatorClassName} />
+              <SeparatorRowRenderer
+                separator={row.original as SeparatorRow}
+                className={separatorClassName}
+                colSpan={table.getAllColumns().length}
+              />
             </TableRow>
           );
         }
