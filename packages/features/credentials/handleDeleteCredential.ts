@@ -11,7 +11,6 @@ import { eventTypeMetaDataSchemaWithTypedApps } from "@calcom/app-store/zod-util
 import { sendCancelledEmailsAndSMS } from "@calcom/emails/email-manager";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
 import { deletePayment } from "@calcom/features/bookings/lib/payment/deletePayment";
-import { deleteWebhookScheduledTriggers } from "@calcom/features/webhooks/lib/scheduleTrigger";
 import { buildNonDelegationCredential } from "@calcom/lib/delegationCredential";
 import { isPrismaObjOrUndefined } from "@calcom/lib/isPrismaObj";
 import { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
@@ -409,29 +408,6 @@ const handleDeleteCredential = async ({
         });
       }
     }
-  }
-
-  // if zapier or make get disconnected, delete its apiKey, delete its webhooks and cancel all scheduled jobs
-  if (credential.app?.slug === "zapier" || credential.app?.slug === "make") {
-    const ownerFilter = teamId ? { teamId } : { userId };
-    await prisma.apiKey.deleteMany({
-      where: {
-        ...ownerFilter,
-        appId: credential.app.slug,
-      },
-    });
-    await prisma.webhook.deleteMany({
-      where: {
-        ...ownerFilter,
-        appId: credential.app.slug,
-      },
-    });
-
-    deleteWebhookScheduledTriggers({
-      appId: credential.appId,
-      userId: teamId ? undefined : userId,
-      teamId,
-    });
   }
 
   let metadata = userMetadataSchema.parse(userMetadata);

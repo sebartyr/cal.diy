@@ -37,16 +37,6 @@ interface WebhookQueryResult {
   priority: number; // This field is added by the query and removed before returning
 }
 
-const filterWebhooks = (webhook: { appId: string | null }): boolean => {
-  const appIds = [
-    "zapier",
-    "make",
-    // Add more if needed
-  ];
-
-  return !appIds.some((appId: string) => webhook.appId === appId);
-};
-
 export class WebhookRepository implements IWebhookRepository {
   private static _instance: WebhookRepository | undefined;
 
@@ -395,7 +385,7 @@ export class WebhookRepository implements IWebhookRepository {
         name: user.name,
         image: getUserAvatarUrl({ avatarUrl: user.avatarUrl }),
       },
-      webhooks: WebhookOutputMapper.toWebhookList(user.webhooks.filter(filterWebhooks)),
+      webhooks: WebhookOutputMapper.toWebhookList(user.webhooks),
       metadata: {
         canModify: true,
         canDelete: true,
@@ -406,9 +396,7 @@ export class WebhookRepository implements IWebhookRepository {
     // the signing secret: it lets the holder forge payloads to the receiver.
     for (const membership of user.teams) {
       const canManage = TEAM_WEBHOOK_MANAGER_ROLES.includes(membership.role);
-      const teamWebhooks = membership.team.webhooks
-        .filter(filterWebhooks)
-        .map((webhook) => (canManage ? webhook : { ...webhook, secret: null }));
+      const teamWebhooks = membership.team.webhooks.map((webhook) => (canManage ? webhook : { ...webhook, secret: null }));
 
       webhookGroups.push({
         teamId: membership.team.id,

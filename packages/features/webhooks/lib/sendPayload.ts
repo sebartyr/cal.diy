@@ -1,7 +1,6 @@
 import { createHmac } from "node:crypto";
 import { compile } from "handlebars";
 
-import { getHumanReadableLocationValue } from "@calcom/app-store/locations";
 import type { WebhookSubscriber, PaymentData } from "@calcom/features/webhooks/lib/dto/types";
 import { getUTCOffsetByTimezone } from "@calcom/lib/dayjs";
 import { logBlockedSSRFAttempt, validateUrlForSSRF } from "@calcom/lib/ssrfProtection";
@@ -131,57 +130,6 @@ function addUTCOffset(data: WebhookPayloadType): WithUTCOffsetType<WebhookPayloa
   return data as WithUTCOffsetType<WebhookPayloadType>;
 }
 
-function getZapierPayload(data: WithUTCOffsetType<EventPayloadType & { createdAt: string }>): string {
-  const attendees = (data.attendees as (Person & UTCOffset)[]).map((attendee) => {
-    return {
-      name: attendee.name,
-      email: attendee.email,
-      timeZone: attendee.timeZone,
-      utcOffset: attendee.utcOffset,
-    };
-  });
-
-  const t = data.organizer.language.translate;
-  const location = getHumanReadableLocationValue(data.location || "", t);
-
-  const body = {
-    uid: data.uid,
-    title: data.title,
-    description: data.description,
-    customInputs: data.customInputs,
-    responses: data.responses,
-    userFieldsResponses: data.userFieldsResponses,
-    startTime: data.startTime,
-    endTime: data.endTime,
-    location: location,
-    status: data.status,
-    cancellationReason: data.cancellationReason,
-    user: {
-      username: data.organizer.username,
-      usernameInOrg: data.organizer.usernameInOrg,
-      name: data.organizer.name,
-      email: data.organizer.email,
-      timeZone: data.organizer.timeZone,
-      utcOffset: data.organizer.utcOffset,
-      locale: data.organizer.locale,
-    },
-    eventType: {
-      title: data.eventTitle,
-      description: data.eventDescription,
-      requiresConfirmation: data.requiresConfirmation,
-      price: data.price,
-      currency: data.currency,
-      length: data.length,
-    },
-    attendees: attendees,
-    createdAt: data.createdAt,
-    metadata: {
-      videoCallUrl: data.metadata?.videoCallUrl,
-    },
-  };
-  return JSON.stringify(body);
-}
-
 function applyTemplate(
   template: string,
   data: WebhookDataType | Record<string, unknown>,
@@ -223,7 +171,7 @@ const sendPayload = async (
   webhook: WebhookForPayload,
   data: WebhookPayloadType
 ) => {
-  const { appId, payloadTemplate: template } = webhook;
+  const { payloadTemplate: template } = webhook;
 
   const contentType =
     !template || jsonParse(template) ? "application/json" : "application/x-www-form-urlencoded";
@@ -231,12 +179,8 @@ const sendPayload = async (
   data = addUTCOffset(data);
 
   let body;
-  /* Zapier id is hardcoded in the DB, we send the raw data for this case  */
   if (isEventPayload(data)) {
     data.description = data.description || data.additionalNotes;
-    if (appId === "zapier") {
-      body = getZapierPayload({ ...data, createdAt });
-    }
   }
 
   if (body === undefined) {
