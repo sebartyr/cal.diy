@@ -27,7 +27,6 @@ import type {
   BookingRejectedParams,
   ScheduleMeetingWebhooksParams,
   CancelScheduledMeetingWebhooksParams,
-  ScheduleNoShowWebhooksParams,
 } from "../types/params";
 
 export class BookingWebhookService implements IBookingWebhookService {
@@ -336,105 +335,4 @@ export class BookingWebhookService implements IBookingWebhookService {
     );
   }
 
-  async scheduleNoShowWebhooks(params: ScheduleNoShowWebhooksParams): Promise<void> {
-    const webhookService = this.webhookService;
-
-    try {
-      const tasker = await this.getTasker();
-      const noShowPromises: Promise<string | void>[] = [];
-
-      const subscribersHostsNoShow = await webhookService.getSubscribers({
-        userId: params.triggerForUser ? params.organizerUser.id : null,
-        eventTypeId: params.booking.eventTypeId,
-        triggerEvent: WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW,
-        teamId: params.teamId,
-        orgId: params.orgId,
-        oAuthClientId: params.oAuthClientId,
-      });
-
-      noShowPromises.push(
-        ...subscribersHostsNoShow.map((webhook: WebhookSubscriber) => {
-          if (params.booking.startTime && webhook.time && webhook.timeUnit) {
-            const scheduledAt = dayjs
-              .utc(params.booking.startTime)
-              .add(webhook.time, webhook.timeUnit.toLowerCase() as dayjs.ManipulateType)
-              .toDate();
-
-            return tasker.create(
-              "triggerHostNoShowWebhook",
-              {
-                triggerEvent: WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW,
-                bookingId: params.booking.id,
-                webhook: { ...webhook, time: webhook.time, timeUnit: webhook.timeUnit as TimeUnit },
-              },
-              { scheduledAt }
-            );
-          }
-          return Promise.resolve();
-        })
-      );
-
-      const subscribersGuestsNoShow = await webhookService.getSubscribers({
-        userId: params.triggerForUser ? params.organizerUser.id : null,
-        eventTypeId: params.booking.eventTypeId,
-        triggerEvent: WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW,
-        teamId: params.teamId,
-        orgId: params.orgId,
-        oAuthClientId: params.oAuthClientId,
-      });
-
-      noShowPromises.push(
-        ...subscribersGuestsNoShow.map((webhook: WebhookSubscriber) => {
-          if (params.booking.startTime && webhook.time && webhook.timeUnit) {
-            const scheduledAt = dayjs
-              .utc(params.booking.startTime)
-              .add(webhook.time, webhook.timeUnit.toLowerCase() as dayjs.ManipulateType)
-              .toDate();
-
-            return tasker.create(
-              "triggerGuestNoShowWebhook",
-              {
-                triggerEvent: WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW,
-                bookingId: params.booking.id,
-                webhook: { ...webhook, time: webhook.time, timeUnit: webhook.timeUnit as TimeUnit },
-              },
-              { scheduledAt }
-            );
-          }
-          return Promise.resolve();
-        })
-      );
-
-      // Use Promise.allSettled to prevent single webhook scheduling failure from killing entire processor
-      const results = await Promise.allSettled(noShowPromises);
-
-      // Log summary for monitoring
-      const successCount = results.filter((result) => result.status === "fulfilled").length;
-      const failureCount = results.filter((result) => result.status === "rejected").length;
-
-      this.log.info(`No-show webhook scheduling completed`, {
-        bookingId: params.booking.id,
-        totalWebhooks: noShowPromises.length,
-        successful: successCount,
-        failed: failureCount,
-      });
-
-      // Log individual failures for debugging
-      if (failureCount > 0) {
-        results.forEach((result, index) => {
-          if (result.status === "rejected") {
-            this.log.error(`No-show webhook scheduling failed`, {
-              bookingId: params.booking.id,
-              index,
-              error: result.reason,
-            });
-          }
-        });
-      }
-    } catch (error) {
-      this.log.error("Failed to schedule no-show webhooks:", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
 }

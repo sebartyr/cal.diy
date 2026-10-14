@@ -6,7 +6,6 @@ import amie_config_json from "./amie/config.json";
 import { metadata as applecalendar__metadata_ts } from "./applecalendar/_metadata";
 import { metadata as caldavcalendar__metadata_ts } from "./caldavcalendar/_metadata";
 import cron_config_json from "./cron/config.json";
-import { metadata as dailyvideo__metadata_ts } from "./dailyvideo/_metadata";
 import discord_config_json from "./discord/config.json";
 import { metadata as exchange2013calendar__metadata_ts } from "./exchange2013calendar/_metadata";
 import { metadata as exchange2016calendar__metadata_ts } from "./exchange2016calendar/_metadata";
@@ -39,7 +38,6 @@ export const appStoreMetadata = {
   applecalendar: applecalendar__metadata_ts,
   caldavcalendar: caldavcalendar__metadata_ts,
   cron: cron_config_json,
-  dailyvideo: dailyvideo__metadata_ts,
   discord: discord_config_json,
   exchange2013calendar: exchange2013calendar__metadata_ts,
   exchange2016calendar: exchange2016calendar__metadata_ts,

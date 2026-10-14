@@ -4,7 +4,7 @@ import prisma from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import { type eventTypeLocations, userMetadata as userMetadataSchema } from "@calcom/prisma/zod-utils";
 import type { z } from "zod";
-import { JitsiLocationType } from "../constants";
+import { FALLBACK_CONFERENCING_APP_SLUG, JitsiLocationType } from "../constants";
 import getApps, { getAppFromSlug } from "../utils";
 
 const log = logger.getSubLogger({ prefix: ["getDefaultLocations"] });
@@ -17,14 +17,7 @@ type User = {
   metadata: Prisma.JsonValue;
 };
 
-/**
- * Last-resort location when neither the user nor the deployment picked a usable one.
- *
- * Jitsi needs no API key and no per-user credential, so it is the only candidate that cannot
- * resolve to "no location at all" — which would create event types with no location and
- * bookings with no meeting URL, with nothing failing loudly along the way.
- */
-export const FALLBACK_CONFERENCING_APP_SLUG = "jitsi";
+export { FALLBACK_CONFERENCING_APP_SLUG };
 
 /** Kept for callers that need the type rather than the slug. */
 export const FALLBACK_CONFERENCING_LOCATION_TYPE = JitsiLocationType;

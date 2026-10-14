@@ -1,6 +1,5 @@
 import { sendScheduledEmailsAndSMS } from "@calcom/emails/email-manager";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
-import { scheduleNoShowTriggers } from "@calcom/features/bookings/lib/handleNewBooking/scheduleNoShowTriggers";
 import {
   type EventTypeBrandingData,
   getEventTypeService,
@@ -267,19 +266,6 @@ export const Handler = async ({ ctx, input }: Options) => {
     eventTypeMetadata
   );
 
-  await scheduleNoShowTriggers({
-    booking: {
-      startTime: updatedBooking.startTime,
-      id: updatedBooking.id,
-      location: updatedBooking.location,
-      uid: updatedBooking.uid,
-    },
-    triggerForUser: !eventType?.teamId || (eventType?.teamId && eventType?.parentId),
-    organizerUser: { id: user.id },
-    eventTypeId: eventType?.id ?? null,
-    teamId: eventType?.teamId,
-    orgId: user.organizationId,
-  });
 
   return { isBookingAlreadyAcceptedBySomeoneElse, meetingUrl: locationVideoCallUrl };
 };

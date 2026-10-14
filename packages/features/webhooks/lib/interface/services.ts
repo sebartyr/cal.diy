@@ -12,7 +12,6 @@ import type {
   BookingRescheduledParams,
   CancelScheduledMeetingWebhooksParams,
   ScheduleMeetingWebhooksParams,
-  ScheduleNoShowWebhooksParams,
 } from "../types/params";
 
 export interface GetSubscribersOptions {
@@ -82,7 +81,6 @@ export interface IBookingEventEmitter {
 export interface IBookingScheduler {
   scheduleMeetingWebhooks(params: ScheduleMeetingWebhooksParams): Promise<void>;
   cancelScheduledMeetingWebhooks(params: CancelScheduledMeetingWebhooksParams): Promise<void>;
-  scheduleNoShowWebhooks(params: ScheduleNoShowWebhooksParams): Promise<void>;
 }
 
 // Combined interface for backward compatibility (can be removed later)

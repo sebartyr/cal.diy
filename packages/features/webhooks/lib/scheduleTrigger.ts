@@ -1,4 +1,4 @@
-import { DailyLocationType, getHumanReadableLocationValue } from "@calcom/app-store/locations";
+import { getHumanReadableLocationValue } from "@calcom/app-store/locations";
 import { selectOOOEntries } from "@calcom/features/webhooks/lib/selectOOOEntries";
 import dayjs from "@calcom/dayjs";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
@@ -17,11 +17,6 @@ import { DEFAULT_WEBHOOK_VERSION, type WebhookVersion } from "./interface/IWebho
 const SCHEDULING_TRIGGER: WebhookTriggerEvents[] = [
   WebhookTriggerEvents.MEETING_ENDED,
   WebhookTriggerEvents.MEETING_STARTED,
-];
-
-const NO_SHOW_TRIGGERS: WebhookTriggerEvents[] = [
-  WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW,
-  WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW,
 ];
 
 const log = logger.getSubLogger({ prefix: ["[node-scheduler]"] });
@@ -506,20 +501,8 @@ export async function updateTriggerForExistingBookings(
     (trigger) => !updatedEventTriggers.includes(trigger) && SCHEDULING_TRIGGER.includes(trigger)
   );
 
-  const addedNoShowTriggers = updatedEventTriggers.filter(
-    (trigger) => !existingEventTriggers.includes(trigger) && NO_SHOW_TRIGGERS.includes(trigger)
-  );
-  const removedNoShowTriggers = existingEventTriggers.filter(
-    (trigger) => !updatedEventTriggers.includes(trigger) && NO_SHOW_TRIGGERS.includes(trigger)
-  );
 
-  if (
-    addedEventTriggers.length === 0 &&
-    removedEventTriggers.length === 0 &&
-    addedNoShowTriggers.length === 0 &&
-    removedNoShowTriggers.length === 0
-  )
-    return;
+  if (addedEventTriggers.length === 0 && removedEventTriggers.length === 0) return;
 
   const bookings = await fetchBookingsFromWebhook(webhook);
 
@@ -534,23 +517,6 @@ export async function updateTriggerForExistingBookings(
     });
   }
 
-  if (addedNoShowTriggers.length > 0 || removedNoShowTriggers.length > 0) {
-    const allPromises = bookings.flatMap((booking) => {
-      return [
-        ...addedNoShowTriggers.map(async (triggerEvent) => {
-          await scheduleNoShowTaskForBooking(booking, webhook, triggerEvent);
-        }),
-        ...removedNoShowTriggers.map((triggerEvent) =>
-          cancelNoShowTasksForBooking({
-            bookingUid: booking.uid,
-            triggerEvent,
-          })
-        ),
-      ];
-    });
-
-    await Promise.all(allPromises);
-  }
 
   const promise = removedEventTriggers.map((triggerEvent) =>
     deleteWebhookScheduledTriggers({ triggerEvent, webhookId: webhook.id })
@@ -622,19 +588,15 @@ export async function cancelNoShowTasksForBooking({
   webhook?: Pick<Webhook, "id" | "userId" | "teamId" | "eventTypeId">;
 }) {
   if (bookingUid) {
-    if (triggerEvent && !NO_SHOW_TRIGGERS.includes(triggerEvent)) return;
+    // Cal Video no-show tasks went away with Cal Video, so a trigger-scoped call has nothing
+    // left to cancel. Without a trigger, every task referencing the booking is still removed.
+    if (triggerEvent) return;
 
-    if (triggerEvent === WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW) {
-      await tasker.cancelWithReference(bookingUid, "triggerHostNoShowWebhook");
-    } else if (triggerEvent === WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW) {
-      await tasker.cancelWithReference(bookingUid, "triggerGuestNoShowWebhook");
-    } else {
-      await prisma.task.deleteMany({
-        where: {
-          referenceUid: bookingUid,
-        },
-      });
-    }
+    await prisma.task.deleteMany({
+      where: {
+        referenceUid: bookingUid,
+      },
+    });
   } else if (webhook) {
     const bookings = await fetchBookingsFromWebhook(webhook);
 
@@ -651,46 +613,3 @@ export async function cancelNoShowTasksForBooking({
   }
 }
 
-export async function scheduleNoShowTaskForBooking(
-  booking: { id: number; uid: string; startTime: Date; location: string | null },
-  webhook: Webhook,
-  triggerEvent: WebhookTriggerEvents
-) {
-  if (!webhook.time || !webhook.timeUnit || !booking.startTime || !booking.location) return;
-
-  const isCalVideoLocation = booking.location === DailyLocationType || booking.location?.trim() === "";
-  if (!isCalVideoLocation) return;
-
-  if (
-    triggerEvent !== WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW &&
-    triggerEvent !== WebhookTriggerEvents.AFTER_GUESTS_CAL_VIDEO_NO_SHOW
-  )
-    return;
-
-  const scheduledAt = dayjs(booking.startTime)
-    .add(webhook.time ?? 0, webhook.timeUnit?.toLowerCase() as dayjs.ManipulateType)
-    .toDate();
-
-  const taskType =
-    triggerEvent === WebhookTriggerEvents.AFTER_HOSTS_CAL_VIDEO_NO_SHOW
-      ? "triggerHostNoShowWebhook"
-      : "triggerGuestNoShowWebhook";
-  const version = (webhook.version as WebhookVersion) ?? DEFAULT_WEBHOOK_VERSION;
-  await tasker.create(
-    taskType,
-    {
-      triggerEvent,
-      bookingId: booking.id,
-      webhook: {
-        ...webhook,
-        time: webhook.time ?? 0,
-        timeUnit: webhook.timeUnit ?? "HOUR",
-        version,
-      },
-    },
-    {
-      scheduledAt,
-      referenceUid: booking.uid,
-    }
-  );
-}

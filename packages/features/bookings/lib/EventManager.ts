@@ -3,9 +3,13 @@ import { v5 as uuidv5 } from "uuid";
 import type { z } from "zod";
 
 import { getCalendar } from "@calcom/app-store/_utils/getCalendar";
-import { FAKE_DAILY_CREDENTIAL } from "@calcom/app-store/dailyvideo/lib/VideoApiAdapter";
-import { appKeysSchema as calVideoKeysSchema } from "@calcom/app-store/dailyvideo/zod";
-import { getLocationFromApp, MeetLocationType, MSTeamsLocationType } from "@calcom/app-store/locations";
+import { FAKE_JITSI_CREDENTIAL } from "@calcom/app-store/jitsivideo/lib/fakeCredential";
+import {
+  getLocationFromApp,
+  JitsiLocationType,
+  MeetLocationType,
+  MSTeamsLocationType,
+} from "@calcom/app-store/locations";
 import getApps from "@calcom/app-store/utils";
 import { createEvent, updateEvent, deleteEvent } from "@calcom/features/calendars/lib/CalendarManager";
 import { createMeeting, updateMeeting, deleteMeeting } from "@calcom/features/conferencing/lib/videoClient";
@@ -292,29 +296,24 @@ export default class EventManager {
     // TODO this method shouldn't be modifying the event object that's passed in
     const evt = processLocation(event);
 
-    // Fallback to cal video if no location is set
+    // Fall back to Jitsi when no location is set. Jitsi replaced Cal Video as the default
+    // conferencing app: it needs no API key, so being enabled is the only requirement.
+    // videoClient.createMeeting() refuses a disabled app, so check that here instead of
+    // handing it a location it would turn into a booking with no meeting URL.
     if (!evt.location) {
-      // See if cal video is enabled & has keys
-      const calVideo = await prisma.app.findUnique({
-        where: {
-          slug: "daily-video",
-        },
-        select: {
-          keys: true,
-          enabled: true,
-        },
+      const jitsi = await prisma.app.findUnique({
+        where: { slug: "jitsi" },
+        select: { enabled: true },
       });
 
-      const calVideoKeys = calVideoKeysSchema.safeParse(calVideo?.keys);
-
-      if (calVideo?.enabled && calVideoKeys.success) evt["location"] = "integrations:daily";
-      log.warn("Falling back to cal video as no location is set");
+      if (jitsi?.enabled) evt["location"] = JitsiLocationType;
+      log.warn("Falling back to Jitsi as no location is set");
     }
 
     const [mainHostDestinationCalendar] =
       (evt.destinationCalendar as [undefined | NonNullable<typeof evt.destinationCalendar>[number]]) ?? [];
 
-    // Fallback to Cal Video if Google Meet is selected w/o a Google Calendar connection
+    // Fall back to Jitsi if Google Meet is selected w/o a Google Calendar connection
     if (evt.location === MeetLocationType && mainHostDestinationCalendar?.integration !== "google_calendar") {
       const [googleCalendarCredential] = this.calendarCredentials.filter(
         (cred) => cred.type === "google_calendar"
@@ -323,9 +322,9 @@ export default class EventManager {
       // TODO: We could extend this logic to Regular Credentials also. Having a Google Calendar credential would cause fallback to use that credential to create calendar and thus we could have Google Meet link
       if (!isDelegationCredential({ credentialId: googleCalendarCredential?.id })) {
         log.warn(
-          "Falling back to Cal Video integration for Regular Credential as Google Calendar is not set as destination calendar"
+          "Falling back to Jitsi for Regular Credential as Google Calendar is not set as destination calendar"
         );
-        evt["location"] = "integrations:daily";
+        evt["location"] = JitsiLocationType;
         evt["conferenceCredentialId"] = undefined;
       }
     }
@@ -674,17 +673,13 @@ export default class EventManager {
     const updatedBookingReferences: Array<PartialReference> = [];
     const isLocationChanged = !!evt.location && !!booking.location && evt.location !== booking.location;
 
-    let isDailyVideoRoomExpired = false;
-
-    if (evt.location === "integrations:daily") {
-      const originalBookingEndTime = new Date(booking.endTime);
-      const roomExpiryTime = new Date(originalBookingEndTime.getTime() + 14 * 24 * 60 * 60 * 1000);
-      const now = new Date();
-      isDailyVideoRoomExpired = now > roomExpiryTime;
-    }
+    // A booking made before Cal Video was removed still carries integrations:daily, and its
+    // Daily room can no longer be reached. Always rebuild its meeting on update; the video
+    // credential lookup falls back to Jitsi, so the booking gets a working link.
+    const isLegacyDailyLocation = evt.location === "integrations:daily";
 
     const shouldUpdateBookingReferences =
-      !!changedOrganizer || isLocationChanged || !!isBookingRequestedReschedule || isDailyVideoRoomExpired;
+      !!changedOrganizer || isLocationChanged || !!isBookingRequestedReschedule || isLegacyDailyLocation;
 
     if (evt.requiresConfirmation) {
       if (!skipDeleteEventsAndMeetings) {
@@ -718,7 +713,7 @@ export default class EventManager {
         updatedBookingReferences.push(...createdEvent.referencesToCreate);
       } else {
         // If the reschedule doesn't require confirmation, we can "update" the events and meetings to new time.
-        if (isLocationChanged || isBookingRequestedReschedule || isDailyVideoRoomExpired) {
+        if (isLocationChanged || isBookingRequestedReschedule || isLegacyDailyLocation) {
           const updatedLocation = await this.updateLocation(evt, booking);
           results.push(...updatedLocation.results);
           updatedBookingReferences.push(...updatedLocation.referencesToCreate);
@@ -1056,14 +1051,14 @@ export default class EventManager {
     }
 
     /**
-     * This might happen if someone tries to use a location with a missing credential, so we fallback to Cal Video.
+     * This might happen if someone tries to use a location with a missing credential, so we fallback to Jitsi.
      * @todo remove location from event types that has missing credentials
      * */
     if (!videoCredential) {
       log.warn(
-        `Falling back to "daily" video integration for event with location: ${event.location} because credential is missing for the app`
+        `Falling back to Jitsi for event with location: ${event.location} because credential is missing for the app`
       );
-      videoCredential = { ...FAKE_DAILY_CREDENTIAL };
+      videoCredential = { ...FAKE_JITSI_CREDENTIAL };
     }
 
     return videoCredential;

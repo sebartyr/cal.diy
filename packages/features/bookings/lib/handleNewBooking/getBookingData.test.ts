@@ -143,7 +143,7 @@ describe("getBookingData", () => {
           name: "Test User",
           email: "test@example.com",
           location: {
-            value: "integrations:daily",
+            value: "integrations:jitsi",
             optionValue: "",
           },
         },
@@ -156,7 +156,7 @@ describe("getBookingData", () => {
       });
 
       // Should fall back to value when optionValue is empty
-      expect(result.location).toBe("integrations:daily");
+      expect(result.location).toBe("integrations:jitsi");
     });
 
     it("should return empty string when location is not provided", async () => {

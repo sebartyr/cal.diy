@@ -2,7 +2,7 @@ import z from "zod";
 
 import { getCalendar } from "@calcom/app-store/_utils/getCalendar";
 import { appStoreMetadata } from "@calcom/app-store/appStoreMetaData";
-import { DailyLocationType } from "@calcom/app-store/locations";
+import { JitsiLocationType } from "@calcom/app-store/locations";
 import {
   type EventTypeAppMetadataSchema,
   eventTypeAppMetadataOptionalSchema,
@@ -101,7 +101,7 @@ const handleDeleteCredential = async ({
 
   // TODO: Improve this uninstallation cleanup per event by keeping a relation of EventType to App which has the data.
   for (const eventType of eventTypes) {
-    // If it's a video, replace the location with Cal video
+    // If it's a video, replace the location with Jitsi, the fallback conferencing app
     if (eventType.locations && isVideoOrConferencingApp(credential.app)) {
       // Find the user's event types
 
@@ -112,13 +112,13 @@ const handleDeleteCredential = async ({
       // To avoid type errors, need to stringify and parse JSON to use array methods
       const locations = locationsSchema.parse(eventType.locations);
 
-      const doesDailyVideoAlreadyExists = locations.some((location) =>
-        location.type.includes(DailyLocationType)
+      const doesJitsiAlreadyExist = locations.some((location) =>
+        location.type.includes(JitsiLocationType)
       );
 
       const updatedLocations: TlocationsSchema = locations.reduce((acc: TlocationsSchema, location) => {
         if (location.type.includes(integrationQuery)) {
-          if (!doesDailyVideoAlreadyExists) acc.push({ type: DailyLocationType });
+          if (!doesJitsiAlreadyExist) acc.push({ type: JitsiLocationType });
         } else {
           acc.push(location);
         }

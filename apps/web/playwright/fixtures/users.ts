@@ -92,7 +92,7 @@ export const createTeamEventType = async (
       slug: scenario?.teamEventSlug ?? `${teamEventSlug}-team-id-${team.id}`,
       length: scenario?.teamEventLength ?? 30,
       seatsPerTimeSlot: scenario?.seatsPerTimeSlot,
-      locations: [{ type: "integrations:daily" }],
+      locations: [{ type: "integrations:jitsi" }],
       metadata:
         scenario?.schedulingType === SchedulingType.MANAGED
           ? {

@@ -11,8 +11,9 @@ import {
   defaultLocations,
   getAppSlugFromLocationType,
   getLocationByType,
-  isCalVideoLocation,
+  isGlobalAppLocation,
   isStaticLocationType,
+  JitsiLocationType,
 } from "@calcom/app-store/locations";
 import { getAppFromSlug } from "@calcom/app-store/utils";
 import PhoneInput from "@calcom/web/components/phone-input";
@@ -173,7 +174,7 @@ const LocationInputDialog = ({
 
 const checkAppInstalledForHost = (locationValue: string, hostData?: HostWithLocationOptions): boolean => {
   if (isStaticLocationType(locationValue)) return true;
-  if (isCalVideoLocation(locationValue)) return true;
+  if (isGlobalAppLocation(locationValue)) return true;
   if (!hostData) return true;
 
   const appSlug = getAppSlugFromLocationType(locationValue);
@@ -250,7 +251,7 @@ const getSelectedOption = (
     }
   }
 
-  return getLocationFromOptions("integrations:daily", options);
+  return getLocationFromOptions(JitsiLocationType, options);
 };
 
 const HostLocationRow = ({

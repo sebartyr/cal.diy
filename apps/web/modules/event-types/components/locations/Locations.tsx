@@ -21,7 +21,6 @@ import { Button } from "@calcom/ui/components/button";
 import { CheckIcon, CornerDownRightIcon, XIcon } from "@coss/ui/icons";
 import { showToast } from "@calcom/ui/components/toast";
 
-import CalVideoSettings from "./CalVideoSettings";
 import DefaultLocationSettings from "./DefaultLocationSettings";
 import LocationInput from "./LocationInput";
 
@@ -172,7 +171,6 @@ const Locations: React.FC<LocationsProps> = ({
           const eventLocationType = getLocationByType(field.type);
           const defaultLocation = field;
 
-          const isCalVideo = field.type === "integrations:daily";
 
           const option = getLocationFromType(field.type, locationOptions);
           return (
@@ -253,7 +251,6 @@ const Locations: React.FC<LocationsProps> = ({
                 )}
               </div>
 
-              {isCalVideo && !isPlatform && <CalVideoSettings />}
 
               {eventLocationType?.supportsCustomLabel && eventLocationType?.type ? (
                 <DefaultLocationSettings

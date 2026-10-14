@@ -1,6 +1,4 @@
 import process from "node:process";
-import { DailyLocationType } from "@calcom/app-store/constants";
-import { FAKE_DAILY_CREDENTIAL } from "@calcom/app-store/dailyvideo/lib/VideoApiAdapter";
 import { eventTypeMetaDataSchemaWithTypedApps } from "@calcom/app-store/zod-utils";
 import dayjs from "@calcom/dayjs";
 import { sendCancelledEmailsAndSMS } from "@calcom/emails/email-manager";
@@ -460,13 +458,9 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
     }
   }
 
-  /** TODO: Remove this without breaking functionality */
-  if (bookingToDelete.location === DailyLocationType) {
-    bookingToDelete.user.credentials.push({
-      ...FAKE_DAILY_CREDENTIAL,
-      teamId: null,
-    });
-  }
+  // Bookings made before Cal Video was removed may still sit on integrations:daily. Their
+  // Daily room can no longer be deleted — the adapter is gone, and so is the Daily account —
+  // so cancellation proceeds without cleaning it up.
 
   const isBookingInRecurringSeries = !!(
     bookingToDelete.eventType?.recurringEvent &&

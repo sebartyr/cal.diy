@@ -118,11 +118,11 @@ describe("handleNewBooking", () => {
                   },
                   references: [
                     {
-                      type: appStoreMetadata.dailyvideo.type,
+                      type: appStoreMetadata.jitsivideo.type,
                       uid: "MOCK_ID",
                       meetingId: "MOCK_ID",
                       meetingPassword: "MOCK_PASS",
-                      meetingUrl: "http://mock-dailyvideo.example.com",
+                      meetingUrl: "http://mock-jitsivideo.example.com",
                       credentialId: null,
                     },
                     {
@@ -139,12 +139,12 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           const videoMock = mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -166,7 +166,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
               rescheduledBy: organizer.email,
             },
@@ -212,18 +212,18 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 name: booker.name,
               }),
               references: [
                 {
-                  type: appStoreMetadata.dailyvideo.type,
+                  type: appStoreMetadata.jitsivideo.type,
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com",
+                  meetingUrl: "http://mock-jitsivideo.example.com",
                 },
                 {
                   type: appStoreMetadata.googlecalendar.type,
@@ -239,14 +239,14 @@ describe("handleNewBooking", () => {
 
           expectSuccessfulVideoMeetingUpdationInCalendar(videoMock, {
             calEvent: {
-              location: "http://mock-dailyvideo.example.com",
+              location: "http://mock-jitsivideo.example.com",
             },
             bookingRef: {
-              type: appStoreMetadata.dailyvideo.type,
+              type: appStoreMetadata.jitsivideo.type,
               uid: "MOCK_ID",
               meetingId: "MOCK_ID",
               meetingPassword: "MOCK_PASS",
-              meetingUrl: "http://mock-dailyvideo.example.com",
+              meetingUrl: "http://mock-jitsivideo.example.com",
             },
           });
 
@@ -254,7 +254,7 @@ describe("handleNewBooking", () => {
             externalCalendarId: "MOCK_EXTERNAL_CALENDAR_ID",
             calEvent: {
               videoCallData: expect.objectContaining({
-                url: "http://mock-dailyvideo.example.com",
+                url: "http://mock-jitsivideo.example.com",
               }),
             },
             uid: "MOCK_ID",
@@ -266,7 +266,7 @@ describe("handleNewBooking", () => {
             emails,
             iCalUID,
             appsStatus: [
-              getMockPassingAppStatus({ slug: appStoreMetadata.dailyvideo.slug }),
+              getMockPassingAppStatus({ slug: appStoreMetadata.jitsivideo.slug }),
               getMockPassingAppStatus({ slug: appStoreMetadata.googlecalendar.slug }),
             ],
           });
@@ -274,9 +274,9 @@ describe("handleNewBooking", () => {
           expectBookingRescheduledWebhookToHaveBeenFired({
             booker,
             organizer,
-            location: BookingLocations.CalVideo,
+            location: BookingLocations.Jitsi,
             subscriberUrl: "http://my-webhook.example.com",
-            videoCallUrl: `${WEBAPP_URL}/video/${createdBooking.uid}`,
+            videoCallUrl: "http://mock-jitsivideo.example.com",
             payload: {
               rescheduledBy: organizer.email,
             },
@@ -348,11 +348,11 @@ describe("handleNewBooking", () => {
                   endTime: `${plus1DateString}T05:15:00.000Z`,
                   references: [
                     {
-                      type: appStoreMetadata.dailyvideo.type,
+                      type: appStoreMetadata.jitsivideo.type,
                       uid: "MOCK_ID",
                       meetingId: "MOCK_ID",
                       meetingPassword: "MOCK_PASS",
-                      meetingUrl: "http://mock-dailyvideo.example.com",
+                      meetingUrl: "http://mock-jitsivideo.example.com",
                     },
                     {
                       type: appStoreMetadata.googlecalendar.type,
@@ -368,12 +368,12 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           const videoMock = mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -395,7 +395,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
             },
           });
@@ -420,18 +420,18 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 name: booker.name,
               }),
               references: [
                 {
-                  type: appStoreMetadata.dailyvideo.type,
+                  type: appStoreMetadata.jitsivideo.type,
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com",
+                  meetingUrl: "http://mock-jitsivideo.example.com",
                 },
                 {
                   type: appStoreMetadata.googlecalendar.type,
@@ -447,14 +447,14 @@ describe("handleNewBooking", () => {
 
           expectSuccessfulVideoMeetingUpdationInCalendar(videoMock, {
             calEvent: {
-              location: "http://mock-dailyvideo.example.com",
+              location: "http://mock-jitsivideo.example.com",
             },
             bookingRef: {
-              type: appStoreMetadata.dailyvideo.type,
+              type: appStoreMetadata.jitsivideo.type,
               uid: "MOCK_ID",
               meetingId: "MOCK_ID",
               meetingPassword: "MOCK_PASS",
-              meetingUrl: "http://mock-dailyvideo.example.com",
+              meetingUrl: "http://mock-jitsivideo.example.com",
             },
           });
 
@@ -463,7 +463,7 @@ describe("handleNewBooking", () => {
           expectSuccessfulCalendarEventUpdationInCalendar(calendarMock, {
             externalCalendarId: "existing-event-type@example.com",
             calEvent: {
-              location: "http://mock-dailyvideo.example.com",
+              location: "http://mock-jitsivideo.example.com",
             },
             uid: "MOCK_ID",
           });
@@ -477,9 +477,9 @@ describe("handleNewBooking", () => {
           expectBookingRescheduledWebhookToHaveBeenFired({
             booker,
             organizer,
-            location: BookingLocations.CalVideo,
+            location: BookingLocations.Jitsi,
             subscriberUrl: "http://my-webhook.example.com",
-            videoCallUrl: `${WEBAPP_URL}/video/${createdBooking.uid}`,
+            videoCallUrl: "http://mock-jitsivideo.example.com",
           });
         },
         timeout
@@ -545,11 +545,11 @@ describe("handleNewBooking", () => {
                   },
                   references: [
                     {
-                      type: appStoreMetadata.dailyvideo.type,
+                      type: appStoreMetadata.jitsivideo.type,
                       uid: "MOCK_ID",
                       meetingId: "MOCK_ID",
                       meetingPassword: "MOCK_PASS",
-                      meetingUrl: "http://mock-dailyvideo.example.com",
+                      meetingUrl: "http://mock-jitsivideo.example.com",
                     },
                     {
                       type: appStoreMetadata.googlecalendar.type,
@@ -564,13 +564,13 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           const _calendarMock = mockCalendarToCrashOnUpdateEvent("googlecalendar");
           const _videoMock = mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           const mockBookingData = getMockRequestDataForBooking({
@@ -580,7 +580,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
             },
           });
@@ -595,13 +595,13 @@ describe("handleNewBooking", () => {
             },
             to: {
               description: "",
-              location: "integrations:daily",
+              location: "integrations:jitsi",
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
               metadata: {
-                videoCallUrl: `${WEBAPP_URL}/video/${createdBooking?.uid}`,
+                videoCallUrl: "http://mock-jitsivideo.example.com",
               },
               responses: expect.objectContaining({
                 email: booker.email,
@@ -610,11 +610,11 @@ describe("handleNewBooking", () => {
               // Booking References still use the original booking's references - Not sure how intentional it is.
               references: [
                 {
-                  type: appStoreMetadata.dailyvideo.type,
+                  type: appStoreMetadata.jitsivideo.type,
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com",
+                  meetingUrl: "http://mock-jitsivideo.example.com",
                 },
                 {
                   type: appStoreMetadata.googlecalendar.type,
@@ -637,18 +637,18 @@ describe("handleNewBooking", () => {
           expectBookingRescheduledWebhookToHaveBeenFired({
             booker,
             organizer,
-            location: "integrations:daily",
+            location: "integrations:jitsi",
             subscriberUrl: "http://my-webhook.example.com",
             payload: {
               uid: createdBooking.uid,
               appsStatus: [
-                expect.objectContaining(getMockPassingAppStatus({ slug: appStoreMetadata.dailyvideo.slug })),
+                expect.objectContaining(getMockPassingAppStatus({ slug: appStoreMetadata.jitsivideo.slug })),
                 expect.objectContaining(
                   getMockFailingAppStatus({ slug: appStoreMetadata.googlecalendar.slug })
                 ),
               ],
             },
-            videoCallUrl: `${WEBAPP_URL}/video/${createdBooking?.uid}`,
+            videoCallUrl: "http://mock-jitsivideo.example.com",
           });
         },
         timeout
@@ -715,11 +715,11 @@ describe("handleNewBooking", () => {
                   endTime: `${plus1DateString}T05:15:00.000Z`,
                   references: [
                     getMockBookingReference({
-                      type: appStoreMetadata.dailyvideo.type,
+                      type: appStoreMetadata.jitsivideo.type,
                       uid: "MOCK_ID",
                       meetingId: "MOCK_ID",
                       meetingPassword: "MOCK_PASS",
-                      meetingUrl: "http://mock-dailyvideo.example.com",
+                      meetingUrl: "http://mock-jitsivideo.example.com",
                       credentialId: 0,
                     }),
                     getMockBookingReference({
@@ -735,12 +735,12 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             });
             await createBookingScenario(scenarioData);
 
             const videoMock = mockSuccessfulVideoMeetingCreation({
-              metadataLookupKey: "dailyvideo",
+              metadataLookupKey: "jitsivideo",
             });
 
             const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -762,7 +762,7 @@ describe("handleNewBooking", () => {
                 responses: {
                   email: booker.email,
                   name: booker.name,
-                  location: { optionValue: "", value: BookingLocations.CalVideo },
+                  location: { optionValue: "", value: BookingLocations.Jitsi },
                 },
               },
             });
@@ -788,18 +788,18 @@ describe("handleNewBooking", () => {
                 eventTypeId: mockBookingData.eventTypeId,
                 // Rescheduled booking sill stays in pending state
                 status: BookingStatus.PENDING,
-                location: BookingLocations.CalVideo,
+                location: BookingLocations.Jitsi,
                 responses: expect.objectContaining({
                   email: booker.email,
                   name: booker.name,
                 }),
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                   },
                   {
                     type: appStoreMetadata.googlecalendar.type,
@@ -822,18 +822,18 @@ describe("handleNewBooking", () => {
             expectBookingRequestedWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               subscriberUrl,
               eventType: scenarioData.eventTypes[0],
             });
 
             expectSuccessfulVideoMeetingDeletionInCalendar(videoMock, {
               bookingRef: {
-                type: appStoreMetadata.dailyvideo.type,
+                type: appStoreMetadata.jitsivideo.type,
                 uid: "MOCK_ID",
                 meetingId: "MOCK_ID",
                 meetingPassword: "MOCK_PASS",
-                meetingUrl: "http://mock-dailyvideo.example.com",
+                meetingUrl: "http://mock-jitsivideo.example.com",
               },
             });
 
@@ -841,7 +841,7 @@ describe("handleNewBooking", () => {
               externalCalendarId: "MOCK_EXTERNAL_CALENDAR_ID",
               calEvent: {
                 videoCallData: expect.objectContaining({
-                  url: "http://mock-dailyvideo.example.com",
+                  url: "http://mock-jitsivideo.example.com",
                 }),
               },
               uid: "MOCK_ID",
@@ -915,11 +915,11 @@ describe("handleNewBooking", () => {
                     endTime: `${plus1DateString}T05:15:00.000Z`,
                     references: [
                       {
-                        type: appStoreMetadata.dailyvideo.type,
+                        type: appStoreMetadata.jitsivideo.type,
                         uid: "MOCK_ID",
                         meetingId: "MOCK_ID",
                         meetingPassword: "MOCK_PASS",
-                        meetingUrl: "http://mock-dailyvideo.example.com",
+                        meetingUrl: "http://mock-jitsivideo.example.com",
                       },
                       {
                         type: appStoreMetadata.googlecalendar.type,
@@ -952,12 +952,12 @@ describe("handleNewBooking", () => {
                   },
                 ],
                 organizer,
-                apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+                apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
               })
             );
 
             const videoMock = mockSuccessfulVideoMeetingCreation({
-              metadataLookupKey: "dailyvideo",
+              metadataLookupKey: "jitsivideo",
             });
 
             const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -981,7 +981,7 @@ describe("handleNewBooking", () => {
                 responses: {
                   email: booker.email,
                   name: booker.name,
-                  location: { optionValue: "", value: BookingLocations.CalVideo },
+                  location: { optionValue: "", value: BookingLocations.Jitsi },
                 },
               },
             });
@@ -1007,18 +1007,18 @@ describe("handleNewBooking", () => {
                 uid: createdBooking.uid!,
                 eventTypeId: mockBookingData.eventTypeId,
                 status: BookingStatus.ACCEPTED,
-                location: BookingLocations.CalVideo,
+                location: BookingLocations.Jitsi,
                 responses: expect.objectContaining({
                   email: booker.email,
                   name: booker.name,
                 }),
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                   },
                   {
                     type: appStoreMetadata.googlecalendar.type,
@@ -1034,14 +1034,14 @@ describe("handleNewBooking", () => {
 
             expectSuccessfulVideoMeetingUpdationInCalendar(videoMock, {
               calEvent: {
-                location: "http://mock-dailyvideo.example.com",
+                location: "http://mock-jitsivideo.example.com",
               },
               bookingRef: {
-                type: appStoreMetadata.dailyvideo.type,
+                type: appStoreMetadata.jitsivideo.type,
                 uid: "MOCK_ID",
                 meetingId: "MOCK_ID",
                 meetingPassword: "MOCK_PASS",
-                meetingUrl: "http://mock-dailyvideo.example.com",
+                meetingUrl: "http://mock-jitsivideo.example.com",
               },
             });
 
@@ -1050,7 +1050,7 @@ describe("handleNewBooking", () => {
             expectSuccessfulCalendarEventUpdationInCalendar(calendarMock, {
               externalCalendarId: "existing-event-type@example.com",
               calEvent: {
-                location: "http://mock-dailyvideo.example.com",
+                location: "http://mock-jitsivideo.example.com",
                 attendees: expect.arrayContaining([
                   expect.objectContaining({
                     email: booker.email,
@@ -1076,9 +1076,9 @@ describe("handleNewBooking", () => {
             expectBookingRescheduledWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               subscriberUrl: "http://my-webhook.example.com",
-              videoCallUrl: `${WEBAPP_URL}/video/${createdBooking.uid}`,
+              videoCallUrl: "http://mock-jitsivideo.example.com",
             });
           },
           timeout
@@ -1374,11 +1374,11 @@ describe("handleNewBooking", () => {
                   endTime: `${plus1DateString}T05:15:00.000Z`,
                   references: [
                     getMockBookingReference({
-                      type: appStoreMetadata.dailyvideo.type,
+                      type: appStoreMetadata.jitsivideo.type,
                       uid: "MOCK_ID",
                       meetingId: "MOCK_ID",
                       meetingPassword: "MOCK_PASS",
-                      meetingUrl: "http://mock-dailyvideo.example.com",
+                      meetingUrl: "http://mock-jitsivideo.example.com",
                       credentialId: 0,
                     }),
                     getMockBookingReference({
@@ -1395,12 +1395,12 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             });
             await createBookingScenario(scenarioData);
 
             const videoMock = mockSuccessfulVideoMeetingCreation({
-              metadataLookupKey: "dailyvideo",
+              metadataLookupKey: "jitsivideo",
             });
 
             const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -1422,7 +1422,7 @@ describe("handleNewBooking", () => {
                 responses: {
                   email: booker.email,
                   name: booker.name,
-                  location: { optionValue: "", value: BookingLocations.CalVideo },
+                  location: { optionValue: "", value: BookingLocations.Jitsi },
                 },
               },
             });
@@ -1450,18 +1450,18 @@ describe("handleNewBooking", () => {
                 eventTypeId: mockBookingData.eventTypeId,
                 // Rescheduled booking sill stays in pending state
                 status: BookingStatus.PENDING,
-                location: BookingLocations.CalVideo,
+                location: BookingLocations.Jitsi,
                 responses: expect.objectContaining({
                   email: booker.email,
                   name: booker.name,
                 }),
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                   },
                   {
                     type: appStoreMetadata.googlecalendar.type,
@@ -1484,18 +1484,18 @@ describe("handleNewBooking", () => {
             expectBookingRequestedWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               subscriberUrl,
               eventType: scenarioData.eventTypes[0],
             });
 
             expectSuccessfulVideoMeetingDeletionInCalendar(videoMock, {
               bookingRef: {
-                type: appStoreMetadata.dailyvideo.type,
+                type: appStoreMetadata.jitsivideo.type,
                 uid: "MOCK_ID",
                 meetingId: "MOCK_ID",
                 meetingPassword: "MOCK_PASS",
-                meetingUrl: "http://mock-dailyvideo.example.com",
+                meetingUrl: "http://mock-jitsivideo.example.com",
               },
             });
 
@@ -1503,7 +1503,7 @@ describe("handleNewBooking", () => {
               externalCalendarId: "MOCK_EXTERNAL_CALENDAR_ID",
               calEvent: {
                 videoCallData: expect.objectContaining({
-                  url: "http://mock-dailyvideo.example.com",
+                  url: "http://mock-jitsivideo.example.com",
                 }),
               },
               uid: "MOCK_ID",
@@ -1579,11 +1579,11 @@ describe("handleNewBooking", () => {
                     endTime: `${plus1DateString}T05:15:00.000Z`,
                     references: [
                       {
-                        type: appStoreMetadata.dailyvideo.type,
+                        type: appStoreMetadata.jitsivideo.type,
                         uid: "MOCK_ID",
                         meetingId: "MOCK_ID",
                         meetingPassword: "MOCK_PASS",
-                        meetingUrl: "http://mock-dailyvideo.example.com",
+                        meetingUrl: "http://mock-jitsivideo.example.com",
                       },
                       {
                         type: appStoreMetadata.googlecalendar.type,
@@ -1626,12 +1626,12 @@ describe("handleNewBooking", () => {
                     timeZone: "Europe/London",
                   },
                 ],
-                apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+                apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
               })
             );
 
             const videoMock = mockSuccessfulVideoMeetingCreation({
-              metadataLookupKey: "dailyvideo",
+              metadataLookupKey: "jitsivideo",
             });
 
             const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -1655,7 +1655,7 @@ describe("handleNewBooking", () => {
                 responses: {
                   email: booker.email,
                   name: booker.name,
-                  location: { optionValue: "", value: BookingLocations.CalVideo },
+                  location: { optionValue: "", value: BookingLocations.Jitsi },
                 },
               },
             });
@@ -1682,18 +1682,18 @@ describe("handleNewBooking", () => {
                 uid: createdBooking.uid!,
                 eventTypeId: mockBookingData.eventTypeId,
                 status: BookingStatus.ACCEPTED,
-                location: BookingLocations.CalVideo,
+                location: BookingLocations.Jitsi,
                 responses: expect.objectContaining({
                   email: booker.email,
                   name: booker.name,
                 }),
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                   },
                   {
                     type: appStoreMetadata.googlecalendar.type,
@@ -1709,14 +1709,14 @@ describe("handleNewBooking", () => {
 
             expectSuccessfulVideoMeetingUpdationInCalendar(videoMock, {
               calEvent: {
-                location: "http://mock-dailyvideo.example.com",
+                location: "http://mock-jitsivideo.example.com",
               },
               bookingRef: {
-                type: appStoreMetadata.dailyvideo.type,
+                type: appStoreMetadata.jitsivideo.type,
                 uid: "MOCK_ID",
                 meetingId: "MOCK_ID",
                 meetingPassword: "MOCK_PASS",
-                meetingUrl: "http://mock-dailyvideo.example.com",
+                meetingUrl: "http://mock-jitsivideo.example.com",
               },
             });
 
@@ -1725,7 +1725,7 @@ describe("handleNewBooking", () => {
             expectSuccessfulCalendarEventUpdationInCalendar(calendarMock, {
               externalCalendarId: "existing-event-type@example.com",
               calEvent: {
-                location: "http://mock-dailyvideo.example.com",
+                location: "http://mock-jitsivideo.example.com",
                 attendees: expect.arrayContaining([
                   expect.objectContaining({
                     email: booker.email,
@@ -1752,9 +1752,9 @@ describe("handleNewBooking", () => {
             expectBookingRescheduledWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               subscriberUrl: "http://my-webhook.example.com",
-              videoCallUrl: `${WEBAPP_URL}/video/${createdBooking.uid}`,
+              videoCallUrl: "http://mock-jitsivideo.example.com",
             });
           },
           timeout
@@ -1829,11 +1829,11 @@ describe("handleNewBooking", () => {
                   endTime: `${plus1DateString}T05:15:00.000Z`,
                   references: [
                     getMockBookingReference({
-                      type: appStoreMetadata.dailyvideo.type,
+                      type: appStoreMetadata.jitsivideo.type,
                       uid: "MOCK_ID",
                       meetingId: "MOCK_ID",
                       meetingPassword: "MOCK_PASS",
-                      meetingUrl: "http://mock-dailyvideo.example.com",
+                      meetingUrl: "http://mock-jitsivideo.example.com",
                       credentialId: 0,
                     }),
                     getMockBookingReference({
@@ -1852,7 +1852,7 @@ describe("handleNewBooking", () => {
               organizer,
               apps: [
                 TestData.apps["google-calendar"],
-                TestData.apps["daily-video"],
+                TestData.apps["jitsi"],
                 TestData.apps["mock-payment-app"],
               ],
             });
@@ -1882,7 +1882,7 @@ describe("handleNewBooking", () => {
               });
             }
 
-            mockSuccessfulVideoMeetingCreation({ metadataLookupKey: "dailyvideo" });
+            mockSuccessfulVideoMeetingCreation({ metadataLookupKey: "jitsivideo" });
 
             const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
               create: { uid: "MOCK_ID" },
@@ -1898,7 +1898,7 @@ describe("handleNewBooking", () => {
                 responses: {
                   email: booker.email,
                   name: booker.name,
-                  location: { optionValue: "", value: BookingLocations.CalVideo },
+                  location: { optionValue: "", value: BookingLocations.Jitsi },
                 },
               },
             });
@@ -1914,7 +1914,7 @@ describe("handleNewBooking", () => {
                 uid: createdBooking.uid!,
                 eventTypeId: mockBookingData.eventTypeId,
                 status: BookingStatus.PENDING,
-                location: BookingLocations.CalVideo,
+                location: BookingLocations.Jitsi,
                 responses: expect.objectContaining({
                   email: booker.email,
                   name: booker.name,
@@ -1928,7 +1928,7 @@ describe("handleNewBooking", () => {
             expectBookingRequestedWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               subscriberUrl,
               eventType: scenarioData.eventTypes[0],
             });
@@ -2002,11 +2002,11 @@ describe("handleNewBooking", () => {
                   endTime: `${plus1DateString}T05:15:00.000Z`,
                   references: [
                     getMockBookingReference({
-                      type: appStoreMetadata.dailyvideo.type,
+                      type: appStoreMetadata.jitsivideo.type,
                       uid: "MOCK_ID",
                       meetingId: "MOCK_ID",
                       meetingPassword: "MOCK_PASS",
-                      meetingUrl: "http://mock-dailyvideo.example.com",
+                      meetingUrl: "http://mock-jitsivideo.example.com",
                       credentialId: 0,
                     }),
                     getMockBookingReference({
@@ -2024,7 +2024,7 @@ describe("handleNewBooking", () => {
               organizer,
               apps: [
                 TestData.apps["google-calendar"],
-                TestData.apps["daily-video"],
+                TestData.apps["jitsi"],
                 TestData.apps["mock-payment-app"],
               ],
             });
@@ -2055,7 +2055,7 @@ describe("handleNewBooking", () => {
             }
 
             const videoMock = mockSuccessfulVideoMeetingCreation({
-              metadataLookupKey: "dailyvideo",
+              metadataLookupKey: "jitsivideo",
             });
 
             const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -2072,7 +2072,7 @@ describe("handleNewBooking", () => {
                 responses: {
                   email: booker.email,
                   name: booker.name,
-                  location: { optionValue: "", value: BookingLocations.CalVideo },
+                  location: { optionValue: "", value: BookingLocations.Jitsi },
                 },
               },
             });
@@ -2088,7 +2088,7 @@ describe("handleNewBooking", () => {
                 uid: createdBooking.uid!,
                 eventTypeId: mockBookingData.eventTypeId,
                 status: BookingStatus.PENDING,
-                location: BookingLocations.CalVideo,
+                location: BookingLocations.Jitsi,
                 responses: expect.objectContaining({
                   email: booker.email,
                   name: booker.name,
@@ -2100,24 +2100,24 @@ describe("handleNewBooking", () => {
             expectBookingRequestedWebhookToHaveBeenFired({
               booker,
               organizer,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               subscriberUrl,
               eventType: scenarioData.eventTypes[0],
             });
             expectSuccessfulVideoMeetingDeletionInCalendar(videoMock, {
               bookingRef: {
-                type: appStoreMetadata.dailyvideo.type,
+                type: appStoreMetadata.jitsivideo.type,
                 uid: "MOCK_ID",
                 meetingId: "MOCK_ID",
                 meetingPassword: "MOCK_PASS",
-                meetingUrl: "http://mock-dailyvideo.example.com",
+                meetingUrl: "http://mock-jitsivideo.example.com",
               },
             });
             expectSuccessfulCalendarEventDeletionInCalendar(calendarMock, {
               externalCalendarId: "MOCK_EXTERNAL_CALENDAR_ID",
               calEvent: {
                 videoCallData: expect.objectContaining({
-                  url: "http://mock-dailyvideo.example.com",
+                  url: "http://mock-jitsivideo.example.com",
                 }),
               },
               uid: "MOCK_ID",
@@ -2172,7 +2172,7 @@ describe("handleNewBooking", () => {
                   id: 1,
                   slotInterval: 15,
                   length: 15,
-                  locations: [{ type: BookingLocations.GoogleMeet }, { type: BookingLocations.CalVideo }],
+                  locations: [{ type: BookingLocations.GoogleMeet }, { type: BookingLocations.Jitsi }],
                   users: [
                     {
                       id: 101,
@@ -2204,13 +2204,13 @@ describe("handleNewBooking", () => {
                 },
               ],
               organizer,
-              apps: [TestData.apps["daily-video"], TestData.apps["google-meet"]],
+              apps: [TestData.apps["jitsi"], TestData.apps["google-meet"]],
             })
           );
 
           // Mock video meeting creation for Cal Video
           const videoMock = mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           // Request data for rescheduling - with Cal Video as the new location
@@ -2223,7 +2223,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
             },
           });
@@ -2241,7 +2241,7 @@ describe("handleNewBooking", () => {
           // Validate new booking time and location
           expect(createdBooking.startTime?.toISOString()).toBe(`${plus1DateString}T04:00:00.000Z`);
           expect(createdBooking.endTime?.toISOString()).toBe(`${plus1DateString}T04:15:00.000Z`);
-          expect(createdBooking.location).toBe(BookingLocations.CalVideo);
+          expect(createdBooking.location).toBe(BookingLocations.Jitsi);
 
           // Verify booking details in database
           await expectBookingInDBToBeRescheduledFromTo({
@@ -2254,18 +2254,18 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 name: booker.name,
               }),
               references: [
                 {
-                  type: appStoreMetadata.dailyvideo.type,
+                  type: appStoreMetadata.jitsivideo.type,
                   uid: "MOCK_ID",
                   meetingId: "MOCK_ID",
                   meetingPassword: "MOCK_PASS",
-                  meetingUrl: "http://mock-dailyvideo.example.com",
+                  meetingUrl: "http://mock-jitsivideo.example.com",
                 },
               ],
             },
@@ -2340,12 +2340,12 @@ describe("handleNewBooking", () => {
               ],
               organizer: roundRobinHost1,
               usersApartFromOrganizer: [roundRobinHost2],
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -2368,7 +2368,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
               rescheduledBy: booker.email,
             },
@@ -2416,7 +2416,7 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 name: booker.name,
@@ -2493,12 +2493,12 @@ describe("handleNewBooking", () => {
               ],
               organizer: roundRobinHost1,
               usersApartFromOrganizer: [roundRobinHost2],
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -2521,7 +2521,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
             },
           });
@@ -2565,7 +2565,7 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 name: booker.name,
@@ -2692,12 +2692,12 @@ describe("handleNewBooking", () => {
               ],
               organizer: roundRobinHost1,
               usersApartFromOrganizer: [roundRobinHost2],
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -2721,7 +2721,7 @@ describe("handleNewBooking", () => {
                 email: booker.email,
                 name: booker.name,
                 attendeePhoneNumber: booker.attendeePhoneNumber,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
             },
           });
@@ -2765,7 +2765,7 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 attendeePhoneNumber: booker.attendeePhoneNumber,
@@ -2848,12 +2848,12 @@ describe("handleNewBooking", () => {
               ],
               organizer: roundRobinHost1,
               usersApartFromOrganizer: [roundRobinHost2],
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -2876,7 +2876,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
             },
           });
@@ -2924,7 +2924,7 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 name: booker.name,
@@ -3006,12 +3006,12 @@ describe("handleNewBooking", () => {
               ],
               organizer: otherHost,
               usersApartFromOrganizer: [hostOfOriginalBooking],
-              apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+              apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
             })
           );
 
           mockSuccessfulVideoMeetingCreation({
-            metadataLookupKey: "dailyvideo",
+            metadataLookupKey: "jitsivideo",
           });
 
           mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -3035,7 +3035,7 @@ describe("handleNewBooking", () => {
               responses: {
                 email: booker.email,
                 name: booker.name,
-                location: { optionValue: "", value: BookingLocations.CalVideo },
+                location: { optionValue: "", value: BookingLocations.Jitsi },
               },
             },
           });
@@ -3081,7 +3081,7 @@ describe("handleNewBooking", () => {
               uid: createdBooking.uid!,
               eventTypeId: mockBookingData.eventTypeId,
               status: BookingStatus.ACCEPTED,
-              location: BookingLocations.CalVideo,
+              location: BookingLocations.Jitsi,
               responses: expect.objectContaining({
                 email: booker.email,
                 name: booker.name,
@@ -3150,11 +3150,11 @@ describe("handleNewBooking", () => {
                 endTime: `${plus1DateString}T05:15:00.000Z`,
                 references: [
                   {
-                    type: appStoreMetadata.dailyvideo.type,
+                    type: appStoreMetadata.jitsivideo.type,
                     uid: "MOCK_ID",
                     meetingId: "MOCK_ID",
                     meetingPassword: "MOCK_PASS",
-                    meetingUrl: "http://mock-dailyvideo.example.com",
+                    meetingUrl: "http://mock-jitsivideo.example.com",
                     credentialId: null,
                   },
                   {
@@ -3171,12 +3171,12 @@ describe("handleNewBooking", () => {
             ],
             organizer: originalHost,
             usersApartFromOrganizer: [newHost],
-            apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+            apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
           })
         );
 
         const videoMock = mockSuccessfulVideoMeetingCreation({
-          metadataLookupKey: "dailyvideo",
+          metadataLookupKey: "jitsivideo",
         });
 
         const calendarMock = await mockCalendarToHaveNoBusySlots("googlecalendar", {
@@ -3193,7 +3193,7 @@ describe("handleNewBooking", () => {
             responses: {
               email: booker.email,
               name: booker.name,
-              location: { optionValue: "", value: BookingLocations.CalVideo },
+              location: { optionValue: "", value: BookingLocations.Jitsi },
             },
           },
         });

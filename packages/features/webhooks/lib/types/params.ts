@@ -226,23 +226,3 @@ export interface CancelScheduledMeetingWebhooksParams {
   isDryRun?: boolean;
 }
 
-export interface ScheduleNoShowWebhooksParams {
-  booking: {
-    id: number;
-    startTime: Date;
-    eventTypeId: number | null;
-    userId: number | null;
-    uid: string;
-  };
-  organizerUser: {
-    id: number;
-    username: string | null;
-  };
-  eventType?: {
-    teamId?: number | null;
-  };
-  teamId?: number | null;
-  orgId?: number | null;
-  oAuthClientId?: string;
-  triggerForUser?: boolean;
-}

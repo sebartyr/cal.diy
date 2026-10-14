@@ -559,11 +559,6 @@ const nextConfig = (phase: string): NextConfig => {
           permanent: true,
         },
         {
-          source: "/call/:path*",
-          destination: "/video/:path*",
-          permanent: false,
-        },
-        {
           source: "/api/auth/:path*",
           has: [
             {
@@ -639,11 +634,6 @@ const nextConfig = (phase: string): NextConfig => {
 
       if (process.env.NEXT_PUBLIC_WEBAPP_URL === "https://app.cal.com") {
         redirects.push(
-          {
-            source: "/apps/dailyvideo",
-            destination: "/apps/daily-video",
-            permanent: true,
-          },
           {
             source: "/apps/huddle01_video",
             destination: "/apps/huddle01",

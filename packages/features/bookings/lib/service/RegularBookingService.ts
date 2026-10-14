@@ -4,6 +4,7 @@ import { getPaymentAppData } from "@calcom/app-store/_utils/payments/getPaymentA
 import { metadata as GoogleMeetMetadata } from "@calcom/app-store/googlevideo/_metadata";
 import {
   getLocationValueForDB,
+  JitsiLocationType,
   MeetLocationType,
   OrganizerDefaultConferencingAppType,
 } from "@calcom/app-store/locations";
@@ -103,7 +104,6 @@ import { handleAppsStatus } from "../handleNewBooking/handleAppsStatus";
 import { loadAndValidateUsers } from "../handleNewBooking/loadAndValidateUsers";
 import type { BookingType } from "../handleNewBooking/originalRescheduledBookingUtils";
 import { getOriginalRescheduledBooking } from "../handleNewBooking/originalRescheduledBookingUtils";
-import { scheduleNoShowTriggers } from "../handleNewBooking/scheduleNoShowTriggers";
 import type { IEventTypePaymentCredentialType, Invitee, IsFixedAwareUser } from "../handleNewBooking/types";
 import { validateBookingTimeIsNotOutOfBounds } from "../handleNewBooking/validateBookingTimeIsNotOutOfBounds";
 import { validateEventLength } from "../handleNewBooking/validateEventLength";
@@ -1146,18 +1146,20 @@ async function handler(
 
     if (defaultApp?.appSlug) {
       const app = getAppFromSlug(defaultApp.appSlug);
-      locationBodyString = app?.appData?.location?.type || locationBodyString;
+      // A default pointing at a removed app (e.g. Cal Video's "daily-video") resolves to nothing.
+      locationBodyString = app?.appData?.location?.type || JitsiLocationType;
 
       const mainHostCalendar = eventType.destinationCalendar || organizerUser.destinationCalendar;
 
       if (locationBodyString === MeetLocationType && mainHostCalendar?.integration !== "google_calendar") {
-        locationBodyString = "integrations:daily";
+        locationBodyString = JitsiLocationType;
         organizerOrFirstDynamicGroupMemberDefaultLocationUrl = undefined;
       } else if (isManagedEventType || isTeamEventType) {
         organizerOrFirstDynamicGroupMemberDefaultLocationUrl = defaultApp?.appLink;
       }
     } else {
-      locationBodyString = "integrations:daily";
+      // No default of their own: fall back to Jitsi, which replaced Cal Video as the default.
+      locationBodyString = JitsiLocationType;
     }
   }
 
@@ -1892,7 +1894,7 @@ async function handler(
     } else {
       if (results.length) {
         // Handle Google Meet results
-        // We use the original booking location since the evt location changes to daily
+        // We use the original booking location since the evt location may change on fallback
         if (bookingLocation === MeetLocationType) {
           const googleMeetResult = {
             appName: GoogleMeetMetadata.name,
@@ -2019,7 +2021,7 @@ async function handler(
 
       if (results.length) {
         // Handle Google Meet results
-        // We use the original booking location since the evt location changes to daily
+        // We use the original booking location since the evt location may change on fallback
         if (bookingLocation === MeetLocationType) {
           const googleMeetResult = {
             appName: GoogleMeetMetadata.name,
@@ -2440,26 +2442,6 @@ async function handler(
     bookerUrl,
   };
 
-  try {
-    if (isConfirmedByDefault) {
-      await scheduleNoShowTriggers({
-        booking: {
-          startTime: booking.startTime,
-          id: booking.id,
-          location: booking.location,
-          uid: booking.uid,
-        },
-        triggerForUser: true,
-        organizerUser: { id: organizerUser.id },
-        eventTypeId,
-        teamId: null,
-        orgId: null,
-        isDryRun,
-      });
-    }
-  } catch (error) {
-    tracingLogger.error("Error while scheduling no show triggers", JSON.stringify({ error }));
-  }
 
   if (!isDryRun) {
     // Unused until we deploy to trigger.dev production

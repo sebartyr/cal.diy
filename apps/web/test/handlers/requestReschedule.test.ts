@@ -98,7 +98,7 @@ describe("Handler: requestReschedule", () => {
             },
           ],
           organizer,
-          apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+          apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
         })
       );
 
@@ -218,7 +218,7 @@ describe("Handler: requestReschedule", () => {
             },
           ],
           organizer,
-          apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+          apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
         })
       );
 
@@ -351,7 +351,7 @@ describe("Handler: requestReschedule", () => {
           ],
           organizer,
           usersApartFromOrganizer: [teamMember],
-          apps: [TestData.apps["google-calendar"], TestData.apps["daily-video"]],
+          apps: [TestData.apps["google-calendar"], TestData.apps["jitsi"]],
         })
       );
 

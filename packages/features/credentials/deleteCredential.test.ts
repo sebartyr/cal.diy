@@ -58,10 +58,10 @@ describe("deleteCredential", () => {
       const eventTypeRepo = new EventTypeRepository(prisma);
       const eventTypeQuery = await eventTypeRepo.findAllByUserId({ userId: user.id });
 
-      // Ensure that the event type with the deleted app was converted back to daily
+      // Ensure that the event type with the deleted app was converted back to jitsi
       const changedEventType = eventTypeQuery.find((eventType) => eventType.id === 1)?.locations;
       expect(changedEventType).toBeDefined();
-      expect(changedEventType![0]).toEqual({ type: "integrations:daily" });
+      expect(changedEventType![0]).toEqual({ type: "integrations:jitsi" });
 
       const nonChangedEventType = eventTypeQuery.find((eventType) => eventType.id === 2)?.locations;
       expect(nonChangedEventType).toBeDefined();

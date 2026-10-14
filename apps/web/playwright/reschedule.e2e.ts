@@ -3,14 +3,12 @@ import { expect } from "@playwright/test";
 import dayjs from "@calcom/dayjs";
 import { prisma } from "@calcom/prisma";
 import { BookingStatus } from "@calcom/prisma/enums";
-import { bookingMetadataSchema } from "@calcom/prisma/zod-utils";
 
 import { test } from "./lib/fixtures";
 import {
   bookTimeSlot,
   confirmReschedule,
   selectFirstAvailableTimeSlotNextMonth,
-  submitAndWaitForResponse,
 } from "./lib/testUtils";
 
 test.describe.configure({ mode: "parallel" });
@@ -232,65 +230,6 @@ test.describe("Reschedule Tests", async () => {
     await confirmReschedule(page);
     await expect(page).toHaveURL(/.*booking/);
   });
-  test("Should load Valid Cal video url after rescheduling Opt in events", async ({
-    page,
-    users,
-    browser,
-  }) => {
-    // eslint-disable-next-line playwright/no-skipped-test
-    test.skip(!process.env.DAILY_API_KEY, "DAILY_API_KEY is needed for this test");
-    const user = await users.create();
-
-    const eventType = user.eventTypes.find((e) => e.slug === "opt-in")!;
-
-    const confirmBooking = async (bookingUid: string) => {
-      const [authedContext, authedPage] = await user.apiLoginOnNewBrowser(browser);
-      await authedPage.goto("/bookings/upcoming");
-      await submitAndWaitForResponse(authedPage, "/api/trpc/bookings/confirm?batch=1", {
-        action: () => authedPage.locator(`[data-booking-uid="${bookingUid}"][data-testid="confirm"]`).click(),
-      });
-      await authedContext.close();
-    };
-
-    await page.goto(`/${user.username}/${eventType.slug}`);
-    await selectFirstAvailableTimeSlotNextMonth(page);
-    await bookTimeSlot(page);
-    await expect(page.locator("[data-testid=success-page]")).toBeVisible();
-
-    const pageUrl = new URL(page.url());
-    const pathSegments = pageUrl.pathname.split("/");
-    const bookingUID = pathSegments[pathSegments.length - 1];
-
-    const currentBooking = await prisma.booking.findFirstOrThrow({ where: { uid: bookingUID } });
-    expect(currentBooking).not.toBeUndefined();
-    await confirmBooking(currentBooking.uid);
-
-    await page.goto(`/reschedule/${currentBooking.uid}`);
-    await selectFirstAvailableTimeSlotNextMonth(page);
-
-    await confirmReschedule(page);
-    await expect(page).toHaveURL(/.*booking/);
-
-    const newBooking = await prisma.booking.findFirstOrThrow({
-      where: { fromReschedule: currentBooking.uid },
-    });
-    expect(newBooking).not.toBeUndefined();
-    expect(newBooking.status).toBe(BookingStatus.PENDING);
-    await confirmBooking(newBooking.uid);
-
-    const booking = await prisma.booking.findFirstOrThrow({ where: { id: newBooking.id } });
-    expect(booking).not.toBeUndefined();
-    expect(booking.status).toBe(BookingStatus.ACCEPTED);
-
-    const locationVideoCallUrl = bookingMetadataSchema.parse(booking.metadata || {})?.videoCallUrl;
-    // FIXME: This should be consistent or skip the whole test
-    // eslint-disable-next-line playwright/no-conditional-in-test
-    if (!locationVideoCallUrl) return;
-    expect(locationVideoCallUrl).not.toBeUndefined();
-    await page.goto(locationVideoCallUrl);
-    await expect(page.frameLocator("iFrame").locator('text="Continue"')).toBeVisible();
-  });
-
   test("Should redirect to cancelled page when allowReschedulingCancelledBookings is false (default)", async ({
     page,
     users,

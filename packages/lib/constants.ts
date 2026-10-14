@@ -244,8 +244,6 @@ export const IS_DUB_REFERRALS_ENABLED =
 export const DUB_SMS_DOMAIN = process.env.DUB_SMS_DOMAIN;
 export const DUB_SMS_FOLDER_ID = process.env.DUB_SMS_FOLDER_ID;
 
-export const CAL_VIDEO_MEETING_LINK_FOR_TESTING = process.env.CAL_VIDEO_MEETING_LINK_FOR_TESTING;
-
 export const IS_SMS_CREDITS_ENABLED =
   !!process.env.NEXT_PUBLIC_STRIPE_CREDITS_PRICE_ID || !!process.env.NEXT_PUBLIC_IS_E2E;
 export const DATABASE_CHUNK_SIZE = parseInt(process.env.DATABASE_CHUNK_SIZE || "25", 10);
@@ -276,10 +274,6 @@ export const RETELL_AI_TEST_EVENT_TYPE_MAP = (() => {
 /* This is an internal environment variable and is not meant to be used by the self-hosters. It is planned to be removed later by either having it as an option in Event Type or by some other customer configurable approaches*/
 export const ENV_PAST_BOOKING_RESCHEDULE_CHANGE_TEAM_IDS =
   process.env._CAL_INTERNAL_PAST_BOOKING_RESCHEDULE_CHANGE_TEAM_IDS;
-
-// Cal Video (Daily) app identifiers
-export const CAL_VIDEO = "daily-video";
-export const CAL_VIDEO_TYPE = "daily_video";
 
 export const ORG_TRIAL_DAYS = process.env.STRIPE_ORG_TRIAL_DAYS
   ? Math.max(0, parseInt(process.env.STRIPE_ORG_TRIAL_DAYS, 10))

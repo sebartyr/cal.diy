@@ -18,7 +18,6 @@ import type { PlatformClientParams } from "@calcom/prisma/zod-utils";
 import { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import type { AdditionalInformation, CalendarEvent } from "@calcom/types/Calendar";
 import { getCalEventResponses } from "./getCalEventResponses";
-import { scheduleNoShowTriggers } from "./handleNewBooking/scheduleNoShowTriggers";
 
 export async function handleConfirmation(args: {
   user: EventManagerUser & { username: string | null };
@@ -308,7 +307,6 @@ export async function handleConfirmation(args: {
     ];
   }
 
-  const triggerForUser = true;
   const userId = booking.userId;
 
   try {
@@ -368,21 +366,6 @@ export async function handleConfirmation(args: {
     });
 
     await Promise.all(scheduleTriggerPromises);
-
-    await scheduleNoShowTriggers({
-      booking: {
-        startTime: booking.startTime,
-        id: booking.id,
-        location: booking.location,
-        uid: booking.uid,
-      },
-      triggerForUser,
-      organizerUser: { id: booking.userId },
-      eventTypeId: booking.eventTypeId,
-      teamId: null,
-      orgId: null,
-      oAuthClientId: platformClientParams?.platformClientId,
-    });
 
     const eventTypeInfo: EventTypeInfo = {
       eventTitle: eventType?.title,

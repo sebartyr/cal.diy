@@ -26,7 +26,7 @@ vi.mock("@calcom/features/eventtypes/repositories/eventTypeRepository", () => ({
 }));
 
 vi.mock("@calcom/app-store/_utils/getDefaultLocations", () => ({
-  getDefaultLocations: vi.fn().mockResolvedValue([{ type: "integrations:daily" }]),
+  getDefaultLocations: vi.fn().mockResolvedValue([{ type: "integrations:jitsi" }]),
 }));
 
 vi.mock("../util", () => ({

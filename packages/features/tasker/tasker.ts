@@ -6,12 +6,6 @@ export type TaskerTypes = "internal" | "redis";
 type TaskPayloads = {
   sendWebhook: string;
   sendSms: string;
-  triggerHostNoShowWebhook: z.infer<
-    typeof import("./tasks/triggerNoShow/schema").ZSendNoShowWebhookPayloadSchema
-  >;
-  triggerGuestNoShowWebhook: z.infer<
-    typeof import("./tasks/triggerNoShow/schema").ZSendNoShowWebhookPayloadSchema
-  >;
   translateEventTypeData: z.infer<
     typeof import("./tasks/translateEventTypeData").ZTranslateEventDataPayloadSchema
   >;

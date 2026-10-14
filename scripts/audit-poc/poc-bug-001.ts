@@ -135,7 +135,7 @@ async function postBooking(
       email: bookerEmail,
       guests: [],
       notes: "audit-poc-bug-001",
-      location: { value: "integrations:daily", optionValue: "" },
+      location: { value: "integrations:jitsi", optionValue: "" },
     },
   };
   const res = await fetch(`${BASE}/api/book/event`, {

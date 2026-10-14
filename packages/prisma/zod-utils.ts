@@ -375,7 +375,7 @@ export const createdEventSchema = z
   .passthrough();
 
 const schemaDefaultConferencingApp = z.object({
-  appSlug: z.string().default("daily-video").optional(),
+  appSlug: z.string().default("jitsi").optional(),
   appLink: z.string().optional(),
 });
 
@@ -488,32 +488,6 @@ export const customInputSchema = z.object({
 });
 
 export type CustomInputSchema = z.infer<typeof customInputSchema>;
-
-export const recordingItemSchema = z
-  .object({
-    id: z.string(),
-    room_name: z.string(),
-    start_ts: z.number(),
-    status: z.string(),
-    max_participants: z.number().optional(),
-    duration: z.number(),
-    share_token: z.string(),
-  })
-  .passthrough();
-
-export const recordingItemsSchema = z.array(recordingItemSchema);
-
-export type RecordingItemSchema = z.infer<typeof recordingItemSchema>;
-
-export const getRecordingsResponseSchema = z.union([
-  z.object({
-    total_count: z.number(),
-    data: recordingItemsSchema,
-  }),
-  z.object({}),
-]);
-
-export type GetRecordingsResponseSchema = z.infer<typeof getRecordingsResponseSchema>;
 
 /**
  * Ensures that it is a valid HTTP URL
@@ -631,12 +605,6 @@ export const fromEntries = <
   return Object.fromEntries(entries) as FromEntries<DeepWriteable<E>>;
 };
 
-export const getAccessLinkResponseSchema = z.object({
-  download_link: z.string().url(),
-});
-
-export type GetAccessLinkResponseSchema = z.infer<typeof getAccessLinkResponseSchema>;
-
 /** Facilitates converting values from Select inputs to plain ones before submitting */
 export const optionToValueSchema = <T extends z.ZodTypeAny>(valueSchema: T) =>
   z
@@ -661,15 +629,6 @@ export const getParserWithGeneric =
       [key in keyof Data]: Data[key] extends SimpleFormValues ? Data[key] : Output[key];
     };
   };
-export const sendDailyVideoRecordingEmailsSchema = z.object({
-  recordingId: z.string(),
-  bookingUID: z.string(),
-});
-
-export const downloadLinkSchema = z.object({
-  download_link: z.string(),
-});
-
 // All properties within event type that can and will be updated if needed
 export const allManagedEventTypeProps: { [k in keyof Omit<Prisma.EventTypeSelect, "id">]: true } = {
   title: true,

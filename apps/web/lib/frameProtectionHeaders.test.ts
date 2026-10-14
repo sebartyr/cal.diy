@@ -54,7 +54,6 @@ describe("getFrameProtectionHeaderRules", () => {
     "/apps",
     "/apps/google-calendar",
     "/payment/uid123",
-    "/video/uid123",
   ])("leaves embeddable or public page %s frameable", (pathname) => {
     expect(isProtected(pathname)).toBe(false);
   });

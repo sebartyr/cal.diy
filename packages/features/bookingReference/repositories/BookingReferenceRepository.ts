@@ -4,34 +4,10 @@ import type { PartialReference } from "@calcom/types/EventManager";
 
 import type { IBookingReferenceRepository } from "./IBookingReferenceRepository";
 
-const bookingReferenceSelect = {
-  id: true,
-  type: true,
-  uid: true,
-  meetingId: true,
-  meetingUrl: true,
-  credentialId: true,
-  deleted: true,
-  bookingId: true,
-} satisfies Prisma.BookingReferenceSelect;
-
 export class BookingReferenceRepository implements IBookingReferenceRepository {
   private prismaClient: PrismaClient;
   constructor(private deps: { prismaClient: PrismaClient }) {
     this.prismaClient = deps.prismaClient;
-  }
-
-  static async findDailyVideoReferenceByRoomName({ roomName }: { roomName: string }) {
-    return prisma.bookingReference.findFirst({
-      where: {
-        type: "daily_video",
-        uid: roomName,
-        meetingId: roomName,
-        bookingId: { not: null },
-        deleted: null,
-      },
-      select: bookingReferenceSelect,
-    });
   }
 
   /**

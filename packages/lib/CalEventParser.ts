@@ -616,24 +616,16 @@ export const getCancellationReason = (t: TFunction, cancellationReason?: string 
   return `${t("cancellation_reason")}:\n${sanitized}`;
 };
 
-export const isDailyVideoCall = (videoCallData?: VideoCallData): boolean => {
-  return videoCallData?.type === "daily_video";
-};
-
-export const getPublicVideoCallUrl = (uid?: string | null): string => {
-  return `${WEBAPP_URL}/video/${getUid(uid)}`;
-};
-
 export const getVideoCallUrlFromCalEvent = (calEvent: {
   videoCallData?: { type?: string; url?: string };
   additionalInformation?: AdditionalInformation;
   location?: string | null;
   uid?: string | null;
 }): string => {
+  // Cal Video used to answer with its in-app room, WEBAPP_URL/video/<uid>. That room was
+  // removed along with Cal Video, so a booking made before then falls back to the provider URL
+  // it stored, like every other video app.
   if (calEvent.videoCallData) {
-    if (calEvent.videoCallData.type === "daily_video") {
-      return getPublicVideoCallUrl(calEvent.uid);
-    }
     return calEvent.videoCallData.url ?? "";
   }
   if (calEvent.additionalInformation?.hangoutLink) {
@@ -646,5 +638,5 @@ export const getVideoCallUrlFromCalEvent = (calEvent: {
 };
 
 export const getVideoCallPassword = (videoCallData?: VideoCallData): string => {
-  return isDailyVideoCall(videoCallData) ? "" : (videoCallData?.password ?? "");
+  return videoCallData?.password ?? "";
 };

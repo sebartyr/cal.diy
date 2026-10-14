@@ -24,7 +24,7 @@ async function main() {
       slug: "audit-30min",
       length: 30,
       userId: owner.id,
-      locations: [{ type: "integrations:daily" }],
+      locations: [{ type: "integrations:jitsi" }],
     },
     select: { id: true, slug: true },
   });
