@@ -16,6 +16,16 @@ const enum ThemeSupport {
  * Returns a unique identifier that remains the same as long as we land on the public page for the same entity like event-type/dynamic-group-booking etc
  * The theme stays same for same identifier.
  */
+/**
+ * next-themes injects an inline script that applies the theme before first paint. It only ever runs
+ * from the server-rendered HTML. When the provider remounts on the client (its key follows
+ * storageKey, e.g. on login -> dashboard), React 19 creates a new <script> that would never execute,
+ * and warns about it in development. Giving that client-side script a data-block type silences the
+ * warning; on the server it stays executable, so the theme is still applied before first paint.
+ */
+export const themeScriptProps: { type: string } | undefined =
+  typeof window === "undefined" ? undefined : { type: "application/json" };
+
 export function getUniqueIdentifierForBookingPage({ pathname }: { pathname: string }) {
   if (pathname === "/") {
     // For Org domains, we could have a booking page at root path too, so we use '/' as identifier
@@ -104,7 +114,8 @@ export function getThemeProviderProps({
       key: "forcedThemeKey",
       storageKey: "forcedThemeKey",
       forcedTheme,
-      attribute: "class",
+      attribute: "class" as const,
+      scriptProps: themeScriptProps,
       nonce: props.nonce,
       enableColorScheme: false,
       enableSystem: themeSupport !== ThemeSupport.None,
@@ -143,7 +154,8 @@ export function getThemeProviderProps({
     // next-themes doesn't listen to changes on storageKey. So we need to force a re-render when storageKey changes
     // This is how login to dashboard soft navigation changes theme from light to dark
     key: storageKey,
-    attribute: "class",
+    attribute: "class" as const,
+    scriptProps: themeScriptProps,
   };
 
   return themeProviderProps;

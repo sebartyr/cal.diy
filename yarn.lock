@@ -2846,7 +2846,7 @@ __metadata:
     next-axiom: "npm:0.17.0"
     next-i18next: "npm:15.4.2"
     next-seo: "npm:6.1.0"
-    next-themes: "npm:0.2.0"
+    next-themes: "npm:0.4.6"
     node-html-parser: "npm:6.1.13"
     node-mocks-http: "npm:1.16.2"
     nodemailer: "npm:9.1.1"
@@ -29195,18 +29195,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"next-themes@npm:0.2.0":
-  version: 0.2.0
-  resolution: "next-themes@npm:0.2.0"
-  peerDependencies:
-    next: "*"
-    react: "*"
-    react-dom: "*"
-  checksum: 10/43ff2926951b6e465ae89de41c0b18e4766ba8f319ecbb0564669b3ed4ed28bbffe5ad06adae3a0d6c58356f98b3ce3c1a886665191656b230f2d8a62cd57930
-  languageName: node
-  linkType: hard
-
-"next-themes@npm:^0.4.0":
+"next-themes@npm:0.4.6, next-themes@npm:^0.4.0":
   version: 0.4.6
   resolution: "next-themes@npm:0.4.6"
   peerDependencies:
