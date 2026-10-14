@@ -35,16 +35,6 @@ export class PrismaApiKeyRepository {
     const apiKeys = await this.prismaClient.apiKey.findMany({
       where: {
         userId,
-        OR: [
-          {
-            NOT: {
-              appId: "zapier",
-            },
-          },
-          {
-            appId: null,
-          },
-        ],
       },
       orderBy: { createdAt: "desc" },
     });
