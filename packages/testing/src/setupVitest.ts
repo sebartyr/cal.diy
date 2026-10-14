@@ -197,17 +197,6 @@ class MockCrmService {
 
 vi.mock("@calcom/app-store/crm.apps.generated", () => ({
   CrmServiceMap: {
-    closecom: Promise.resolve({ default: MockCrmService }),
-    hubspot: Promise.resolve({ default: MockCrmService }),
     "pipedrive-crm": Promise.resolve({ default: MockCrmService }),
-    salesforce: Promise.resolve({ default: MockCrmService }),
-    "zoho-bigin": Promise.resolve({ default: MockCrmService }),
-    zohocrm: Promise.resolve({ default: MockCrmService }),
   },
 }));
-
-if (!process.env.INTEGRATION_TESTS) {
-  vi.mock("@calcom/app-store/salesforce/lib/graphql/documents/queries", () => ({
-    GetAccountRecordsForRRSkip: {},
-  }));
-}

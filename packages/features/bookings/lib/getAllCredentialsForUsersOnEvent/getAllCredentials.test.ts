@@ -90,11 +90,11 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           const crmCredential = {
             id: 1,
-            type: "salesforce_crm",
+            type: "pipedrive-crm_crm",
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
@@ -111,12 +111,12 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               teamId: 1,
               key: {},
             },
@@ -140,7 +140,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
               parentId: null,
               metadata: {
                 apps: {
-                  salesforce: {
+                  "pipedrive-crm": {
                     enabled: true,
                     credentialId: 1,
                     appCategories: ["crm"],
@@ -152,7 +152,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           expect(credentials).toHaveLength(2);
 
-          expect(credentials).toContainEqual(expect.objectContaining({ userId: 1, type: "salesforce_crm" }));
+          expect(credentials).toContainEqual(expect.objectContaining({ userId: 1, type: "pipedrive-crm_crm" }));
         });
         test("For teams", async () => {
           const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
@@ -173,24 +173,24 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           const crmCredential = {
             id: 1,
-            type: "salesforce_crm",
+            type: "pipedrive-crm_crm",
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },
             {
               id: 3,
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               teamId: 1,
               key: {},
             },
@@ -216,7 +216,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
               parentId: null,
               metadata: {
                 apps: {
-                  salesforce: {
+                  "pipedrive-crm": {
                     enabled: true,
                     credentialId: 3,
                     appCategories: ["crm"],
@@ -228,7 +228,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           expect(credentials).toHaveLength(2);
 
-          expect(credentials).toContainEqual(expect.objectContaining({ teamId: 1, type: "salesforce_crm" }));
+          expect(credentials).toContainEqual(expect.objectContaining({ teamId: 1, type: "pipedrive-crm_crm" }));
         });
         test("For child of managed event type", async () => {
           const mockEnrichUserWithItsProfile = vi.fn().mockReturnValue({
@@ -250,24 +250,24 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           const teamId = 1;
           const crmCredential = {
             id: 1,
-            type: "salesforce_crm",
+            type: "pipedrive-crm_crm",
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },
             {
               id: 3,
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               teamId,
               key: {},
             },
@@ -317,7 +317,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
               parentId: 3,
               metadata: {
                 apps: {
-                  salesforce: {
+                  "pipedrive-crm": {
                     enabled: true,
                     credentialId: 3,
                     appCategories: ["crm"],
@@ -329,7 +329,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           expect(credentials).toHaveLength(2);
 
-          expect(credentials).toContainEqual(expect.objectContaining({ teamId, type: "salesforce_crm" }));
+          expect(credentials).toContainEqual(expect.objectContaining({ teamId, type: "pipedrive-crm_crm" }));
         });
         test("For an org user", async () => {
           const getAllCredentialsIncludeServiceAccountKey = (await import("./getAllCredentials"))
@@ -350,11 +350,11 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           const crmCredential = {
             id: 1,
-            type: "salesforce_crm",
+            type: "pipedrive-crm_crm",
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
@@ -371,13 +371,13 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },
             {
               id: 3,
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               teamId: orgId,
               key: {},
             },
@@ -426,7 +426,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
               parentId: null,
               metadata: {
                 apps: {
-                  salesforce: {
+                  "pipedrive-crm": {
                     enabled: true,
                     credentialId: 3,
                     appCategories: ["crm"],
@@ -439,7 +439,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           expect(credentials).toHaveLength(3);
 
           expect(credentials).toContainEqual(
-            expect.objectContaining({ teamId: orgId, type: "salesforce_crm" })
+            expect.objectContaining({ teamId: orgId, type: "pipedrive-crm_crm" })
           );
         });
       });
@@ -454,7 +454,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
@@ -471,12 +471,12 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               teamId: 1,
               key: {},
             },
@@ -516,18 +516,18 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           const crmCredential = {
             id: 1,
-            type: "salesforce_crm",
+            type: "pipedrive-crm_crm",
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },
@@ -576,18 +576,18 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           const teamId = 1;
           const crmCredential = {
             id: 1,
-            type: "salesforce_crm",
+            type: "pipedrive-crm_crm",
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },
@@ -672,11 +672,11 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
 
           const crmCredential = {
             id: 1,
-            type: "salesforce_crm",
+            type: "pipedrive-crm_crm",
             userId: 1,
             teamId: null,
             key: {},
-            appId: "salesforce",
+            appId: "pipedrive-crm",
             invalid: false,
           };
 
@@ -693,7 +693,7 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
           await createCredentials([
             crmCredential,
             {
-              type: "salesforce_crm",
+              type: "pipedrive-crm_crm",
               userId: 2,
               key: {},
             },

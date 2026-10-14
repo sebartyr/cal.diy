@@ -1,8 +1,6 @@
 import { prisma } from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
-
 import { TRPCError } from "@trpc/server";
-
 import type { TrpcSessionUser } from "../../../types";
 import type { TUpdateAppCredentialsInputSchema } from "./updateAppCredentials.schema";
 
@@ -13,16 +11,22 @@ export type UpdateAppCredentialsOptions = {
   input: TUpdateAppCredentialsInputSchema;
 };
 
-const validators = {
-  paypal: () => import("@calcom/paypal/lib/updateAppCredentials.validator"),
-};
+type AppKeyValidator = (args: {
+  input: TUpdateAppCredentialsInputSchema;
+}) => Promise<TUpdateAppCredentialsInputSchema["key"]>;
+
+/**
+ * Per-app key validation. Empty since the PayPal app was removed; typed as a Record so an
+ * empty registry stays valid (`keyof {}` is never) and the hook remains the extension point.
+ */
+const validators: Record<string, () => Promise<{ default: AppKeyValidator }>> = {};
 
 export const handleCustomValidations = async ({
   input,
   appId,
 }: UpdateAppCredentialsOptions & { appId: string }) => {
   const { key } = input;
-  const validatorGetter = validators[appId as keyof typeof validators];
+  const validatorGetter = validators[appId];
   // If no validator is found, return the key as is
   if (!validatorGetter) return key;
   try {

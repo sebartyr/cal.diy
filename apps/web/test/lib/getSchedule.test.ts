@@ -47,20 +47,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -90,7 +90,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,
@@ -179,20 +179,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -231,7 +231,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,
@@ -326,20 +326,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -369,7 +369,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,
@@ -460,20 +460,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -503,7 +503,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,
@@ -557,20 +557,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -600,7 +600,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,
@@ -666,20 +666,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -709,7 +709,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,
@@ -763,20 +763,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -806,7 +806,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,
@@ -860,20 +860,20 @@ describe("getSchedule", () => {
 
       const crmCredential = {
         id: 1,
-        type: "salesforce_crm",
+        type: "pipedrive-crm_crm",
         key: {
           clientId: "test-client-id",
         },
         userId: 1,
         teamId: null,
-        appId: "salesforce",
+        appId: "pipedrive-crm",
         invalid: false,
         user: { email: "test@test.com" },
       };
 
       await createCredentials([crmCredential]);
 
-      mockCrmApp("salesforce", {
+      mockCrmApp("pipedrive-crm", {
         getContacts: [
           {
             id: "contact-id",
@@ -903,7 +903,7 @@ describe("getSchedule", () => {
             schedulingType: "ROUND_ROBIN",
             metadata: {
               apps: {
-                salesforce: {
+                "pipedrive-crm": {
                   enabled: true,
                   appCategories: ["crm"],
                   roundRobinLeadSkip: true,

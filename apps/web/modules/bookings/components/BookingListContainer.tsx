@@ -8,7 +8,6 @@ import { Alert } from "@calcom/ui/components/alert";
 import { Badge } from "@calcom/ui/components/badge";
 import { Button } from "@calcom/ui/components/button";
 import { ToggleGroup } from "@calcom/ui/components/form";
-import { WipeMyCalActionButton } from "@calcom/web/components/apps/wipemycalother/wipeMyCalActionButton";
 import { getCoreRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -234,9 +233,6 @@ function BookingListInner({
           <DataTableFilters.ClearFiltersButton />
           <DataTableSegment.SaveButton />
         </div>
-      )}
-      {status === "upcoming" && !isEmpty && (
-        <WipeMyCalActionButton className="mt-4" bookingStatus={status} bookingsEmpty={isEmpty} />
       )}
       <div className="mt-4">
         <BookingList

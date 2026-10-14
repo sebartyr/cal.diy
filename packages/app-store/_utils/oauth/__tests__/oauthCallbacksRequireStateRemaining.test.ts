@@ -29,14 +29,11 @@ vi.mock("../../getParsedAppKeysFromSlug", () => ({
   default: vi.fn().mockResolvedValue({
     client_id: "client-id",
     client_secret: "client-secret",
-    redirect_uris: "https://cal.example.com/api/integrations/dub/callback",
+    redirect_uris: "https://cal.example.com/api/integrations/office365video/callback",
   }),
 }));
 vi.mock("../../../pipedrive-crm/lib/getPipedriveAppKeys", () => ({
   getPipedriveAppKeys: vi.fn().mockResolvedValue({ client_id: "client-id", client_secret: "client-secret" }),
-}));
-vi.mock("../../../basecamp3/lib/getBasecampKeys", () => ({
-  getBasecampKeys: vi.fn().mockResolvedValue({ client_id: "client-id" }),
 }));
 vi.mock("@calcom/features/auth/lib/getServerSession", () => ({
   getServerSession: vi.fn().mockResolvedValue({ user: { id: 42 } }),
@@ -86,12 +83,6 @@ type Handler = (req: NextApiRequest, res: NextApiResponse) => unknown;
 
 const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["pipedrive-crm", () => import("../../../pipedrive-crm/api/callback")],
-  ["zohocrm", () => import("../../../zohocrm/api/callback")],
-  ["zoho-bigin", () => import("../../../zoho-bigin/api/callback")],
-  ["closecom", () => import("../../../closecom/api/callback")],
-  ["intercom", () => import("../../../intercom/api/callback")],
-  ["basecamp3", () => import("../../../basecamp3/api/callback")],
-  ["dub", () => import("../../../dub/api/callback")],
 ];
 
 const providerQuery = {
@@ -153,8 +144,6 @@ describe("formerly nonce-exempt /add routes sign the state (SEC-101)", () => {
   });
 
   const addRoutes: Array<[string, () => Promise<{ default: Handler }>]> = [
-    ["basecamp3", () => import("../../../basecamp3/api/add")],
-    ["dub", () => import("../../../dub/api/add")],
   ];
 
   it.each(addRoutes)("%s puts a session-bound nonce in the authorize URL", async (_slug, load) => {
@@ -198,7 +187,7 @@ describe("createOAuthAppCredential (SEC-102)", () => {
     const createOAuthAppCredential = await loadActual();
 
     await expect(
-      createOAuthAppCredential({ type: "dub", appId: "dub" }, { access_token: "t" }, makeReq(query))
+      createOAuthAppCredential({ type: "office365_video", appId: "office365video" }, { access_token: "t" }, makeReq(query))
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(mocks.prisma.credential.create).not.toHaveBeenCalled();
   });
@@ -207,13 +196,13 @@ describe("createOAuthAppCredential (SEC-102)", () => {
     const createOAuthAppCredential = await loadActual();
 
     await createOAuthAppCredential(
-      { type: "dub", appId: "dub" },
+      { type: "office365_video", appId: "office365video" },
       { access_token: "t" },
       makeReq({ state: signedState(USER_ID) })
     );
 
     expect(mocks.prisma.credential.create).toHaveBeenCalledWith({
-      data: { type: "dub", key: { access_token: "t" }, userId: USER_ID, appId: "dub" },
+      data: { type: "office365_video", key: { access_token: "t" }, userId: USER_ID, appId: "office365video" },
     });
   });
 });

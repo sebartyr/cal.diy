@@ -47,9 +47,6 @@ vi.mock("~/bookings/hooks/useFacetedUniqueValues", () => ({
 vi.mock("../components/BookingList", () => ({ BookingList: () => null }));
 vi.mock("../components/BookingDetailsSheet", () => ({ BookingDetailsSheet: () => null }));
 vi.mock("../components/ViewToggleButton", () => ({ ViewToggleButton: () => null }));
-vi.mock("@calcom/web/components/apps/wipemycalother/wipeMyCalActionButton", () => ({
-  WipeMyCalActionButton: () => null,
-}));
 
 import Bookings from "./bookings-view";
 

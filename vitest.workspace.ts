@@ -90,16 +90,6 @@ const workspaces = packagedEmbedTestsOnly
               pool,
             },
           },
-
-          {
-            test: {
-              name: "@calcom/closecom",
-              include: ["packages/app-store/closecom/**/*.{test,spec}.{ts,js}"],
-              environment: "jsdom",
-              setupFiles: ["packages/app-store/closecom/test/globals.ts"],
-              pool,
-            },
-          },
           {
             test: {
               globals: true,

@@ -40,7 +40,6 @@ import { getEventName, updateHostInEventName } from "@calcom/features/eventtypes
 import { getFullName } from "@calcom/features/form-builder/utils";
 import type { HashedLinkService } from "@calcom/features/hashedLink/lib/service/HashedLinkService";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
-import { handleAnalyticsEvents } from "@calcom/features/tasker/tasks/analytics/handleAnalyticsEvents";
 import type { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { UsersRepository } from "@calcom/features/users/users.repository";
 import type { GetSubscriberOptions } from "@calcom/features/webhooks/lib/getWebhooks";
@@ -2463,17 +2462,6 @@ async function handler(
   }
 
   if (!isDryRun) {
-    await handleAnalyticsEvents({
-      credentials: allCredentials,
-      rawBookingData,
-      bookingInfo: {
-        name: fullName,
-        email: bookerEmail,
-        eventName: "Cal.diy lead",
-      },
-      isTeamEventType,
-    });
-
     // Unused until we deploy to trigger.dev production
     // for now we only enable for cal.com org and we keep our current email system
     // cal.com org members will see emails in double while we test

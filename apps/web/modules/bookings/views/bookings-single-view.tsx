@@ -271,14 +271,6 @@ export default function Success(props: PageProps) {
     t,
   };
 
-  const giphyAppData = getEventTypeAppData(
-    {
-      ...eventType,
-      metadata: eventTypeMetaDataSchemaWithTypedApps.parse(eventType.metadata),
-    },
-    "giphy"
-  );
-  const giphyImage = giphyAppData?.thankYouPage;
   const isRoundRobin = eventType.schedulingType === SchedulingType.ROUND_ROBIN;
 
   const eventName = getEventName(eventNameObject, true);
@@ -523,24 +515,18 @@ export default function Success(props: PageProps) {
                           imageSrc={`${bookingInfo.user.avatarUrl}`}
                         />
                       )}
-                      {giphyImage && !needsConfirmation && isReschedulable && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={giphyImage} className="w-full rounded-lg" alt="Gif from Giphy" />
-                      )}
                       <div
                         className={classNames(
                           "mx-auto flex h-12 w-12 items-center justify-center rounded-full",
                           isRoundRobin &&
                             "border-cal-bg dark:border-cal-bg-muted absolute bottom-0 right-0 z-10 h-12 w-12 border-8",
-                          !giphyImage && isReschedulable && !needsConfirmation && !isAwaitingPayment
+                          isReschedulable && !needsConfirmation && !isAwaitingPayment
                             ? "bg-cal-success"
                             : "",
-                          !giphyImage && isReschedulable && (needsConfirmation || isAwaitingPayment)
-                            ? "bg-subtle"
-                            : "",
+                          isReschedulable && (needsConfirmation || isAwaitingPayment) ? "bg-subtle" : "",
                           isCancelled ? "bg-error" : ""
                         )}>
-                        {!giphyImage && !needsConfirmation && !isAwaitingPayment && isReschedulable && (
+                        {!needsConfirmation && !isAwaitingPayment && isReschedulable && (
                           <CheckIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
                         )}
                         {(needsConfirmation || isAwaitingPayment) && isReschedulable && (

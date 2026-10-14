@@ -98,33 +98,30 @@ describe("shouldEnableApp", () => {
   });
 
   describe("Apps with multiple required fields", () => {
+    // openvisio requires apiBaseUrl, clientId and clientSecret
     it("should return false when any required field is missing", () => {
-      // vital requires mode, region, api_key, and webhook_secret
-      const result = shouldEnableApp("vital", {
-        mode: "sandbox",
-        region: "us",
-        api_key: "test-key",
-        // Missing webhook_secret
+      const result = shouldEnableApp("openvisio", {
+        apiBaseUrl: "https://visio.clever.cloud",
+        clientId: "client-id",
+        // Missing clientSecret
       });
       expect(result).toBe(false);
     });
 
     it("should return true when all required fields are present", () => {
-      const result = shouldEnableApp("vital", {
-        mode: "sandbox",
-        region: "us",
-        api_key: "test-key",
-        webhook_secret: "test-secret",
+      const result = shouldEnableApp("openvisio", {
+        apiBaseUrl: "https://visio.clever.cloud",
+        clientId: "client-id",
+        clientSecret: "client-secret",
       });
       expect(result).toBe(true);
     });
 
     it("should return false when any required field is empty", () => {
-      const result = shouldEnableApp("vital", {
-        mode: "",
-        region: "us",
-        api_key: "test-key",
-        webhook_secret: "test-secret",
+      const result = shouldEnableApp("openvisio", {
+        apiBaseUrl: "https://visio.clever.cloud",
+        clientId: "",
+        clientSecret: "client-secret",
       });
       expect(result).toBe(false);
     });

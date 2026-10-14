@@ -80,8 +80,6 @@ const callbacks: Array<[string, () => Promise<{ default: Handler }>]> = [
   ["stripepayment", () => import("../../../stripepayment/api/callback")],
   ["zohocalendar", () => import("../../../zohocalendar/api/callback")],
   ["office365video", () => import("../../../office365video/api/callback")],
-  ["hubspot", () => import("../../../hubspot/api/callback")],
-  ["salesforce", () => import("../../../salesforce/api/callback")],
 ];
 
 describe("OAuth callbacks refuse to exchange a code without a valid state (SEC-102)", () => {
