@@ -19,7 +19,6 @@
   },
   "devDependencies": {
     "@calcom/i18n": "workspace:*",
-    "@rollup/plugin-node-resolve": "15.0.1",
     "@tailwindcss/cli": "4.1.16",
     "@tailwindcss/postcss": "4.1.15",
     "@types/jest": "29.5.12",
@@ -28,7 +27,6 @@
     "@types/react-dom": "18.2.6",
     "@vitejs/plugin-react": "5.1.2",
     "@vitejs/plugin-react-swc": "4.2.2",
-    "autoprefixer": "10.4.19",
     "cssnano": "7.1.2",
     "jest": "29.7.0",
     "postcss": "8.5.28",
@@ -39,8 +37,7 @@
     "ts-jest": "29.1.4",
     "typescript": "5.9.3",
     "vite": "6.4.2",
-    "vite-plugin-dts": "4.5.4",
-    "vite-plugin-inspect": "0.8.4"
+    "vite-plugin-dts": "4.5.4"
   },
   "files": [
     "dist",
