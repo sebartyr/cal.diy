@@ -1673,6 +1673,7 @@ async function handler(
         originalRescheduledBooking,
         creationSource: input.bookingData.creationSource,
         tracking: reqBody.tracking,
+        skipSlotConflictCheck: input.isUncheckedRecurringOccurrence === true,
       });
 
       if (booking?.userId) {

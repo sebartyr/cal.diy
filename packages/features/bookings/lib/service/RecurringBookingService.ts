@@ -109,6 +109,7 @@ export const handleNewRecurringBooking = async function (
         hostname: input.hostname || "",
         forcedSlug: input.forcedSlug as string | undefined,
         ...handleBookingMeta,
+        isUncheckedRecurringOccurrence: firstKey >= numSlotsToCheckForAvailability,
       },
     });
     createdBookings.push(first);
@@ -128,6 +129,7 @@ export const handleNewRecurringBooking = async function (
             hostname: input.hostname || "",
             forcedSlug: input.forcedSlug as string | undefined,
             ...handleBookingMeta,
+            isUncheckedRecurringOccurrence: start + i >= numSlotsToCheckForAvailability,
           },
         })
       )

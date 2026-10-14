@@ -38,6 +38,12 @@ export type CreateBookingMeta = {
   forcedSlug?: string;
   noEmail?: boolean;
   traceContext?: TraceContext;
+  /**
+   * Set only by RecurringBookingService, for occurrences past the ones whose
+   * availability it checked. It disables the slot re-check (and its lock) in
+   * createBooking, so it must never be derived from request data.
+   */
+  isUncheckedRecurringOccurrence?: boolean;
 } & PlatformParams;
 
 export type BookingHandlerInput = {

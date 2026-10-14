@@ -72,6 +72,8 @@ type CreateBookingParams = {
   originalRescheduledBooking: OriginalRescheduledBooking;
   creationSource?: CreationSource;
   tracking?: Tracking;
+  // Later occurrences of a recurring series are booked without an availability check.
+  skipSlotConflictCheck?: boolean;
 };
 
 function updateEventDetails(
@@ -95,6 +97,7 @@ const _createBooking = async ({
   rescheduledBy,
   creationSource,
   tracking,
+  skipSlotConflictCheck = false,
 }: CreateBookingParams & { rescheduledBy: string | undefined }) => {
   updateEventDetails(evt, originalRescheduledBooking);
 
@@ -114,7 +117,8 @@ const _createBooking = async ({
     bookingAndAssociatedData,
     originalRescheduledBooking,
     eventType.paymentAppData,
-    eventType.organizerUser
+    eventType.organizerUser,
+    skipSlotConflictCheck
   );
 };
 
@@ -124,7 +128,8 @@ async function saveBooking(
   bookingAndAssociatedData: ReturnType<typeof buildNewBookingData>,
   originalRescheduledBooking: OriginalRescheduledBooking,
   paymentAppData: PaymentAppData,
-  organizerUser: CreateBookingParams["eventType"]["organizerUser"]
+  organizerUser: CreateBookingParams["eventType"]["organizerUser"],
+  skipSlotConflictCheck: boolean
 ) {
   const { newBookingData, originalBookingUpdateDataForCancellation } = bookingAndAssociatedData;
   const createBookingObj = {
@@ -178,19 +183,31 @@ async function saveBooking(
     const { startTime, endTime, status: bookingStatus } = newBookingData;
     const willBeAccepted = bookingStatus === undefined || bookingStatus === BookingStatus.ACCEPTED;
 
-    if (startTime instanceof Date && endTime instanceof Date && willBeAccepted && organizerUser.id) {
+    if (
+      !skipSlotConflictCheck &&
+      startTime instanceof Date &&
+      endTime instanceof Date &&
+      willBeAccepted &&
+      organizerUser.id
+    ) {
       const { userPart, slotPart } = lockKeyForBookingSlot(organizerUser.id, startTime);
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${userPart}::int4, ${slotPart}::int4)`;
 
       // Re-check for an overlapping accepted booking. The lock guarantees
       // serial execution from this point forward for the same (user, slot)
       // pair, so a row visible here is final.
+      //
+      // The booking being rescheduled is still ACCEPTED at this point (it is
+      // cancelled just below, in this same transaction), so it must not count
+      // as a conflict: otherwise moving a booking to a slot that overlaps its
+      // current one always fails.
       const conflict = await tx.booking.findFirst({
         where: {
           userId: organizerUser.id,
           status: BookingStatus.ACCEPTED,
           startTime: { lt: endTime },
           endTime: { gt: startTime },
+          ...(originalRescheduledBooking ? { id: { not: originalRescheduledBooking.id } } : {}),
         },
         select: { id: true, uid: true, startTime: true },
       });
