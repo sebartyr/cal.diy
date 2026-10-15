@@ -170,6 +170,31 @@ describe("getEventTypeById", () => {
     expect(result.eventType.id).toBe(10);
   });
 
+  it("reads another user's personal event type for a system admin", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    findByIdComplete.mockResolvedValue({
+      ...buildRawEventType(),
+      teamId: null,
+      team: null,
+      schedulingType: null,
+      children: [],
+      users: [baseUser(2)],
+    });
+
+    const result = await getEventTypeById({
+      eventTypeId: 10,
+      userId: 999,
+      prisma: {} as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      isSystemAdmin: true,
+      currentOrganizationId: null,
+    });
+
+    expect(result.eventType.id).toBe(10);
+    expect(result.currentUserMembership).toBeNull();
+  });
+
   it("keeps the membership-scoped lookup for a non-admin", async () => {
     vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
     findById.mockResolvedValue(buildRawEventType());

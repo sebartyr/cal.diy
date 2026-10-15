@@ -2,6 +2,7 @@ import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/ev
 import { generateHashedLink } from "@calcom/lib/generateHashedLink";
 import { prisma } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
+import { UserPermissionRole } from "@calcom/prisma/enums";
 
 import { TRPCError } from "@trpc/server";
 
@@ -58,7 +59,8 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
     }
 
     // Validate user is owner of event type or in the team
-    if (eventType.userId !== ctx.user.id) {
+    const isSystemAdmin = ctx.user.role === UserPermissionRole.ADMIN;
+    if (eventType.userId !== ctx.user.id && !isSystemAdmin) {
       if (eventType.teamId) {
         const isMember = await prisma.membership.findUnique({
           where: {
@@ -201,6 +203,12 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
       eventType: newEventType,
     };
   } catch (error) {
+    // The permission and lookup guards above run inside this try, so without this their
+    // 403/404 would reach the client as a 500.
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       
       if (Array.isArray(error.meta?.target) && error.meta?.target.includes("slug")) {

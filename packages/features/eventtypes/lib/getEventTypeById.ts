@@ -187,7 +187,9 @@ export const getEventTypeById = async ({
 
   const t = await getTranslation(userLocale ?? currentUser?.locale ?? "en", "common");
 
-  if (!currentUser?.id && !eventType.teamId) {
+  // A system admin reads an event type they are not a user of, so the absence of a current
+  // user is expected rather than a sign the lookup resolved to someone else's data.
+  if (!currentUser?.id && !eventType.teamId && !isSystemAdmin) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "Could not find user or team",

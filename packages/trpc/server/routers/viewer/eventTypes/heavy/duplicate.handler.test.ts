@@ -5,6 +5,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { TRPCError } from "@trpc/server";
 
+import { UserPermissionRole } from "@calcom/prisma/enums";
+
 import { duplicateHandler } from "./duplicate.handler";
 
 vi.mock("@calcom/prisma", () => ({
@@ -24,6 +26,7 @@ describe("duplicateHandler", () => {
     teamId: null,
   };
   const eventType = { id: 123, userId: 1, teamId: null, users: [{ id: 1 }] };
+  const teamEventType = { id: 123, userId: 2, teamId: 5, team: { id: 5 }, users: [{ id: 2 }] };
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -52,5 +55,45 @@ describe("duplicateHandler", () => {
         message: "Error duplicating event type PrismaClientKnownRequestError: Unique constraint failed",
       })
     );
+  });
+  it("should deny a non-member duplicating a team event type", async () => {
+    prismaMock.eventType.findUnique.mockResolvedValue(teamEventType);
+    prismaMock.membership.findUnique.mockResolvedValue(null);
+
+    await expect(duplicateHandler({ ctx, input })).rejects.toThrow(
+      new TRPCError({ code: "FORBIDDEN" })
+    );
+  });
+
+  it("should let a system admin duplicate a team event type they are not a member of", async () => {
+    prismaMock.eventType.findUnique.mockResolvedValue({
+      ...teamEventType,
+      customInputs: [],
+      hosts: [],
+      hashedLink: [],
+      webhooks: [],
+      destinationCalendar: null,
+      metadata: null,
+      bookingFields: null,
+      rrSegmentQueryValue: null,
+    });
+    prismaMock.membership.findUnique.mockResolvedValue(null);
+
+    const create = vi.fn().mockResolvedValue({ id: 456, slug: "test-event" });
+    const { EventTypeRepository } = await import(
+      "@calcom/features/eventtypes/repositories/eventTypeRepository"
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(EventTypeRepository).mockImplementation(function () {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return { create } as any;
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminCtx = { user: { id: 1, profile: { id: 1 }, role: UserPermissionRole.ADMIN } } as any;
+    await duplicateHandler({ ctx: adminCtx, input });
+
+    expect(create).toHaveBeenCalled();
+    expect(prismaMock.membership.findUnique).not.toHaveBeenCalled();
   });
 });
