@@ -1,5 +1,6 @@
 import { Dialog } from "@calcom/features/components/controlled-dialog";
 import CreateEventTypeForm from "@calcom/features/eventtypes/components/CreateEventTypeForm";
+import { TeamEventTypeForm } from "@calcom/features/eventtypes/components/TeamEventTypeForm";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { useTypedQuery } from "@calcom/lib/hooks/useTypedQuery";
 import type { EventType } from "@calcom/prisma/client";
@@ -105,6 +106,8 @@ export function CreateEventTypeDialog({ profileOptions }: { profileOptions: Prof
 
   const urlPrefix = WEBSITE_URL;
 
+  const { data: team } = trpc.viewer.teams.get.useQuery({ teamId: teamId ?? -1 }, { enabled: !!teamId });
+
   return (
     <Dialog
       name="new"
@@ -114,7 +117,21 @@ export function CreateEventTypeDialog({ profileOptions }: { profileOptions: Prof
         enableOverflow
         title={teamId ? t("add_new_team_event_type") : t("add_new_event_type")}
         description={t("new_event_type_to_book_description")}>
-        {teamId ? null : (
+        {teamId ? (
+          <TeamEventTypeForm
+            teamSlug={team?.slug}
+            teamId={teamId}
+            permissions={permissions}
+            urlPrefix={urlPrefix}
+            isPending={createMutation.isPending}
+            form={form}
+            isManagedEventType={isManagedEventType}
+            handleSubmit={(values) => {
+              createMutation.mutate(values);
+            }}
+            SubmitButton={SubmitButton}
+          />
+        ) : (
           <CreateEventTypeForm
             urlPrefix={urlPrefix}
             isPending={createMutation.isPending}

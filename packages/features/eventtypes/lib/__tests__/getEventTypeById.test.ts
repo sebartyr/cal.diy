@@ -1,3 +1,6 @@
+import prismaMock from "@calcom/testing/lib/__mocks__/prismaMock";
+
+import { getLocationGroupedOptions } from "@calcom/app-store/server";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import { MembershipRole } from "@calcom/prisma/enums";
@@ -5,11 +8,14 @@ import type { UserProfile } from "@calcom/types/UserProfile";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getEventTypeById } from "../getEventTypeById";
 
-const { findById } = vi.hoisted(() => ({ findById: vi.fn() }));
+const { findById, findByIdComplete } = vi.hoisted(() => ({
+  findById: vi.fn(),
+  findByIdComplete: vi.fn(),
+}));
 
 vi.mock("@calcom/features/eventtypes/repositories/eventTypeRepository", () => ({
   EventTypeRepository: vi.fn().mockImplementation(function () {
-    return { findById, findByIdForOrgAdmin: vi.fn() };
+    return { findById, findByIdComplete, findByIdForOrgAdmin: vi.fn() };
   }),
 }));
 
@@ -147,5 +153,95 @@ describe("getEventTypeById", () => {
       }),
     ]);
     expect(result.currentUserMembership?.role).toBe(MembershipRole.OWNER);
+  });
+  it("reads an event type a system admin has no membership on", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    findByIdComplete.mockResolvedValue(buildRawEventType());
+
+    const result = await getEventTypeById({
+      eventTypeId: 10,
+      userId: 999,
+      prisma: {} as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      isSystemAdmin: true,
+      currentOrganizationId: null,
+    });
+
+    expect(findByIdComplete).toHaveBeenCalledWith({ id: 10 });
+    expect(findById).not.toHaveBeenCalled();
+    expect(result.eventType.id).toBe(10);
+  });
+
+  it("reads another user's personal event type for a system admin", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    findByIdComplete.mockResolvedValue({
+      ...buildRawEventType(),
+      teamId: null,
+      team: null,
+      schedulingType: null,
+      children: [],
+      users: [baseUser(2)],
+    });
+
+    const result = await getEventTypeById({
+      eventTypeId: 10,
+      userId: 999,
+      prisma: {} as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      isSystemAdmin: true,
+      currentOrganizationId: null,
+    });
+
+    expect(result.eventType.id).toBe(10);
+    expect(result.currentUserMembership).toBeNull();
+  });
+
+  it("reads the owner's apps and default calendar, not the admin's", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    prismaMock.destinationCalendar.findFirst.mockResolvedValue(null);
+    findByIdComplete.mockResolvedValue({
+      ...buildRawEventType(),
+      userId: 2,
+      teamId: null,
+      team: null,
+      schedulingType: null,
+      children: [],
+      users: [baseUser(2)],
+      destinationCalendar: null,
+    });
+
+    await getEventTypeById({
+      eventTypeId: 10,
+      userId: 999,
+      prisma: prismaMock as unknown as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      isSystemAdmin: true,
+      currentOrganizationId: null,
+    });
+
+    expect(getLocationGroupedOptions).toHaveBeenCalledWith({ userId: 2 }, expect.anything());
+    expect(prismaMock.destinationCalendar.findFirst).toHaveBeenCalledWith({
+      where: { userId: 2, eventTypeId: null },
+    });
+  });
+
+  it("keeps the membership-scoped lookup for a non-admin", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    findById.mockResolvedValue(buildRawEventType());
+
+    await getEventTypeById({
+      eventTypeId: 10,
+      userId: 1,
+      prisma: {} as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      currentOrganizationId: null,
+    });
+
+    expect(findById).toHaveBeenCalledWith({ id: 10, userId: 1 });
+    expect(findByIdComplete).not.toHaveBeenCalled();
   });
 });

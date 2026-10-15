@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@calcom/prisma";
-import { MembershipRole } from "@calcom/prisma/enums";
+import { MembershipRole, UserPermissionRole } from "@calcom/prisma/enums";
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { authedProcedure } from "../../../procedures/authedProcedure";
@@ -76,6 +76,27 @@ describe("createEventPbacProcedure", () => {
       await expect(
         middleware({
           ctx: mockCtx,
+          input: { id: 1 },
+          next: mockNext,
+          path: "test",
+          type: "mutation",
+          getRawInput: async () => ({}),
+          meta: undefined,
+        })
+      ).resolves.not.toThrow();
+    });
+
+    it("should allow a system admin to access someone else's personal event", async () => {
+      mockPrisma.eventType.findUnique = vi
+        .fn()
+        .mockResolvedValue({ ...personalEvent, userId: 2, users: [{ id: 2 }] });
+
+      const procedure = createEventPbacProcedure("eventType.update");
+      const middleware = getMiddleware(procedure);
+
+      await expect(
+        middleware({
+          ctx: { ...mockCtx, user: { ...mockCtx.user, role: UserPermissionRole.ADMIN } },
           input: { id: 1 },
           next: mockNext,
           path: "test",
@@ -268,6 +289,74 @@ describe("createEventPbacProcedure", () => {
         meta: undefined,
       });
       await expect(result).rejects.toThrow(TRPCError);
+    });
+
+    it("should allow a system admin with no membership on the team", async () => {
+      mockPrisma.eventType.findUnique = vi.fn().mockResolvedValue(teamEvent);
+      (mockPrisma.membership.findUnique as Mock).mockResolvedValue(null);
+
+      const procedure = createEventPbacProcedure("eventType.update", [
+        MembershipRole.ADMIN,
+        MembershipRole.OWNER,
+      ]);
+      const middleware = getMiddleware(procedure);
+
+      await expect(
+        middleware({
+          ctx: { ...mockCtx, user: { ...mockCtx.user, role: UserPermissionRole.ADMIN } },
+          input: { id: 2 },
+          next: mockNext,
+          path: "test",
+          type: "mutation",
+          getRawInput: async () => ({}),
+          meta: undefined,
+        })
+      ).resolves.not.toThrow();
+    });
+
+    it("should allow a system admin whose team role is below the fallback roles", async () => {
+      mockPrisma.eventType.findUnique = vi.fn().mockResolvedValue(teamEvent);
+      (mockPrisma.membership.findUnique as Mock).mockResolvedValue({
+        role: MembershipRole.MEMBER,
+        accepted: true,
+      });
+
+      const procedure = createEventPbacProcedure("eventType.update", [
+        MembershipRole.ADMIN,
+        MembershipRole.OWNER,
+      ]);
+      const middleware = getMiddleware(procedure);
+
+      await expect(
+        middleware({
+          ctx: { ...mockCtx, user: { ...mockCtx.user, role: UserPermissionRole.ADMIN } },
+          input: { id: 2 },
+          next: mockNext,
+          path: "test",
+          type: "mutation",
+          getRawInput: async () => ({}),
+          meta: undefined,
+        })
+      ).resolves.not.toThrow();
+    });
+
+    it("should still deny a plain USER role on a team they do not belong to", async () => {
+      mockPrisma.eventType.findUnique = vi.fn().mockResolvedValue(teamEvent);
+      (mockPrisma.membership.findUnique as Mock).mockResolvedValue(null);
+
+      const procedure = createEventPbacProcedure("eventType.update");
+      const middleware = getMiddleware(procedure);
+
+      const result = middleware({
+        ctx: { ...mockCtx, user: { ...mockCtx.user, role: UserPermissionRole.USER } },
+        input: { id: 2 },
+        next: mockNext,
+        path: "test",
+        type: "mutation",
+        getRawInput: async () => ({}),
+        meta: undefined,
+      });
+      await expect(result).rejects.toThrow(/Permission required/);
     });
 
     it("should deny pending (accepted=false) membership even with matching role", async () => {

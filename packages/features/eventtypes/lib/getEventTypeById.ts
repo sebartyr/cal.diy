@@ -31,6 +31,8 @@ interface getEventTypeByIdProps {
   prisma: PrismaClient;
   isTrpcCall?: boolean;
   isUserOrganizationAdmin: boolean;
+  /** Instance-wide admin: administers every user and team of the deployment. */
+  isSystemAdmin?: boolean;
   currentOrganizationId: number | null;
   userLocale?: string | null;
 }
@@ -44,6 +46,7 @@ export const getEventTypeById = async ({
   prisma,
   isTrpcCall = false,
   isUserOrganizationAdmin,
+  isSystemAdmin = false,
   userLocale,
 }: getEventTypeByIdProps) => {
   const userSelect = {
@@ -62,6 +65,7 @@ export const getEventTypeById = async ({
     userId,
     eventTypeId,
     isUserOrganizationAdmin,
+    isSystemAdmin,
     currentOrganizationId,
     prisma,
   });
@@ -183,15 +187,21 @@ export const getEventTypeById = async ({
 
   const t = await getTranslation(userLocale ?? currentUser?.locale ?? "en", "common");
 
-  if (!currentUser?.id && !eventType.teamId) {
+  // A system admin reads an event type they are not a user of, so the absence of a current
+  // user is expected rather than a sign the lookup resolved to someone else's data.
+  if (!currentUser?.id && !eventType.teamId && !isSystemAdmin) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "Could not find user or team",
     });
   }
 
+  // A system admin is not the owner, so the installed apps and the default calendar below must
+  // still be read for whoever owns the event type rather than for the caller.
+  const ownerUserId = isSystemAdmin ? (eventType.userId ?? userId) : userId;
+
   const locationOptions = await getLocationGroupedOptions(
-    eventType.teamId ? { teamId: eventType.teamId } : { userId },
+    eventType.teamId ? { teamId: eventType.teamId } : { userId: ownerUserId },
     t
   );
   if (eventType.schedulingType === SchedulingType.MANAGED) {
@@ -241,7 +251,7 @@ export const getEventTypeById = async ({
   if (!destinationCalendar) {
     destinationCalendar = await prisma.destinationCalendar.findFirst({
       where: {
-        userId: userId,
+        userId: ownerUserId,
         eventTypeId: null,
       },
     });
@@ -263,10 +273,15 @@ export async function getRawEventType({
   userId,
   eventTypeId,
   isUserOrganizationAdmin,
+  isSystemAdmin = false,
   currentOrganizationId,
   prisma,
 }: Omit<getEventTypeByIdProps, "isTrpcCall">) {
   const eventTypeRepo = new EventTypeRepository(prisma);
+
+  if (isSystemAdmin) {
+    return await eventTypeRepo.findByIdComplete({ id: eventTypeId });
+  }
 
   // Platform org admins can access any event type within their organization
   if (isUserOrganizationAdmin && currentOrganizationId) {
