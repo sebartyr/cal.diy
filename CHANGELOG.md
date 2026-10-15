@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.1.1] — 2026-10-15
+
+Patch release: team event types can be created again, and a system admin can
+manage any event type without being a member of its team (#102).
+
+### Fixed
+
+- Team event type creation was dead: the `TeamEventTypeForm` had been removed
+  during the EE cleanup, so the "Add a new team event type" dialog opened
+  empty. The form is restored outside `ee/` as
+  `packages/features/eventtypes/components/TeamEventTypeForm.tsx` and wired
+  back into `CreateEventTypeDialog` for the `teamId` branch (#102).
+- The "New" button on the event types page always targeted the personal
+  profile. It now reads the active tab and carries the current `teamId` into
+  the creation dialog (#102).
+- A system admin (`UserPermissionRole.ADMIN`) could not open, update or
+  duplicate an event type belonging to a team they are not a member of, nor a
+  personal event type owned by somebody else. The PBAC procedure, the
+  `getEventTypeById` read path and the duplicate handler now grant the
+  admin override. The "assigned users must belong to the team" check still
+  applies to everyone (#102).
+- `getEventTypeById` resolved the installed conferencing apps and the default
+  destination calendar from the *caller*, so an admin saw their own apps and
+  their own calendar on somebody else's event type — and saving would have
+  pinned that wrong calendar. Both now resolve from the event type's owner
+  (#102).
+- `duplicate.handler` re-wrapped the `TRPCError`s thrown by its own guards into
+  an `INTERNAL_SERVER_ERROR`, turning a 403 into a 500 (#102).
+
+### Upgrade notes
+
+- No schema change, no migration.
+
 ## [8.1.0] — 2026-10-15
 
 Cleanup and hardening release: the app store drops from 109 to 25 apps, Cal Video
