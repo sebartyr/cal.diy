@@ -6,6 +6,125 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.1.0] — 2026-10-15
+
+Cleanup and hardening release: the app store drops from 109 to 25 apps, Cal Video
+(Daily.co) is replaced by Jitsi, OpenVisio joins as a sovereign conferencing
+option, Unkey and SendGrid are gone, every critical security advisory is patched,
+and the remaining hydration errors are fixed (#81–#101).
+
+### Added
+
+- OpenVisio conferencing integration: sovereign, open-source video hosted in
+  Europe by Clever Cloud (La Suite Meet), with screen sharing, recording and
+  automatic transcription. Requires `apiBaseUrl`, `clientId`, `clientSecret`
+  and an optional `meetingUrlPattern` in its `App` keys (#82).
+- The instance-wide default conferencing app is now configurable, stored on the
+  single-row `Deployment` record (`defaultConferencingAppSlug`). Resolution
+  order: the user's own pick, then the deployment default, then Jitsi as a
+  built-in fallback that needs neither API key nor credential (#83).
+- PostgreSQL token-bucket rate limiting (`RateLimitBucket`) replaces Unkey.
+  Admission is decided inside the `WHERE` clause of a single `UPDATE`, so the
+  row lock covers both the check and the debit. Callers and the
+  `X-RateLimit-*` headers are unchanged (#81).
+
+### Changed
+
+- **Cal Video (Daily.co) is removed and replaced by Jitsi** everywhere it was
+  the default or the fallback: EventManager, booking services, dynamic group
+  events, edit-location, credential deletion, host locations and user metadata.
+  The `dailyvideo` app, the Daily webhook, the `/video/*` pages, recordings,
+  transcripts, sessions and Cal Video no-show tasks are gone.
+  `integrations:daily` and `daily_video` are still recognised so past bookings
+  keep rendering (#87).
+- App store pruned from 109 to 25 apps (#81, #84, #86, #87). Every calendar
+  integration is kept, along with messaging, `pipedrive-crm`, `qr_code`,
+  `jitsi`, `openvisio` and `mock-payment-app` (driven by the e2e suite).
+  Removed in passes: 62 unused apps, then `dub`, `zapier`, `make`,
+  `wipemycalother`, `vital`, `intercom`, `giphy`, `basecamp3`, four payment
+  providers and every CRM but Pipedrive, then `stripepayment` and
+  `office365video` (Teams), then `dailyvideo`.
+- SendGrid is removed entirely; `NEXT_PUBLIC_SENDGRID_SENDER_NAME` becomes
+  `NEXT_PUBLIC_SENDER_NAME` (the old name is still read as a fallback) (#81).
+- Premium usernames are gone with Stripe: `IS_PREMIUM_USERNAME_ENABLED` is
+  pinned to `false`, since it derived from the Stripe environment and routed
+  signup to a handler and provider that no longer exist. Teams links are still
+  created through `office365calendar`, and the API v2 conferencing contract
+  (`OFFICE_365_VIDEO*`, `ConferencingAppSlug`, `PaymentForm`) is kept (#86).
+- Security: 222 → 114 advisories, critical 6 → **0**, high 84 → 16. `next`
+  16.3.8 (critical RCE in `next/og` ImageResponse, served by the OG route) and
+  15.5.28, `handlebars` 4.7.10, `proxy-addr` 2.0.8, `nodemailer` 10.1.1 (two
+  ReDoS advisories in `addressparser`), plus refreshed pins for `@xmldom/xmldom`,
+  `axios`, `sharp`, `vite`, `svgo`, `@trigger.dev/sdk` and a dozen more
+  (#97, #98, #99).
+- `next-themes` 0.2.0 → 0.4.6; its inline theme script stays executable on the
+  server and inert on the client, so the theme is still applied before first
+  paint without the React 19 script-tag warning (#94).
+- 44 dependency declarations that nothing imports or runs are removed
+  (#81, #96), and 95 + 14 environment variables that nothing reads are purged
+  from `.env*.example`, `turbo.json` and `environment.d.ts`, along with the docs
+  that only described removed apps (#90, #92).
+- Repository and schema: the `App` rows of the 82 removed apps are deleted,
+  cascading to their credentials, webhooks and API keys (Zapier API keys would
+  otherwise stay valid); `Payment.appId` is set to NULL first so payments are
+  kept (#88).
+
+### Fixed
+
+- Production builds were broken on `master`: a `node:process` import in
+  `packages/lib/constants.ts` fails the Edge runtime build, which
+  `type-check:ci` and the unit suites cannot see (#85).
+- Rescheduling a booking to a slot overlapping its current one always failed
+  with 409 `booking_conflict_error`: the slot re-check matched the booking being
+  rescheduled, still ACCEPTED at that point in the transaction (#91).
+- Recurring series failed as a whole when a later occurrence conflicted: only
+  the first `numSlotsToCheckForAvailability` occurrences are checked, and the
+  re-check rejected the rest. The skip is now decided server-side from the
+  recurring service's own loop index, so forged request counters cannot bypass
+  the lock (#91).
+- Hydration errors: react-select derived its element ids from a module-level
+  counter that never matched between server and client — every select now gets a
+  stable `instanceId` from `useId` (0 errors on a 65-page audit, 6 before)
+  (#101); the user menu trigger is disabled only once mounted (#100); invalid
+  HTML nesting (`<a>` in `<a>` in the navigation badge and the bookings list,
+  `<div>` in `<tr>` in data-table separators) is removed (#95).
+- `getUsersDefaultConferencingApp` returned `undefined` for users who never
+  picked a default, which React Query refuses as query data; it returns `null`
+  now (#93).
+- `getEventTypesPublic` read a dropped Cal Video column in raw SQL, invisible to
+  the type-checker (#89).
+
+### Removed (schema)
+
+- Tables `CalVideoSettings` and `VideoCallGuest`; columns
+  `EventType.canSendCalVideoTranscriptionEmails`, `Team.calVideoLogo` and
+  `Booking.isRecorded` (#89).
+
+### Upgrade notes
+
+- **Migrations to apply** (`yarn workspace @calcom/prisma db-deploy`):
+  `add_rate_limit_bucket`, `add_deployment_default_conferencing_app`,
+  `migrate_daily_locations_to_jitsi`, `drop_removed_app_rows`,
+  `drop_cal_video_schema`. The Jitsi migration rewrites `integrations:daily`
+  event-type locations and `defaultConferencingApp` entries; past bookings are
+  untouched.
+- Schedule `/api/cron/rate-limit-cleanup` (daily is enough). In production,
+  `RATE_LIMIT_STORE="memory"` is now rejected: a per-instance limiter
+  multiplies every limit by the number of running instances.
+- Environment: `UNKEY_ROOT_KEY` and `SENDGRID_*` can be deleted; rename
+  `NEXT_PUBLIC_SENDGRID_SENDER_NAME` to `NEXT_PUBLIC_SENDER_NAME`.
+- Credentials, webhooks and API keys belonging to the 82 removed apps are
+  deleted by `drop_removed_app_rows`. Payments are preserved with
+  `appId = NULL`.
+- Provision the OpenVisio add-on keys, or set another deployment default, if you
+  do not want Jitsi as the fallback conferencing location.
+- API v2 stays backward compatible: `cal-video` is still accepted and books
+  Jitsi, legacy reads still return `cal-video`, `calVideoSettings` is accepted
+  and ignored, `isRecorded` is always `false`, and `/recordings`,
+  `/transcripts`, `/conferencing-sessions` are marked deprecated (404 on an
+  unknown booking, empty list otherwise).
+- `nodemailer` 10 requires Node ≥ 20 (the project runs on 24).
+
 ## [8.0.1] — 2026-10-09
 
 Patch release: the login card stands out from the background again with the
