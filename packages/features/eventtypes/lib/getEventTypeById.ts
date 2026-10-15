@@ -196,8 +196,12 @@ export const getEventTypeById = async ({
     });
   }
 
+  // A system admin is not the owner, so the installed apps and the default calendar below must
+  // still be read for whoever owns the event type rather than for the caller.
+  const ownerUserId = isSystemAdmin ? (eventType.userId ?? userId) : userId;
+
   const locationOptions = await getLocationGroupedOptions(
-    eventType.teamId ? { teamId: eventType.teamId } : { userId },
+    eventType.teamId ? { teamId: eventType.teamId } : { userId: ownerUserId },
     t
   );
   if (eventType.schedulingType === SchedulingType.MANAGED) {
@@ -247,7 +251,7 @@ export const getEventTypeById = async ({
   if (!destinationCalendar) {
     destinationCalendar = await prisma.destinationCalendar.findFirst({
       where: {
-        userId: userId,
+        userId: ownerUserId,
         eventTypeId: null,
       },
     });

@@ -1,3 +1,6 @@
+import prismaMock from "@calcom/testing/lib/__mocks__/prismaMock";
+
+import { getLocationGroupedOptions } from "@calcom/app-store/server";
 import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import { MembershipRole } from "@calcom/prisma/enums";
@@ -193,6 +196,36 @@ describe("getEventTypeById", () => {
 
     expect(result.eventType.id).toBe(10);
     expect(result.currentUserMembership).toBeNull();
+  });
+
+  it("reads the owner's apps and default calendar, not the admin's", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    prismaMock.destinationCalendar.findFirst.mockResolvedValue(null);
+    findByIdComplete.mockResolvedValue({
+      ...buildRawEventType(),
+      userId: 2,
+      teamId: null,
+      team: null,
+      schedulingType: null,
+      children: [],
+      users: [baseUser(2)],
+      destinationCalendar: null,
+    });
+
+    await getEventTypeById({
+      eventTypeId: 10,
+      userId: 999,
+      prisma: prismaMock as unknown as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      isSystemAdmin: true,
+      currentOrganizationId: null,
+    });
+
+    expect(getLocationGroupedOptions).toHaveBeenCalledWith({ userId: 2 }, expect.anything());
+    expect(prismaMock.destinationCalendar.findFirst).toHaveBeenCalledWith({
+      where: { userId: 2, eventTypeId: null },
+    });
   });
 
   it("keeps the membership-scoped lookup for a non-admin", async () => {
