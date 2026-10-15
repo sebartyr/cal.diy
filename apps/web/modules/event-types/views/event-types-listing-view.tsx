@@ -913,8 +913,19 @@ const CreateFirstEventTypeView = ({ slug, searchTerm }: { slug: string; searchTe
 const CTA = ({ profileOptions }: { profileOptions: ProfileOption[] }) => {
   const { t } = useLocale();
   const { searchTerm, setSearchTerm } = useSearchContext();
+  const {
+    data: { teamId },
+  } = useTypedQuery(querySchema);
 
   if (!profileOptions.length) return null;
+
+  // The dialog creates for whichever profile the active tab shows, so the link has to carry the
+  // team over; without it a team with existing event types has no way to add another one.
+  const activeProfile = profileOptions.find((profile) => profile.teamId === teamId) ?? profileOptions[0];
+  const createParams = new URLSearchParams({ dialog: "new", eventPage: activeProfile?.slug ?? "" });
+  if (activeProfile?.teamId) {
+    createParams.set("teamId", String(activeProfile.teamId));
+  }
 
   return (
     <div className="flex items-center gap-4">
@@ -930,7 +941,7 @@ const CTA = ({ profileOptions }: { profileOptions: ProfileOption[] }) => {
         }}
         placeholder={t("search")}
       />
-      <Button data-testid="new-event-type" href={`?dialog=new&eventPage=${profileOptions[0]?.slug ?? ""}`}>
+      <Button data-testid="new-event-type" href={`?${createParams.toString()}`}>
         {t("new")}
       </Button>
       <CreateEventTypeDialog profileOptions={profileOptions} />
