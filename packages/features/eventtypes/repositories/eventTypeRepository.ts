@@ -718,6 +718,15 @@ export class EventTypeRepository implements IEventTypesRepository {
     });
   }
 
+  async findByIdComplete({ id }: { id: number }) {
+    return await this.prismaClient.eventType.findUnique({
+      where: {
+        id,
+      },
+      select: completeEventTypeSelect,
+    });
+  }
+
   async findByIdMinimal({ id }: { id: number }) {
     return await this.prismaClient.eventType.findUnique({
       where: {

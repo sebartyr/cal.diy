@@ -31,6 +31,8 @@ interface getEventTypeByIdProps {
   prisma: PrismaClient;
   isTrpcCall?: boolean;
   isUserOrganizationAdmin: boolean;
+  /** Instance-wide admin: administers every user and team of the deployment. */
+  isSystemAdmin?: boolean;
   currentOrganizationId: number | null;
   userLocale?: string | null;
 }
@@ -44,6 +46,7 @@ export const getEventTypeById = async ({
   prisma,
   isTrpcCall = false,
   isUserOrganizationAdmin,
+  isSystemAdmin = false,
   userLocale,
 }: getEventTypeByIdProps) => {
   const userSelect = {
@@ -62,6 +65,7 @@ export const getEventTypeById = async ({
     userId,
     eventTypeId,
     isUserOrganizationAdmin,
+    isSystemAdmin,
     currentOrganizationId,
     prisma,
   });
@@ -263,10 +267,15 @@ export async function getRawEventType({
   userId,
   eventTypeId,
   isUserOrganizationAdmin,
+  isSystemAdmin = false,
   currentOrganizationId,
   prisma,
 }: Omit<getEventTypeByIdProps, "isTrpcCall">) {
   const eventTypeRepo = new EventTypeRepository(prisma);
+
+  if (isSystemAdmin) {
+    return await eventTypeRepo.findByIdComplete({ id: eventTypeId });
+  }
 
   // Platform org admins can access any event type within their organization
   if (isUserOrganizationAdmin && currentOrganizationId) {

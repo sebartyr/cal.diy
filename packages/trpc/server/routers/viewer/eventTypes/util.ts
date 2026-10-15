@@ -4,7 +4,7 @@ import { UserRepository } from "@calcom/features/users/repositories/UserReposito
 import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
 import prisma from "@calcom/prisma";
 import type { MembershipRole } from "@calcom/prisma/enums";
-import { PeriodType } from "@calcom/prisma/enums";
+import { PeriodType, UserPermissionRole } from "@calcom/prisma/enums";
 import type { CustomInputSchema } from "@calcom/prisma/zod-utils";
 import { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import { TRPCError } from "@trpc/server";
@@ -144,8 +144,12 @@ export const createEventPbacProcedure = (
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
+      // An instance-wide admin administers every user and team of the deployment, the same way
+      // create.handler lets them create a team event type without holding a membership.
+      const isSystemAdmin = ctx.user.role === UserPermissionRole.ADMIN;
+
       // Check if user has permission to access/modify this event
-      if (!event.teamId) {
+      if (!isSystemAdmin && !event.teamId) {
         // Personal event - must be owner or assigned user
         if (event.userId !== ctx.user.id && !event.users.find((user) => user.id === ctx.user.id)) {
           throw new TRPCError({
@@ -153,7 +157,7 @@ export const createEventPbacProcedure = (
             message: `Permission required: ${permission}`,
           });
         }
-      } else {
+      } else if (!isSystemAdmin && event.teamId) {
         // Team event - check Membership against the requested fallback roles.
         const hasPermission = await getTeamRolePermissionService().checkPermission({
           userId: ctx.user.id,

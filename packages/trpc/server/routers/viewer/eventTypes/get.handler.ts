@@ -1,5 +1,6 @@
 import getEventTypeById from "@calcom/features/eventtypes/lib/getEventTypeById";
 import type { PrismaClient } from "@calcom/prisma";
+import { UserPermissionRole } from "@calcom/prisma/enums";
 
 import type { TrpcSessionUser } from "../../../types";
 import type { TGetInputSchema } from "./get.schema";
@@ -20,6 +21,7 @@ export const getHandler = ({ ctx, input }: GetOptions) => {
     prisma: ctx.prisma,
     isTrpcCall: true,
     isUserOrganizationAdmin: !!ctx.user?.organization?.isOrgAdmin,
+    isSystemAdmin: ctx.user.role === UserPermissionRole.ADMIN,
     userLocale: ctx.user.locale,
   });
 };

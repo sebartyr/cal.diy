@@ -5,11 +5,14 @@ import type { UserProfile } from "@calcom/types/UserProfile";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getEventTypeById } from "../getEventTypeById";
 
-const { findById } = vi.hoisted(() => ({ findById: vi.fn() }));
+const { findById, findByIdComplete } = vi.hoisted(() => ({
+  findById: vi.fn(),
+  findByIdComplete: vi.fn(),
+}));
 
 vi.mock("@calcom/features/eventtypes/repositories/eventTypeRepository", () => ({
   EventTypeRepository: vi.fn().mockImplementation(function () {
-    return { findById, findByIdForOrgAdmin: vi.fn() };
+    return { findById, findByIdComplete, findByIdForOrgAdmin: vi.fn() };
   }),
 }));
 
@@ -147,5 +150,40 @@ describe("getEventTypeById", () => {
       }),
     ]);
     expect(result.currentUserMembership?.role).toBe(MembershipRole.OWNER);
+  });
+  it("reads an event type a system admin has no membership on", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    findByIdComplete.mockResolvedValue(buildRawEventType());
+
+    const result = await getEventTypeById({
+      eventTypeId: 10,
+      userId: 999,
+      prisma: {} as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      isSystemAdmin: true,
+      currentOrganizationId: null,
+    });
+
+    expect(findByIdComplete).toHaveBeenCalledWith({ id: 10 });
+    expect(findById).not.toHaveBeenCalled();
+    expect(result.eventType.id).toBe(10);
+  });
+
+  it("keeps the membership-scoped lookup for a non-admin", async () => {
+    vi.mocked(ProfileRepository.findManyForUsers).mockResolvedValue([]);
+    findById.mockResolvedValue(buildRawEventType());
+
+    await getEventTypeById({
+      eventTypeId: 10,
+      userId: 1,
+      prisma: {} as PrismaClient,
+      isTrpcCall: true,
+      isUserOrganizationAdmin: false,
+      currentOrganizationId: null,
+    });
+
+    expect(findById).toHaveBeenCalledWith({ id: 10, userId: 1 });
+    expect(findByIdComplete).not.toHaveBeenCalled();
   });
 });
