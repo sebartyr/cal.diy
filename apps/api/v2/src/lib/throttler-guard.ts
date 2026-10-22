@@ -29,7 +29,7 @@ const sixtySecondsMs = 60 * 1000;
 
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
-  private logger = new Logger("CustomThrottlerGuard");
+  protected logger = new Logger("CustomThrottlerGuard");
 
   private defaultTttl = Number(getEnv("RATE_LIMIT_DEFAULT_TTL_MS", sixtySecondsMs));
 

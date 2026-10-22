@@ -25,7 +25,9 @@ export class IsOAuthClientWebhookGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<Request & { webhook: Webhook; oAuthClient: PlatformOAuthClient }>();
+      .getRequest<
+        Request<{ webhookId: string; clientId: string }> & { webhook: Webhook; oAuthClient: PlatformOAuthClient }
+      >();
     const user = request.user as ApiAuthGuardUser;
     const webhookId = request.params.webhookId;
     const oAuthClientId = request.params.clientId;

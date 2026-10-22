@@ -8,6 +8,12 @@ export class NextAuthMockStrategy extends PassportStrategy(NextAuthPassportStrat
   constructor(private readonly email: string, private readonly userRepository: UsersRepository) {
     super();
   }
+  // authenticate() is overridden, so passport never reaches validate(); @nestjs/passport 11
+  // still declares it abstract on the strategy mixin.
+  validate(): never {
+    throw new Error("NextAuthMockStrategy authenticates in authenticate(); validate() is not used");
+  }
+
   async authenticate() {
     try {
       const user = await this.userRepository.findByEmailWithProfile(this.email);

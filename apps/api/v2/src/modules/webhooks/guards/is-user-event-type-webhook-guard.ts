@@ -23,7 +23,9 @@ export class IsUserEventTypeWebhookGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<Request & { webhook: Webhook } & { eventType: EventType }>();
+      .getRequest<
+        Request<{ webhookId: string; eventTypeId: string }> & { webhook: Webhook } & { eventType: EventType }
+      >();
     const user = request.user as ApiAuthGuardUser;
     const webhookId = request.params.webhookId;
     const eventTypeId = request.params.eventTypeId;

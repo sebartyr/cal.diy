@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiExtraModels, ApiProperty, ApiPropertyOptional, getSchemaPath } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsDate, IsOptional, IsArray, IsBoolean, IsInt, IsString, ValidateNested } from "class-validator";
 
@@ -79,6 +79,7 @@ class TimeRange {
   end!: Date;
 }
 
+@ApiExtraModels(TimeRange)
 export class ScheduleOutput {
   @IsInt()
   @ApiProperty()
@@ -103,7 +104,8 @@ export class ScheduleOutput {
   @ApiProperty({ type: [AvailabilityModel] })
   schedule!: AvailabilityModel[];
 
-  @ApiProperty({ type: [[TimeRange]] })
+  // Swagger 11 no longer accepts nested array types, so the array of arrays is spelled out.
+  @ApiProperty({ type: "array", items: { type: "array", items: { $ref: getSchemaPath(TimeRange) } } })
   availability!: TimeRange[][];
 
   @IsString()
