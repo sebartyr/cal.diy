@@ -6,8 +6,6 @@ import {
   getTranslation,
   handleCancelBooking,
   handleMarkNoShow,
-  roundRobinManualReassignment,
-  roundRobinReassignment,
 } from "@calcom/platform-libraries";
 import { makeUserActor, PrismaOrgMembershipRepository } from "@calcom/platform-libraries/bookings";
 import type { RescheduleSeatedBookingInput_2024_08_13 } from "@calcom/platform-types";
@@ -21,7 +19,6 @@ import {
   GetRecurringSeatedBookingOutput_2024_08_13,
   GetSeatedBookingOutput_2024_08_13,
   MarkAbsentBookingInput_2024_08_13,
-  ReassignToUserBookingInput_2024_08_13,
   RecurringBookingOutput_2024_08_13,
   RescheduleBookingInput,
 } from "@calcom/platform-types";
@@ -60,10 +57,8 @@ import { OAuthClientUsersService } from "@/modules/oauth-clients/services/oauth-
 import { PrismaReadService } from "@/modules/prisma/prisma-read.service";
 import { TeamsEventTypesRepository } from "@/modules/teams/event-types/teams-event-types.repository";
 import { TeamsRepository } from "@/modules/teams/teams/teams.repository";
-import { UsersService } from "@/modules/users/services/users.service";
 import { UsersRepository } from "@/modules/users/users.repository";
 
-export const BOOKING_REASSIGN_PERMISSION_ERROR = "You do not have permission to reassign this booking";
 
 type CreatedBooking = {
   hosts: { id: number }[];
@@ -97,7 +92,6 @@ export class BookingsService_2024_08_13 {
     private readonly eventTypesRepository: EventTypesRepository_2024_06_14,
     private readonly prismaReadService: PrismaReadService,
     private readonly kyselyReadService: KyselyReadService,
-    private readonly usersService: UsersService,
     private readonly usersRepository: UsersRepository,
     private readonly platformBookingsService: PlatformBookingsService,
     private readonly oAuthClientRepository: OAuthClientRepository,
@@ -988,135 +982,6 @@ export class BookingsService_2024_08_13 {
       return this.outputService.getOutputRecurringBooking(booking);
     }
     return this.outputService.getOutputBooking(booking);
-  }
-
-  async reassignBooking(bookingUid: string, reassignedByUser: ApiAuthGuardUser) {
-    const booking = await this.bookingsRepository.getByUidWithEventType(bookingUid);
-    if (!booking) {
-      throw new NotFoundException(`Booking with uid=${bookingUid} was not found in the database`);
-    }
-
-    if (!booking.eventType) {
-      throw new BadRequestException(
-        `Event type with id=${booking.eventTypeId} was not found in the database`
-      );
-    }
-
-    const isAllowed = await this.eventTypeAccessService.userIsEventTypeAdminOrOwner(
-      reassignedByUser,
-      booking.eventType
-    );
-
-    if (!isAllowed) {
-      throw new ForbiddenException(BOOKING_REASSIGN_PERMISSION_ERROR);
-    }
-
-    const platformClientParams = booking.eventTypeId
-      ? await this.platformBookingsService.getOAuthClientParams(booking.eventTypeId)
-      : undefined;
-
-    const emailsEnabled = platformClientParams ? platformClientParams.arePlatformEmailsEnabled : true;
-
-    const profile = this.usersService.getUserMainProfile(reassignedByUser);
-
-    try {
-      await roundRobinReassignment({
-        bookingId: booking.id,
-        orgId: profile?.organizationId || null,
-        emailsEnabled,
-        platformClientParams,
-        reassignedById: reassignedByUser.id,
-        actionSource: "API_V2",
-        reassignedByUuid: reassignedByUser.uuid,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "no_available_users_found_error") {
-          throw new BadRequestException(
-            "Can't reassign the booking because no other host is available at that time."
-          );
-        }
-      }
-      throw error;
-    }
-
-    const reassigned = await this.bookingsRepository.getByUidWithUser(bookingUid);
-    if (!reassigned) {
-      throw new NotFoundException(`Reassigned booking with uid=${bookingUid} was not found in the database`);
-    }
-
-    return this.outputService.getOutputReassignedBooking(reassigned);
-  }
-
-  async reassignBookingToUser(
-    bookingUid: string,
-    newUserId: number,
-    reassignedByUser: ApiAuthGuardUser,
-    body: ReassignToUserBookingInput_2024_08_13
-  ) {
-    const booking = await this.bookingsRepository.getByUidWithEventType(bookingUid);
-    if (!booking) {
-      throw new NotFoundException(`Booking with uid=${bookingUid} was not found in the database`);
-    }
-    if (!booking.eventType) {
-      throw new BadRequestException(
-        `Event type with id=${booking.eventTypeId} was not found in the database`
-      );
-    }
-
-    const isAllowed = await this.eventTypeAccessService.userIsEventTypeAdminOrOwner(
-      reassignedByUser,
-      booking.eventType
-    );
-
-    if (!isAllowed) {
-      throw new ForbiddenException(BOOKING_REASSIGN_PERMISSION_ERROR);
-    }
-
-    const user = await this.usersRepository.findByIdWithProfile(newUserId);
-    if (!user) {
-      throw new NotFoundException(`User with id=${newUserId} was not found in the database`);
-    }
-
-    const platformClientParams = booking.eventTypeId
-      ? await this.platformBookingsService.getOAuthClientParams(booking.eventTypeId)
-      : undefined;
-
-    const emailsEnabled = platformClientParams ? platformClientParams.arePlatformEmailsEnabled : true;
-
-    const profile = this.usersService.getUserMainProfile(user);
-
-    try {
-      await roundRobinManualReassignment({
-        bookingId: booking.id,
-        newUserId,
-        orgId: profile?.organizationId || null,
-        reassignReason: body.reason,
-        reassignedById: reassignedByUser.id,
-        emailsEnabled,
-        platformClientParams,
-        actionSource: "API_V2",
-        reassignedByUuid: reassignedByUser.uuid,
-      });
-
-      const reassigned = await this.bookingsRepository.getByUidWithUser(bookingUid);
-      if (!reassigned) {
-        throw new NotFoundException(
-          `Reassigned booking with uid=${bookingUid} was not found in the database`
-        );
-      }
-
-      return this.outputService.getOutputReassignedBooking(reassigned);
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "invalid_round_robin_host") {
-          throw new BadRequestException(
-            `User with id=${newUserId} is not a valid Round Robin host - the user to which you reassign this booking must be one of the booking hosts. Fetch the booking using the GET /v2/bookings/{uid} endpoint and select id of one of the hosts.`
-          );
-        }
-      }
-      throw error;
-    }
   }
 
   async confirmBooking(bookingUid: string, requestUser: ApiAuthGuardUser) {

@@ -389,38 +389,3 @@ export class CreateRecurringSeatedBookingOutput_2024_08_13 extends BaseBookingOu
   @Expose()
   recurringBookingUid!: string;
 }
-
-class ReassignedToDto {
-  @ApiProperty({ type: Number, example: 123 })
-  @IsInt()
-  @Expose()
-  id!: number;
-
-  @ApiProperty({ type: String, example: "John Doe" })
-  @IsString()
-  @Expose()
-  name!: string;
-
-  @ApiProperty({ type: String, example: "john.doe@example.com" })
-  @IsEmail()
-  @Expose()
-  email!: string;
-
-  @ApiProperty({ type: String, example: "john.doe@example.com", description: "Clean email for display purposes" })
-  @IsString()
-  @Expose()
-  displayEmail!: string;
-}
-
-export class ReassignBookingOutput_2024_08_13 {
-  @ApiProperty({ type: String, example: "booking_uid_123" })
-  @IsString()
-  @Expose()
-  bookingUid!: string;
-
-  @ApiProperty({ type: ReassignedToDto })
-  @ValidateNested()
-  @Type(() => ReassignedToDto)
-  @Expose()
-  reassignedTo!: ReassignedToDto;
-}

@@ -3,8 +3,6 @@ const mockVerifyCodeUnAuthenticated = jest.fn();
 jest.mock(
   "@calcom/platform-libraries",
   () => ({
-    sendVerificationCode: jest.fn(),
-    verifyPhoneNumber: jest.fn(),
     verifyCodeUnAuthenticated: mockVerifyCodeUnAuthenticated,
   }),
   { virtual: true }

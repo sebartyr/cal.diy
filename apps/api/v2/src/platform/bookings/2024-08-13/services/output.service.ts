@@ -22,7 +22,6 @@ import {
 import type {
   CreateRecurringSeatedBookingOutput_2024_08_13,
   CreateSeatedBookingOutput_2024_08_13,
-  ReassignBookingOutput_2024_08_13,
 } from "@calcom/platform-types";
 import type { Booking, BookingSeat } from "@calcom/prisma/client";
 
@@ -534,21 +533,5 @@ export class OutputBookingsService_2024_08_13 {
       : [];
 
     return parsed;
-  }
-
-  getOutputReassignedBooking(
-    databaseBooking: Pick<BookingWithUser, "uid" | "user">
-  ): ReassignBookingOutput_2024_08_13 {
-    return {
-      bookingUid: databaseBooking.uid,
-      reassignedTo: {
-        id: databaseBooking?.user?.id || 0,
-        name: databaseBooking?.user?.name || "unknown",
-        email: databaseBooking?.user?.email || "unknown",
-        displayEmail: databaseBooking?.user?.email
-          ? this.getDisplayEmail(databaseBooking.user.email)
-          : "unknown",
-      },
-    };
   }
 }

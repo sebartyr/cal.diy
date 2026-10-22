@@ -16,15 +16,6 @@ export class TeamsVerifiedResourcesRepository {
     });
   }
 
-  async getTeamVerifiedPhoneNumbers(teamId: number, skip = 0, take = 250) {
-    return this.dbRead.prisma.verifiedNumber.findMany({
-      where: {
-        teamId,
-      },
-      skip,
-      take,
-    });
-  }
 
   async getTeamVerifiedEmail(userId: number, email: string, teamId: number) {
     return this.dbRead.prisma.verifiedEmail.findFirstOrThrow({
@@ -36,15 +27,6 @@ export class TeamsVerifiedResourcesRepository {
     });
   }
 
-  async getTeamVerifiedPhoneNumber(userId: number, phone: string, teamId: number) {
-    return this.dbRead.prisma.verifiedNumber.findFirstOrThrow({
-      where: {
-        userId,
-        phoneNumber: phone,
-        teamId,
-      },
-    });
-  }
 
   async getTeamVerifiedEmailById(id: number, teamId: number) {
     return this.dbRead.prisma.verifiedEmail.findFirst({
@@ -55,12 +37,4 @@ export class TeamsVerifiedResourcesRepository {
     });
   }
 
-  async getTeamVerifiedPhoneNumberById(id: number, teamId: number) {
-    return this.dbRead.prisma.verifiedNumber.findFirst({
-      where: {
-        id,
-        teamId,
-      },
-    });
-  }
 }
