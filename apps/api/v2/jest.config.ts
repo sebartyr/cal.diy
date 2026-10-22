@@ -1,5 +1,7 @@
 import type { Config } from "jest";
 
+import { ESM_ONLY_TRANSFORM, ESM_ONLY_TRANSFORM_IGNORE_PATTERNS } from "./jest.esm-only";
+
 const config: Config = {
   preset: "ts-jest",
   moduleFileExtensions: ["ts", "js", "json"],
@@ -12,10 +14,11 @@ const config: Config = {
   testRegex: ".*\\.spec\\.ts$",
   transform: {
     "^.+\\.ts$": "ts-jest",
+    ...ESM_ONLY_TRANSFORM,
   },
   setupFiles: ["<rootDir>/test/setEnvVars.ts"],
   testPathIgnorePatterns: ["/dist/", "/node_modules/"],
-  transformIgnorePatterns: ["/dist/", "/node_modules/"],
+  transformIgnorePatterns: ESM_ONLY_TRANSFORM_IGNORE_PATTERNS,
 };
 
 export default config;
