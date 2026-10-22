@@ -84,11 +84,11 @@ export class OAuthFlowController {
   @HttpCode(HttpStatus.OK)
   @DocsExcludeEndpoint()
   async exchange(
-    @Headers("Authorization") authorization: string,
+    @Headers("Authorization") authorization: string | undefined,
     @Param("clientId") clientId: string,
     @Body() body: ExchangeAuthorizationCodeInput
   ): Promise<KeysResponseDto> {
-    const authorizeEndpointCode = authorization.replace("Bearer ", "").trim();
+    const authorizeEndpointCode = authorization?.replace("Bearer ", "").trim();
     if (!authorizeEndpointCode) {
       throw new BadRequestException("Missing 'Bearer' Authorization header.");
     }
