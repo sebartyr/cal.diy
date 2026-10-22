@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 import { uploadAvatar } from "@calcom/lib/server/avatar";
 import { resizeBase64Image } from "@calcom/lib/server/resizeBase64Image";
 import prisma from "@calcom/prisma";
@@ -18,7 +16,7 @@ async function downloadImageDataFromUrl(url: string) {
       return null;
     }
 
-    const imageBuffer = await response.buffer();
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
     const base64Image = `data:image/png;base64,${imageBuffer.toString("base64")}`;
 
     return base64Image;

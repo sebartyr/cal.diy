@@ -44,7 +44,6 @@ function getTestExclude() {
     "**/node_modules/**",
     "**/dist/**",
     "apps/api/v2/**/*.spec.ts",
-    "__checks__/**/*.spec.ts",
   ];
   if (isIntegrationMode || isTimezoneMode) {
     return [...baseExclude, "packages/embeds/**/*"];
