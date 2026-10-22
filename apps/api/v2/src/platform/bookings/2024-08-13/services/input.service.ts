@@ -402,7 +402,11 @@ export class InputBookingsService_2024_08_13 {
         .filter((location) => location.type === "integration")
         .map((location) => location.integration);
 
-      const isAllowedIntegration = allowedIntegrations.includes(inputBookingLocation.integration);
+      // "cal-video" is stored as Jitsi since Cal Video was removed, so both names designate the same location.
+      const toStoredIntegration = (integration: string) => (integration === "cal-video" ? "jitsi" : integration);
+      const isAllowedIntegration = allowedIntegrations
+        .map(toStoredIntegration)
+        .includes(toStoredIntegration(inputBookingLocation.integration));
       if (!isAllowedIntegration) {
         throw new BadRequestException(
           `Booking location with integration ${
