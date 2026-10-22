@@ -94,7 +94,8 @@ export class OAuthClientsController {
     summary: "Get all OAuth clients",
     description: `<Warning>These endpoints are deprecated and will be removed in the future.</Warning>`,
   })
-  @MembershipRoles([MembershipRole.ADMIN, MembershipRole.OWNER, MembershipRole.MEMBER])
+  // Responses carry the client secret, which authenticates as the team owner: members must not read it.
+  @MembershipRoles([MembershipRole.ADMIN, MembershipRole.OWNER])
   @ApiQuery(TEAM_ID_QUERY)
   async getOAuthClients(@GetPlatformTeamId() teamId: number): Promise<GetOAuthClientsResponseDto> {
     const clients = await this.oAuthClientsService.getOAuthClients(teamId);
@@ -103,7 +104,7 @@ export class OAuthClientsController {
 
   @Get("/:clientId")
   @HttpCode(HttpStatus.OK)
-  @MembershipRoles([MembershipRole.ADMIN, MembershipRole.OWNER, MembershipRole.MEMBER])
+  @MembershipRoles([MembershipRole.ADMIN, MembershipRole.OWNER])
   @ApiOperation({
     summary: "Get an OAuth client",
     description: `<Warning>These endpoints are deprecated and will be removed in the future.</Warning>`,
