@@ -30,13 +30,8 @@ export class GoogleCalendarService {
     private readonly credentialsRepository: CredentialsRepository
   ) {}
 
-  async getEventDetails(eventUid: string): Promise<GoogleCalendarEventResponse> {
-    const bookingReference =
-      await this.bookingReferencesRepository.getBookingReferencesIncludeSensitiveCredentials(eventUid);
-
-    if (!bookingReference) {
-      throw new NotFoundException("Booking reference not found");
-    }
+  async getEventDetails(userId: number, eventUid: string): Promise<GoogleCalendarEventResponse> {
+    const bookingReference = await this.getOwnedBookingReference(userId, eventUid);
 
     const ownerUserEmail = bookingReference?.booking?.user?.email;
 
@@ -64,15 +59,11 @@ export class GoogleCalendarService {
   }
 
   async updateEventDetails(
+    userId: number,
     eventUid: string,
     updateData: UpdateUnifiedCalendarEventInput
   ): Promise<GoogleCalendarEventResponse> {
-    const bookingReference =
-      await this.bookingReferencesRepository.getBookingReferencesIncludeSensitiveCredentials(eventUid);
-
-    if (!bookingReference) {
-      throw new NotFoundException("Booking reference not found");
-    }
+    const bookingReference = await this.getOwnedBookingReference(userId, eventUid);
 
     const ownerUserEmail = bookingReference?.booking?.user?.email;
 
@@ -98,6 +89,19 @@ export class GoogleCalendarService {
     } catch (error) {
       throw new NotFoundException("Failed to update meeting details");
     }
+  }
+
+  // The event is read or patched with the booking owner's credentials, so only the owner may target it.
+  // Someone else's event gets the same 404 as a missing one, so event IDs cannot be probed.
+  private async getOwnedBookingReference(userId: number, eventUid: string) {
+    const bookingReference =
+      await this.bookingReferencesRepository.getBookingReferencesIncludeSensitiveCredentials(eventUid);
+
+    if (!bookingReference || bookingReference.booking?.user?.id !== userId) {
+      throw new NotFoundException("Booking reference not found");
+    }
+
+    return bookingReference;
   }
 
   /**

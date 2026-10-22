@@ -441,11 +441,40 @@ describe("GoogleCalendarService", () => {
     });
   });
 
+  const ownedBookingReference = {
+    uid: "event-uid",
+    externalCalendarId: "primary",
+    credential: { key: { access_token: "token", refresh_token: "refresh", token_type: "Bearer" } },
+    delegationCredential: null,
+    booking: { user: { id: userId, email: "owner@example.com" } },
+  };
+
   describe("getEventDetails", () => {
     it("should throw NotFoundException when booking reference not found", async () => {
       mockBookingReferencesRepo.getBookingReferencesIncludeSensitiveCredentials.mockResolvedValue(null);
 
-      await expect(service.getEventDetails("non-existent-uid")).rejects.toThrow(NotFoundException);
+      await expect(service.getEventDetails(userId, "non-existent-uid")).rejects.toThrow(NotFoundException);
+    });
+
+    it("should throw NotFoundException without calling Google when the event belongs to another user", async () => {
+      mockBookingReferencesRepo.getBookingReferencesIncludeSensitiveCredentials.mockResolvedValue({
+        ...ownedBookingReference,
+        booking: { user: { id: 999, email: "victim@example.com" } },
+      });
+
+      await expect(service.getEventDetails(userId, "event-uid")).rejects.toThrow(NotFoundException);
+      expect(mockGCalService.getOAuthClient).not.toHaveBeenCalled();
+    });
+
+    it("should return the event when it belongs to the authenticated user", async () => {
+      const eventsGet = jest.fn().mockResolvedValue({ data: { id: "event-uid" } });
+      MockCalendar.mockImplementationOnce(() => ({ events: { get: eventsGet } }));
+      mockBookingReferencesRepo.getBookingReferencesIncludeSensitiveCredentials.mockResolvedValue(
+        ownedBookingReference
+      );
+
+      await expect(service.getEventDetails(userId, "event-uid")).resolves.toEqual({ id: "event-uid" });
+      expect(eventsGet).toHaveBeenCalledWith({ calendarId: "primary", eventId: "event-uid" });
     });
   });
 
@@ -453,8 +482,36 @@ describe("GoogleCalendarService", () => {
     it("should throw NotFoundException when booking reference not found", async () => {
       mockBookingReferencesRepo.getBookingReferencesIncludeSensitiveCredentials.mockResolvedValue(null);
 
-      await expect(service.updateEventDetails("non-existent-uid", { title: "test" })).rejects.toThrow(
+      await expect(service.updateEventDetails(userId, "non-existent-uid", { title: "test" })).rejects.toThrow(
         NotFoundException
+      );
+    });
+
+    it("should throw NotFoundException without calling Google when the event belongs to another user", async () => {
+      mockBookingReferencesRepo.getBookingReferencesIncludeSensitiveCredentials.mockResolvedValue({
+        ...ownedBookingReference,
+        booking: { user: { id: 999, email: "victim@example.com" } },
+      });
+
+      await expect(service.updateEventDetails(userId, "event-uid", { title: "test" })).rejects.toThrow(
+        NotFoundException
+      );
+      expect(mockGCalService.getOAuthClient).not.toHaveBeenCalled();
+    });
+
+    it("should patch the event when it belongs to the authenticated user", async () => {
+      const eventsPatch = jest.fn().mockResolvedValue({ data: { id: "event-uid", summary: "test" } });
+      MockCalendar.mockImplementationOnce(() => ({ events: { patch: eventsPatch } }));
+      mockBookingReferencesRepo.getBookingReferencesIncludeSensitiveCredentials.mockResolvedValue(
+        ownedBookingReference
+      );
+
+      await expect(service.updateEventDetails(userId, "event-uid", { title: "test" })).resolves.toEqual({
+        id: "event-uid",
+        summary: "test",
+      });
+      expect(eventsPatch).toHaveBeenCalledWith(
+        expect.objectContaining({ calendarId: "primary", eventId: "event-uid" })
       );
     });
   });
