@@ -30,6 +30,8 @@ export class UsersRepository {
           connect: { id: oAuthClientId },
         },
         isPlatformManaged,
+        // The integrator owns the address (it is aliased with the OAuth client ID), so no verification email.
+        verified: true,
         creationSource: CreationSource.API_V2,
       },
     });

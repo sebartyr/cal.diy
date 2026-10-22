@@ -1,6 +1,6 @@
-import { CreationSource, createNewUsersConnectToOrgIfExists, slugify } from "@calcom/platform-libraries";
+import { slugify } from "@calcom/platform-libraries";
 import type { PlatformOAuthClient, User } from "@calcom/prisma/client";
-import { BadRequestException, ConflictException, Injectable, Logger } from "@nestjs/common";
+import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { CalendarsService } from "@/platform/calendars/services/calendars.service";
 import { EventTypesService_2024_04_15 } from "@/platform/event-types/event-types_2024_04_15/services/event-types.service";
 import { SchedulesService_2024_04_15 } from "@/platform/schedules/schedules_2024_04_15/services/schedules.service";
@@ -25,9 +25,10 @@ export class OAuthClientUsersService {
     private readonly profilesRepository: ProfilesRepository
   ) {}
 
+  // Managed users are linked to the team owning the OAuth client only through the OAuth client: they are
+  // not team members (they belong to the integrator's own customers) and have no organization profile.
   async createOAuthClientUser(oAuthClient: PlatformOAuthClient, body: CreateManagedUserInput) {
     const oAuthClientId = oAuthClient.id;
-    const organizationId = oAuthClient.organizationId;
 
     const existingUser = await this.getExistingUserByEmail(oAuthClientId, body.email);
     if (existingUser) {
@@ -36,48 +37,24 @@ export class OAuthClientUsersService {
       );
     }
 
-    let user: User;
-    if (!organizationId) {
-      throw new BadRequestException(
-        "You cannot create a managed user outside of an organization - the OAuth client does not belong to any organization."
+    const email = OAuthClientUsersService.getOAuthUserEmail(oAuthClientId, body.email);
+    const username = OAuthClientUsersService.getOAuthUserUsername(email);
+
+    // Without an organization the (username, organizationId) unique index does not apply, so two emails
+    // slugifying to the same username must be caught here.
+    const existingUsername = await this.userRepository.findByUsername(username);
+    if (existingUsername) {
+      throw new ConflictException(
+        `User with the username derived from the provided e-mail already exists. Existing user ID=${existingUsername.id}`
       );
-    } else {
-      const email = OAuthClientUsersService.getOAuthUserEmail(oAuthClientId, body.email);
-      const createdUser = (
-        await createNewUsersConnectToOrgIfExists({
-          invitations: [
-            {
-              usernameOrEmail: email,
-              role: "MEMBER",
-            },
-          ],
-          creationSource: CreationSource.API_V2,
-          teamId: organizationId,
-          isOrg: true,
-          parentId: null,
-          autoAcceptEmailDomain: "never-auto-accept-email-domain-for-managed-users",
-          orgConnectInfoByUsernameOrEmail: {
-            [email]: {
-              orgId: organizationId,
-              autoAccept: true,
-            },
-          },
-          isPlatformManaged: true,
-          timeFormat: body.timeFormat,
-          weekStart: body.weekStart,
-          timeZone: body.timeZone,
-          language: body.locale ?? Locales.EN,
-        })
-      )[0];
-      await this.userRepository.addToOAuthClient(createdUser.id, oAuthClientId);
-      user = await this.userRepository.update(createdUser.id, {
-        name: body.name,
-        locale: body.locale,
-        avatarUrl: body.avatarUrl,
-        bio: body.bio,
-        metadata: body.metadata,
-      });
     }
+
+    const user = await this.userRepository.create(
+      { ...body, email, locale: body.locale ?? Locales.EN },
+      username,
+      oAuthClientId,
+      true
+    );
 
     const { accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt } =
       await this.tokensRepository.createOAuthTokens(oAuthClientId, user.id);
@@ -131,25 +108,23 @@ export class OAuthClientUsersService {
     return managedUsers;
   }
 
-  async updateOAuthClientUser(
-    oAuthClientId: string,
-    userId: number,
-    body: UpdateManagedUserInput,
-    organizationId: number
-  ) {
+  async updateOAuthClientUser(oAuthClientId: string, userId: number, body: UpdateManagedUserInput) {
     if (body.email) {
       const emailWithOAuthId = OAuthClientUsersService.getOAuthUserEmail(oAuthClientId, body.email);
       body.email = emailWithOAuthId;
-      const [emailUser, emailDomain] = emailWithOAuthId.split("@");
-      const [domainName, TLD] = emailDomain.split(".");
-      const newUsername = slugify(`${emailUser}-${domainName}-${TLD}`);
+      const newUsername = OAuthClientUsersService.getOAuthUserUsername(emailWithOAuthId);
       await this.userRepository.updateUsername(userId, newUsername);
-      await this.profilesRepository.updateProfile(organizationId, userId, {
-        username: newUsername,
-      });
+      // Managed users created before the organization removal still have an org profile carrying the username.
+      await this.profilesRepository.updateUsernameByUserId(userId, newUsername);
     }
 
     return this.userRepository.update(userId, body);
+  }
+
+  static getOAuthUserUsername(oAuthUserEmail: string) {
+    const [emailUser, emailDomain] = oAuthUserEmail.split("@");
+    const [domainName, TLD] = emailDomain.split(".");
+    return slugify(`${emailUser}-${domainName}-${TLD}`);
   }
 
   static getOAuthUserEmail(oAuthClientId: string, userEmail: string) {
