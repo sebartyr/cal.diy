@@ -31,7 +31,10 @@ jest.mock(
   }),
   { virtual: true }
 );
+// Keep the real exports: loading the libraries bundle eagerly imports every calendar service, and the Google
+// one extends googleapis-common's OAuth2Client at load time, rejecting unhandled (and crashing --runInBand) if it is missing.
 jest.mock("googleapis-common", () => ({
+  ...jest.requireActual("googleapis-common"),
   JWT: MockJWT,
 }));
 jest.mock("@googleapis/calendar", () => ({
