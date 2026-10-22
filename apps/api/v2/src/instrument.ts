@@ -8,8 +8,9 @@ if (process.env.SENTRY_DSN) {
     dsn: getEnv("SENTRY_DSN"),
     integrations: [nodeProfilingIntegration(), Sentry.prismaIntegration()],
     // Performance Monitoring
-    tracesSampleRate: getEnv("SENTRY_TRACES_SAMPLE_RATE") ?? 1.0, //  Capture 100% of the transactions
+    // Env values are strings at runtime, hence Number(); defaults capture 100% of the transactions
+    tracesSampleRate: Number(getEnv("SENTRY_TRACES_SAMPLE_RATE", 1.0)),
     // Set sampling rate for profiling - this is relative to tracesSampleRate
-    profilesSampleRate: getEnv("SENTRY_PROFILES_SAMPLE_RATE") ?? 1.0,
+    profilesSampleRate: Number(getEnv("SENTRY_PROFILES_SAMPLE_RATE", 1.0)),
   });
 }
