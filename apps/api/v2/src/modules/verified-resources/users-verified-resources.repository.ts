@@ -16,24 +16,7 @@ export class UsersVerifiedResourcesRepository {
     });
   }
 
-  async getUserVerifiedPhoneNumber(userId: number, phone: string) {
-    return this.dbRead.prisma.verifiedNumber.findFirstOrThrow({
-      where: {
-        userId,
-        phoneNumber: phone,
-      },
-    });
-  }
 
-  async getUserVerifiedPhoneNumbers(userId: number, skip = 0, take = 250) {
-    return this.dbRead.prisma.verifiedNumber.findMany({
-      where: {
-        userId,
-      },
-      skip,
-      take,
-    });
-  }
 
   async getUserVerifiedEmail(userId: number, email: string) {
     return this.dbRead.prisma.verifiedEmail.findFirstOrThrow({
@@ -71,12 +54,4 @@ export class UsersVerifiedResourcesRepository {
     });
   }
 
-  async getUserVerifiedPhoneNumberById(userId: number, id: number) {
-    return this.dbRead.prisma.verifiedNumber.findFirst({
-      where: {
-        userId,
-        id,
-      },
-    });
-  }
 }

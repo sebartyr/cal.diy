@@ -16,7 +16,6 @@ import {
   GetBookingTranscriptsOutput,
   GetBookingVideoSessionsOutput,
   MarkAbsentBookingInput_2024_08_13,
-  ReassignToUserBookingInput_2024_08_13,
   RescheduleBookingInput,
   RescheduleBookingInput_2024_08_13,
   RescheduleBookingInputPipe,
@@ -52,7 +51,6 @@ import { CalendarLinksOutput_2024_08_13 } from "@/platform/bookings/2024-08-13/o
 import { CancelBookingOutput_2024_08_13 } from "@/platform/bookings/2024-08-13/outputs/cancel-booking.output";
 import { CreateBookingOutput_2024_08_13 } from "@/platform/bookings/2024-08-13/outputs/create-booking.output";
 import { MarkAbsentBookingOutput_2024_08_13 } from "@/platform/bookings/2024-08-13/outputs/mark-absent.output";
-import { ReassignBookingOutput_2024_08_13 } from "@/platform/bookings/2024-08-13/outputs/reassign-booking.output";
 import { RescheduleBookingOutput_2024_08_13 } from "@/platform/bookings/2024-08-13/outputs/reschedule-booking.output";
 import { BookingReferencesService_2024_08_13 } from "@/platform/bookings/2024-08-13/services/booking-references.service";
 import { BookingsService_2024_08_13 } from "@/platform/bookings/2024-08-13/services/bookings.service";
@@ -411,61 +409,6 @@ export class BookingsController_2024_08_13 {
     @GetUser() user: ApiAuthGuardUser
   ): Promise<MarkAbsentBookingOutput_2024_08_13> {
     const booking = await this.bookingsService.markAbsent(bookingUid, user.id, body, user.uuid);
-
-    return {
-      status: SUCCESS_STATUS,
-      data: booking,
-    };
-  }
-
-  @Post("/:bookingUid/reassign")
-  @HttpCode(HttpStatus.OK)
-  @Permissions([BOOKING_WRITE])
-  @UseGuards(ApiAuthGuard, BookingUidGuard)
-  @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
-  @ApiOperation({
-    summary: "Reassign a booking to auto-selected host",
-    description: `Currently only supports reassigning host for round robin bookings. The provided authorization header refers to the owner of the booking.
-
-       <Note>Please make sure to pass in the cal-api-version header value as mentioned in the Headers section. Not passing the correct value will default to an older version of this endpoint.</Note>
-      `,
-  })
-  async reassignBooking(
-    @Param("bookingUid") bookingUid: string,
-    @GetUser() reassignedByUser: ApiAuthGuardUser
-  ): Promise<ReassignBookingOutput_2024_08_13> {
-    const booking = await this.bookingsService.reassignBooking(bookingUid, reassignedByUser);
-
-    return {
-      status: SUCCESS_STATUS,
-      data: booking,
-    };
-  }
-
-  @Post("/:bookingUid/reassign/:userId")
-  @HttpCode(HttpStatus.OK)
-  @Permissions([BOOKING_WRITE])
-  @UseGuards(ApiAuthGuard, BookingUidGuard)
-  @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
-  @ApiOperation({
-    summary: "Reassign a booking to a specific host",
-    description: `Currently only supports reassigning host for round robin bookings. The provided authorization header refers to the owner of the booking.
-
-      <Note>Please make sure to pass in the cal-api-version header value as mentioned in the Headers section. Not passing the correct value will default to an older version of this endpoint.</Note>
-      `,
-  })
-  async reassignBookingToUser(
-    @Param("bookingUid") bookingUid: string,
-    @Param("userId") userId: number,
-    @GetUser() reassignedByUser: ApiAuthGuardUser,
-    @Body() body: ReassignToUserBookingInput_2024_08_13
-  ): Promise<ReassignBookingOutput_2024_08_13> {
-    const booking = await this.bookingsService.reassignBookingToUser(
-      bookingUid,
-      userId,
-      reassignedByUser,
-      body
-    );
 
     return {
       status: SUCCESS_STATUS,

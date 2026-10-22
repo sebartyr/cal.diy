@@ -1,8 +1,4 @@
-import {
-  sendVerificationCode as sendPhoneVerificationCode,
-  verifyCodeUnAuthenticated,
-  verifyPhoneNumber,
-} from "@calcom/platform-libraries";
+import { verifyCodeUnAuthenticated } from "@calcom/platform-libraries";
 import { sendEmailVerificationByCode } from "@calcom/platform-libraries/emails";
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/teams-verified-resources.repository";
@@ -38,27 +34,7 @@ export class VerifiedResourcesService {
     return true;
   }
 
-  async requestPhoneVerificationCode(phone: string) {
-    try {
-      await sendPhoneVerificationCode(phone);
-    } catch (err) {
-      throw new BadRequestException("Could not send verification code to this phone number.");
-    }
 
-    return true;
-  }
-
-  async verifyPhone(userId: number, phone: string, code: string, teamId?: number) {
-    const result = await verifyPhoneNumber(phone, code, userId, teamId);
-
-    if (result) {
-      return teamId
-        ? await this.teamsVerifiedResourcesRepository.getTeamVerifiedPhoneNumber(userId, phone, teamId)
-        : await this.usersVerifiedResourcesRepository.getUserVerifiedPhoneNumber(userId, phone);
-    }
-
-    throw new BadRequestException("Could not verify phone number.");
-  }
 
   async verifyEmail(userId: number, email: string, code: string) {
     try {
@@ -98,27 +74,9 @@ export class VerifiedResourcesService {
     return this.teamsVerifiedResourcesRepository.getTeamVerifiedEmails(teamId, skip, take);
   }
 
-  async getUserVerifiedPhoneNumberById(userId: number, id: number) {
-    return this.usersVerifiedResourcesRepository.getUserVerifiedPhoneNumberById(userId, id);
-  }
 
-  async getTeamVerifiedPhoneNumberById(teamId: number, id: number) {
-    return this.teamsVerifiedResourcesRepository.getTeamVerifiedPhoneNumberById(id, teamId);
-  }
 
-  async getUserVerifiedPhoneNumber(userId: number, phoneNumber: string) {
-    return this.usersVerifiedResourcesRepository.getUserVerifiedPhoneNumber(userId, phoneNumber);
-  }
 
-  async getTeamVerifiedPhoneNumber(userId: number, phoneNumber: string, teamId: number) {
-    return this.teamsVerifiedResourcesRepository.getTeamVerifiedPhoneNumber(userId, phoneNumber, teamId);
-  }
 
-  async getUserVerifiedPhoneNumbers(userId: number, skip = 0, take = 250) {
-    return this.usersVerifiedResourcesRepository.getUserVerifiedPhoneNumbers(userId, skip, take);
-  }
 
-  async getTeamVerifiedPhoneNumbers(teamId: number, skip = 0, take = 250) {
-    return this.teamsVerifiedResourcesRepository.getTeamVerifiedPhoneNumbers(teamId, skip, take);
-  }
 }

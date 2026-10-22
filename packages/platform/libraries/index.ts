@@ -123,33 +123,6 @@ export type { CredentialForCalendarService } from "@calcom/types/Credential";
 
 // === Stubs for deleted EE features still imported by API v2 ===
 
-// Round-robin reassignment removed (EE feature) — stubs for API v2
-export async function roundRobinManualReassignment(_args: {
-  bookingId: number;
-  newUserId: number;
-  orgId?: number | null;
-  reassignReason?: string;
-  reassignedById?: number;
-  emailsEnabled?: boolean;
-  platformClientParams?: unknown;
-  actionSource?: string;
-  reassignedByUuid?: string;
-}): Promise<void> {
-  // No-op in community edition
-}
-
-export async function roundRobinReassignment(_args: {
-  bookingId: number;
-  orgId?: number | null;
-  emailsEnabled?: boolean;
-  platformClientParams?: unknown;
-  reassignedById?: number;
-  actionSource?: string;
-  reassignedByUuid?: string;
-}): Promise<void> {
-  // No-op in community edition
-}
-
 // getClientSecretFromPayment removed (EE feature) — stub for API v2
 export function getClientSecretFromPayment(payment: { data: Record<string, unknown> }): string | null {
   const data = payment.data;
@@ -175,19 +148,4 @@ export async function createNewUsersConnectToOrgIfExists(_args: {
   language?: string;
 }): Promise<{ id: number; email: string; username: string }[]> {
   throw new Error("Organization user creation is not available in community edition");
-}
-
-// sendVerificationCode removed (EE feature) — stub for API v2
-export async function sendVerificationCode(_phoneNumber: string): Promise<void> {
-  throw new Error("Phone verification is not available in community edition");
-}
-
-// verifyPhoneNumber removed (EE feature) — stub for API v2
-export async function verifyPhoneNumber(
-  _phoneNumber: string,
-  _code: string,
-  _userId: number,
-  _teamId?: number
-): Promise<boolean> {
-  throw new Error("Phone verification is not available in community edition");
 }
