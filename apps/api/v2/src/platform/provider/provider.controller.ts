@@ -46,7 +46,9 @@ export class CalProviderController {
       status: SUCCESS_STATUS,
       data: {
         clientId: oAuthClient.id,
-        organizationId: oAuthClient.organizationId,
+        // OAuth clients are owned by regular teams: atoms would send this id as an organization and
+        // filter public events by that team's slug, so no organization is reported (as in atoms OAuth2).
+        organizationId: null,
         name: oAuthClient.name,
       },
     };

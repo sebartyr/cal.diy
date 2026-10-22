@@ -1,13 +1,14 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEnum, IsNumber, IsString } from "class-validator";
+import { IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
 
 import { SUCCESS_STATUS, ERROR_STATUS } from "@calcom/platform-constants";
 
 export class ProviderVerifyClientData {
   @IsString()
   clientId!: string;
+  @IsOptional()
   @IsNumber()
-  organizationId!: number;
+  organizationId!: number | null;
   @IsString()
   name!: string;
 }
