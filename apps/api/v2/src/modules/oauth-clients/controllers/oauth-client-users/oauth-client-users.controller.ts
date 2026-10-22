@@ -19,7 +19,6 @@ import {
 } from "@nestjs/common";
 import { ApiHeader, ApiOperation, ApiTags as DocsTags } from "@nestjs/swagger";
 import { API_VERSIONS_VALUES } from "@/lib/api-versions";
-import { GetOrgId } from "@/modules/auth/decorators/get-org-id/get-org-id.decorator";
 import { MembershipRoles } from "@/modules/auth/decorators/roles/membership-roles.decorator";
 import { ApiAuthGuard } from "@/modules/auth/guards/api-auth/api-auth.guard";
 import { PlatformTeamRolesGuard } from "@/modules/auth/guards/platform-team-roles/platform-team-roles.guard";
@@ -137,18 +136,12 @@ export class OAuthClientUsersController {
   async updateUser(
     @Param("clientId") clientId: string,
     @Param("userId", ParseIntPipe) userId: number,
-    @Body() body: UpdateManagedUserInput,
-    @GetOrgId() organizationId: number
+    @Body() body: UpdateManagedUserInput
   ): Promise<GetManagedUserOutput> {
     await this.validateManagedUserOwnership(clientId, userId);
     this.logger.log(`Updating user ${userId} for OAuth Client ${clientId}`);
 
-    const user = await this.oAuthClientUsersService.updateOAuthClientUser(
-      clientId,
-      userId,
-      body,
-      organizationId
-    );
+    const user = await this.oAuthClientUsersService.updateOAuthClientUser(clientId, userId, body);
 
     return {
       status: SUCCESS_STATUS,
