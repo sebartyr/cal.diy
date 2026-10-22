@@ -585,30 +585,10 @@ export class InputEventTypesService_2024_06_14 {
 
     // Map API integration names to actual app slugs
     const slugMap: Record<string, string> = {
-      "office365-video": "msteams",
-      "facetime-video": "facetime",
-      "whereby-video": "whereby",
       "whatsapp-video": "whatsapp",
-      "webex-video": "webex",
       "telegram-video": "telegram",
-      "sylaps-video": "sylapsvideo",
-      "skype-video": "skype",
-      "sirius-video": "sirius_video",
       "signal-video": "signal",
-      "shimmer-video": "shimmervideo",
-      "salesroom-video": "salesroom",
-      "roam-video": "roam",
-      "riverside-video": "riverside",
-      "ping-video": "ping",
-      "mirotalk-video": "mirotalk",
-      "jelly-video": "jelly",
-      "jelly-conferencing": "jelly",
-      huddle: "huddle01",
-      "element-call-video": "element-call",
-      "eightxeight-video": "eightxeight",
       "discord-video": "discord",
-      "demodesk-video": "demodesk",
-      "campfire-video": "campfire",
     };
 
     appSlug = slugMap[appSlug] || appSlug;

@@ -3,8 +3,6 @@ import { PrismaWriteService } from "@/modules/prisma/prisma-write.service";
 import { Injectable } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 
-import type { Prisma } from "@calcom/prisma/client";
-
 @Injectable()
 export class ProfilesRepository {
   constructor(
@@ -36,15 +34,10 @@ export class ProfilesRepository {
     });
   }
 
-  async updateProfile(orgId: number, userId: number, body: Prisma.ProfileUpdateInput) {
-    return this.dbWrite.prisma.profile.update({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId: orgId,
-        },
-      },
-      data: body,
+  async updateUsernameByUserId(userId: number, username: string) {
+    return this.dbWrite.prisma.profile.updateMany({
+      where: { userId },
+      data: { username },
     });
   }
 }

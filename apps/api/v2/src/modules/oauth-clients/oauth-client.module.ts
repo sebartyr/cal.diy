@@ -22,7 +22,6 @@ import { PrismaModule } from "@/modules/prisma/prisma.module";
 import { ProfilesModule } from "@/modules/profiles/profiles.module";
 import { RedisModule } from "@/modules/redis/redis.module";
 import { SelectedCalendarsRepository } from "@/modules/selected-calendars/selected-calendars.repository";
-import { StripeModule } from "@/modules/stripe/stripe.module";
 import { TokensModule } from "@/modules/tokens/tokens.module";
 import { TokensRepository } from "@/modules/tokens/tokens.repository";
 import { UsersModule } from "@/modules/users/users.module";
@@ -40,7 +39,6 @@ import { JwtService } from "@nestjs/jwt";
     MembershipsModule,
     EventTypesModule_2024_04_15,
     OrganizationsModule,
-    StripeModule,
     SchedulesModule_2024_04_15,
     ProfilesModule,
   ],

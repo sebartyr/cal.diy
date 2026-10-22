@@ -19,16 +19,15 @@ import {
 } from "@nestjs/common";
 import { ApiHeader, ApiOperation, ApiTags as DocsTags } from "@nestjs/swagger";
 import { API_VERSIONS_VALUES } from "@/lib/api-versions";
-import { GetOrgId } from "@/modules/auth/decorators/get-org-id/get-org-id.decorator";
 import { MembershipRoles } from "@/modules/auth/decorators/roles/membership-roles.decorator";
 import { ApiAuthGuard } from "@/modules/auth/guards/api-auth/api-auth.guard";
+import { PlatformTeamRolesGuard } from "@/modules/auth/guards/platform-team-roles/platform-team-roles.guard";
 import { GetManagedUsersInput } from "@/modules/oauth-clients/controllers/oauth-client-users/inputs/get-managed-users.input";
 import { CreateManagedUserOutput } from "@/modules/oauth-clients/controllers/oauth-client-users/outputs/create-managed-user.output";
 import { GetManagedUserOutput } from "@/modules/oauth-clients/controllers/oauth-client-users/outputs/get-managed-user.output";
 import { GetManagedUsersOutput } from "@/modules/oauth-clients/controllers/oauth-client-users/outputs/get-managed-users.output";
 import { TOKENS_DOCS } from "@/modules/oauth-clients/controllers/oauth-flow/oauth-flow.controller";
 import { KeysResponseDto } from "@/modules/oauth-clients/controllers/oauth-flow/responses/KeysResponse.dto";
-import { OAuthClientGuard } from "@/modules/oauth-clients/guards/oauth-client-guard";
 import { OAuthClientRepository } from "@/modules/oauth-clients/oauth-client.repository";
 import { OAuthClientUsersService } from "@/modules/oauth-clients/services/oauth-clients-users.service";
 import { OAuthClientUsersOutputService } from "@/modules/oauth-clients/services/oauth-clients-users-output.service";
@@ -41,7 +40,7 @@ import { UsersRepository } from "@/modules/users/users.repository";
   path: "/v2/oauth-clients/:clientId/users",
   version: API_VERSIONS_VALUES,
 })
-@UseGuards(ApiAuthGuard, OAuthClientGuard)
+@UseGuards(ApiAuthGuard, PlatformTeamRolesGuard)
 @DocsTags("Deprecated: Platform / Managed Users")
 @ApiHeader({
   name: X_CAL_SECRET_KEY,
@@ -137,18 +136,12 @@ export class OAuthClientUsersController {
   async updateUser(
     @Param("clientId") clientId: string,
     @Param("userId", ParseIntPipe) userId: number,
-    @Body() body: UpdateManagedUserInput,
-    @GetOrgId() organizationId: number
+    @Body() body: UpdateManagedUserInput
   ): Promise<GetManagedUserOutput> {
     await this.validateManagedUserOwnership(clientId, userId);
     this.logger.log(`Updating user ${userId} for OAuth Client ${clientId}`);
 
-    const user = await this.oAuthClientUsersService.updateOAuthClientUser(
-      clientId,
-      userId,
-      body,
-      organizationId
-    );
+    const user = await this.oAuthClientUsersService.updateOAuthClientUser(clientId, userId, body);
 
     return {
       status: SUCCESS_STATUS,

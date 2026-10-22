@@ -4,7 +4,6 @@ import { MembershipsRepository } from "@/modules/memberships/memberships.reposit
 import { OrganizationsRepository } from "@/modules/organizations/index/organizations.repository";
 import { PrismaModule } from "@/modules/prisma/prisma.module";
 import { RedisModule } from "@/modules/redis/redis.module";
-import { StripeService } from "@/modules/stripe/stripe.service";
 import { UsersRepository } from "@/modules/users/users.repository";
 import { UserVerifiedResourcesController } from "@/modules/verified-resources/controllers/users-verified-resources.controller";
 import { VerifiedResourcesService } from "@/modules/verified-resources/services/verified-resources.service";
@@ -23,7 +22,6 @@ import { Module } from "@nestjs/common";
     TeamsVerifiedResourcesRepository,
     MembershipsRepository,
     OrganizationsRepository,
-    StripeService,
     AppsRepository,
     CredentialsRepository,
     UsersRepository,

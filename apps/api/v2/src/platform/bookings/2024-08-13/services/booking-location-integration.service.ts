@@ -99,8 +99,6 @@ export class BookingLocationIntegrationService_2024_08_13 {
     switch (integrationSlug) {
       case "google-meet":
         return this.handleGoogleMeetLocation(ctx);
-      case "office365-video":
-        return this.handleMSTeamsLocation(ctx);
       // Cal Video was removed; "cal-video" is still accepted and now books a Jitsi meeting.
       case "cal-video":
       case "jitsi":
@@ -126,18 +124,6 @@ export class BookingLocationIntegrationService_2024_08_13 {
     }
 
     return this.handleCalendarBasedIntegration(ctx, "google_calendar");
-  }
-
-  private async handleMSTeamsLocation(ctx: IntegrationHandlerContext): Promise<BookingLocationResponse> {
-    const hasOffice365Calendar = ctx.booking.references.some(
-      (ref) => ref.type.includes("office365_calendar") && !ref.deleted
-    );
-
-    if (hasOffice365Calendar) {
-      return this.handleCalendarBasedIntegration(ctx, "office365_calendar");
-    }
-
-    return this.handleVideoApiIntegration(ctx);
   }
 
   private async handleJitsiLocation(ctx: IntegrationHandlerContext): Promise<BookingLocationResponse> {

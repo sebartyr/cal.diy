@@ -1,7 +1,6 @@
 import { OAuthCallbackState } from "@/modules/conferencing/controllers/conferencing.controller";
 import { ConferencingRepository } from "@/modules/conferencing/repositories/conferencing.repository";
 import { GoogleMeetService } from "@/modules/conferencing/services/google-meet.service";
-import { Office365VideoService } from "@/modules/conferencing/services/office365-video.service";
 import { ZoomVideoService } from "@/modules/conferencing/services/zoom-video.service";
 import { TokensRepository } from "@/modules/tokens/tokens.repository";
 import { UserWithProfile } from "@/modules/users/users.repository";
@@ -20,7 +19,6 @@ import {
   GOOGLE_MEET,
   JITSI,
   ZOOM,
-  OFFICE_365_VIDEO,
 } from "@calcom/platform-constants";
 import { userMetadata } from "@calcom/platform-libraries";
 import { getUsersCredentialsIncludeServiceAccountKey } from "@calcom/platform-libraries/app-store";
@@ -35,8 +33,7 @@ export class ConferencingService {
     private readonly usersRepository: UsersRepository,
     private readonly tokensRepository: TokensRepository,
     private readonly googleMeetService: GoogleMeetService,
-    private readonly zoomVideoService: ZoomVideoService,
-    private readonly office365VideoService: Office365VideoService
+    private readonly zoomVideoService: ZoomVideoService
   ) {}
 
   async getConferencingApps(userId: number) {
@@ -67,19 +64,8 @@ export class ConferencingService {
       case ZOOM:
         return await this.zoomVideoService.connectZoomApp(decodedCallbackState, code, userId, teamId);
 
-      case OFFICE_365_VIDEO:
-        return await this.office365VideoService.connectOffice365App(
-          decodedCallbackState,
-          code,
-          userId,
-          teamId
-        );
-
       default:
-        throw new BadRequestException(
-          "Invalid conferencing app, available apps are: ",
-          [ZOOM, OFFICE_365_VIDEO].join(", ")
-        );
+        throw new BadRequestException(`Invalid conferencing app, available apps are: ${ZOOM}`);
     }
   }
 
@@ -133,14 +119,8 @@ export class ConferencingService {
       case ZOOM:
         return await this.zoomVideoService.generateZoomAuthUrl(JSON.stringify(state));
 
-      case OFFICE_365_VIDEO:
-        return await this.office365VideoService.generateOffice365AuthUrl(JSON.stringify(state));
-
       default:
-        throw new BadRequestException(
-          "Invalid conferencing app, available apps are: ",
-          [ZOOM, OFFICE_365_VIDEO].join(", ")
-        );
+        throw new BadRequestException(`Invalid conferencing app, available apps are: ${ZOOM}`);
     }
   }
 }

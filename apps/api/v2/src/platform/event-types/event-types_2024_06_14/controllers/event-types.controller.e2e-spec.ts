@@ -1461,7 +1461,7 @@ describe("Event types Endpoints", () => {
         locations: [
           {
             type: "integration",
-            integration: "office365-video",
+            integration: "zoom",
           },
         ],
       };
@@ -2999,6 +2999,7 @@ describe("Event types Endpoints", () => {
         { internal: "integrations:huddle01", api: "huddle" },
         { internal: "integrations:tandem", api: "tandem" },
         { internal: "integrations:element-call_video", api: "element-call-video" },
+        { internal: "integrations:openvisio", api: "openvisio" },
       ];
 
       for (const { internal, api } of integrationTests) {

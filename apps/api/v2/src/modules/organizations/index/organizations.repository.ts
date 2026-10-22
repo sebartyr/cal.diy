@@ -2,14 +2,12 @@ import { Prisma } from "@calcom/prisma/client";
 import { Injectable } from "@nestjs/common";
 import { PrismaReadService } from "@/modules/prisma/prisma-read.service";
 import { PrismaWriteService } from "@/modules/prisma/prisma-write.service";
-import { StripeService } from "@/modules/stripe/stripe.service";
 
 @Injectable()
 export class OrganizationsRepository {
   constructor(
     private readonly dbRead: PrismaReadService,
-    private readonly dbWrite: PrismaWriteService,
-    private readonly stripeService: StripeService
+    private readonly dbWrite: PrismaWriteService
   ) {}
 
   async findById(args: { id: number }) {
