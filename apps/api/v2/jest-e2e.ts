@@ -1,5 +1,7 @@
 import type { Config } from "jest";
 
+import { ESM_ONLY_TRANSFORM, ESM_ONLY_TRANSFORM_IGNORE_PATTERNS } from "./jest.esm-only";
+
 // Detect if sharding is being used by checking for --shard flag
 const isSharding = process.argv.some((arg) => arg.includes("--shard"));
 
@@ -36,6 +38,7 @@ const config: Config = {
           }
         : {},
     ],
+    ...ESM_ONLY_TRANSFORM,
   },
   setupFiles: ["<rootDir>/test/setEnvVars.ts", "jest-date-mock"],
   setupFilesAfterEnv: ["<rootDir>/test/jest.setup-e2e.ts"],
@@ -53,7 +56,7 @@ const config: Config = {
   workerIdleMemoryLimit: "512MB",
   maxWorkers,
   testPathIgnorePatterns: ["/dist/", "/node_modules/"],
-  transformIgnorePatterns: ["/dist/", "/node_modules/"],
+  transformIgnorePatterns: ESM_ONLY_TRANSFORM_IGNORE_PATTERNS,
 };
 
 export default config;
