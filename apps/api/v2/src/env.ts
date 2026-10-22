@@ -14,8 +14,6 @@ export type Environment = {
   SENTRY_PROFILES_SAMPLE_RATE?: number;
   LOG_LEVEL: keyof typeof logLevels;
   REDIS_URL: string;
-  STRIPE_API_KEY: string;
-  STRIPE_WEBHOOK_SECRET: string;
   WEB_APP_URL: string;
   IS_E2E: string;
   CALCOM_LICENSE_KEY: string;
@@ -30,8 +28,6 @@ export type Environment = {
   RATE_LIMIT_DEFAULT_BLOCK_DURATION_MS: number;
   AXIOM_DATASET: string;
   AXIOM_TOKEN: string;
-  STRIPE_TEAM_MONTHLY_PRICE_ID: string;
-  IS_TEAM_BILLING_ENABLED: boolean;
   // Used to enable/disable the rewrite of /api/v2 to /v2, active by default.
   REWRITE_API_V2_PREFIX: string;
   DATABASE_READ_POOL_MAX: number;
@@ -49,11 +45,7 @@ export const getEnv = <K extends keyof Environment>(key: K, fallback?: Environme
   const value = process.env[key] as Environment[K] | undefined;
 
   if (value === undefined) {
-    // handle fallback falsy cases that should still be used as value
-    if (fallback === false || fallback === "" || fallback === 0) {
-      return fallback;
-    }
-    if (fallback) {
+    if (fallback !== undefined) {
       return fallback;
     }
     throw new Error(`Missing environment variable: ${key}.`);

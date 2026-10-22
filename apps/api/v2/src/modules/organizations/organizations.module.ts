@@ -21,7 +21,6 @@ import { OrganizationsRepository } from "@/modules/organizations/index/organizat
 import { PrismaModule } from "@/modules/prisma/prisma.module";
 import { RedisModule } from "@/modules/redis/redis.module";
 import { RedisService } from "@/modules/redis/redis.service";
-import { StripeModule } from "@/modules/stripe/stripe.module";
 import { TokensRepository } from "@/modules/tokens/tokens.repository";
 import { UsersModule } from "@/modules/users/users.module";
 import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/teams-verified-resources.repository";
@@ -29,7 +28,6 @@ import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/t
 @Module({
   imports: [
     PrismaModule,
-    StripeModule,
     SchedulesModule_2024_06_11,
     UsersModule,
     RedisModule,
