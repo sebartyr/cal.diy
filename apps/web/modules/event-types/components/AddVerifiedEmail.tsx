@@ -1,13 +1,11 @@
-import { useState } from "react";
-
-import { VerifyCodeDialog } from "@calcom/web/modules/bookings/components/VerifyCodeDialog";
 import { isValidEmail } from "@calcom/features/isValidEmail";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import classNames from "@calcom/ui/classNames";
 import { Button } from "@calcom/ui/components/button";
-import { TextField, Label } from "@calcom/ui/components/form";
+import { Label, TextField } from "@calcom/ui/components/form";
 import { Tooltip } from "@calcom/ui/components/tooltip";
-
+import { VerifyCodeDialog } from "@calcom/web/modules/bookings/components/VerifyCodeDialog";
+import { useRef, useState } from "react";
 import { useAddVerifiedEmail } from "../../../../../packages/platform/atoms/event-types/hooks/useAddVerifiedEmail";
 import { useGetVerifiedEmails } from "../../../../../packages/platform/atoms/event-types/hooks/useGetVerifiedEmails";
 import { useVerifyCode } from "../../../../../packages/platform/atoms/hooks/useVerifyCode";
@@ -22,6 +20,8 @@ const AddVerifiedEmail = ({ username, showToast }: AddVerifiedEmailProps) => {
   const { t } = useLocale();
   const [verifiedEmail, setVerifiedEmail] = useState("");
   const [isEmailVerificationModalVisible, setIsEmailVerificationModalVisible] = useState(false);
+  // The API re-checks the code before storing the email, so keep the one the user just entered.
+  const verificationCodeRef = useRef("");
 
   const { refetch: refetchVerifiedEmails } = useGetVerifiedEmails();
   const { mutateAsync: addVerifiedEmail } = useAddVerifiedEmail({
@@ -49,6 +49,7 @@ const AddVerifiedEmail = ({ username, showToast }: AddVerifiedEmailProps) => {
 
       await addVerifiedEmail({
         email: verifiedEmail,
+        code: verificationCodeRef.current,
       });
     },
   });
@@ -91,7 +92,10 @@ const AddVerifiedEmail = ({ username, showToast }: AddVerifiedEmailProps) => {
           setIsOpenDialog={setIsEmailVerificationModalVisible}
           email={verifiedEmail}
           isUserSessionRequiredToVerify={false}
-          verifyCodeWithSessionNotRequired={verifyCode.verifyCodeWithSessionNotRequired}
+          verifyCodeWithSessionNotRequired={(code, email) => {
+            verificationCodeRef.current = code;
+            verifyCode.verifyCodeWithSessionNotRequired(code, email);
+          }}
           verifyCodeWithSessionRequired={verifyCode.verifyCodeWithSessionRequired}
           error={verifyCode.error}
           resetErrors={verifyCode.resetErrors}
