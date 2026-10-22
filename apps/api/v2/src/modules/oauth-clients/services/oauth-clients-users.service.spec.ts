@@ -145,6 +145,37 @@ describe("OAuthClientUsersService", () => {
       expect(usersRepository.update).toHaveBeenCalledWith(42, { email: aliasedEmail });
     });
 
+    it("should throw ConflictException without writing when another user has the aliased email", async () => {
+      usersRepository.findByEmail.mockResolvedValue({ id: 99 });
+
+      await expect(
+        service.updateOAuthClientUser(oAuthClientId, 42, { email: "alice@example.com" })
+      ).rejects.toThrow(ConflictException);
+      expect(usersRepository.updateUsername).not.toHaveBeenCalled();
+      expect(usersRepository.update).not.toHaveBeenCalled();
+    });
+
+    // "alice-tag@" and "alice+tag@" slugify to the same username.
+    it("should throw ConflictException without writing when another user has the derived username", async () => {
+      usersRepository.findByUsername.mockResolvedValue({ id: 99 });
+
+      await expect(
+        service.updateOAuthClientUser(oAuthClientId, 42, { email: "alice-tag@example.com" })
+      ).rejects.toThrow(ConflictException);
+      expect(usersRepository.updateUsername).not.toHaveBeenCalled();
+      expect(profilesRepository.updateUsernameByUserId).not.toHaveBeenCalled();
+      expect(usersRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("should accept the user's own current email and username", async () => {
+      usersRepository.findByEmail.mockResolvedValue({ id: 42 });
+      usersRepository.findByUsername.mockResolvedValue({ id: 42 });
+
+      await service.updateOAuthClientUser(oAuthClientId, 42, { email: "alice@example.com" });
+
+      expect(usersRepository.update).toHaveBeenCalledWith(42, { email: aliasedEmail });
+    });
+
     it("should not touch the username when the email is unchanged", async () => {
       await service.updateOAuthClientUser(oAuthClientId, 42, { name: "Alice B" });
 

@@ -113,6 +113,21 @@ export class OAuthClientUsersService {
       const emailWithOAuthId = OAuthClientUsersService.getOAuthUserEmail(oAuthClientId, body.email);
       body.email = emailWithOAuthId;
       const newUsername = OAuthClientUsersService.getOAuthUserUsername(emailWithOAuthId);
+
+      // Same checks as on creation, run before any write so a conflict leaves the user untouched.
+      const existingUser = await this.userRepository.findByEmail(emailWithOAuthId);
+      if (existingUser && existingUser.id !== userId) {
+        throw new ConflictException(
+          `User with the provided e-mail already exists. Existing user ID=${existingUser.id}`
+        );
+      }
+      const existingUsername = await this.userRepository.findByUsername(newUsername);
+      if (existingUsername && existingUsername.id !== userId) {
+        throw new ConflictException(
+          `User with the username derived from the provided e-mail already exists. Existing user ID=${existingUsername.id}`
+        );
+      }
+
       await this.userRepository.updateUsername(userId, newUsername);
       // Managed users created before the organization removal still have an org profile carrying the username.
       await this.profilesRepository.updateUsernameByUserId(userId, newUsername);
