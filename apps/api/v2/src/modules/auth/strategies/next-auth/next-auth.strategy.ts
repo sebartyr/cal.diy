@@ -12,6 +12,12 @@ export class NextAuthStrategy extends PassportStrategy(NextAuthPassportStrategy,
     super();
   }
 
+  // authenticate() is overridden, so passport never reaches validate(); @nestjs/passport 11
+  // still declares it abstract on the strategy mixin.
+  validate(): never {
+    throw new Error("NextAuthStrategy authenticates in authenticate(); validate() is not used");
+  }
+
   async authenticate(req: Request) {
     try {
       const nextAuthSecret = this.config.get("next.authSecret", { infer: true });

@@ -22,7 +22,9 @@ import { INVALID_ACCESS_TOKEN, X_CAL_CLIENT_ID, X_CAL_SECRET_KEY } from "@calcom
 import type { AllowedAuthMethod } from "../../decorators/api-auth-guard-only-allow.decorator";
 
 export type ApiAuthGuardUser = UserWithProfile & { isSystemAdmin: boolean };
-export type ApiAuthGuardRequest = Request & {
+// Express 5 types params as string | string[] to cover wildcard segments; the
+// routes behind this guard only use named params, which are always strings.
+export type ApiAuthGuardRequest = Request<Record<string, string>> & {
   authMethod: AuthMethods;
   organizationId: number | null;
   user: ApiAuthGuardUser;
@@ -50,6 +52,12 @@ export class ApiAuthStrategy extends PassportStrategy(BaseStrategy, "api-auth") 
     private readonly membershipsRepository: MembershipsRepository
   ) {
     super();
+  }
+
+  // authenticate() is overridden, so passport never reaches validate(); @nestjs/passport 11
+  // still declares it abstract on the strategy mixin.
+  validate(): never {
+    throw new Error("ApiAuthStrategy authenticates in authenticate(); validate() is not used");
   }
 
   async authenticate(request: ApiAuthGuardRequest) {

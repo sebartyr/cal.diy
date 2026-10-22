@@ -40,7 +40,7 @@ describe("getLocation", () => {
   it("should return a real-world location from event", () => {
     const calEvent = buildCalendarEvent({
       videoCallData: undefined,
-      location: faker.address.streetAddress(true),
+      location: faker.location.streetAddress({ useFullAddress: true }),
     });
 
     expect(getLocation(calEvent)).toEqual(calEvent.location);

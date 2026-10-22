@@ -23,7 +23,12 @@ export async function generateSwaggerForApp(app: NestExpressApplication<Server>)
   logger.log(`Generating Swagger documentation...\n`);
 
   const config = new DocumentBuilder().setTitle("Cal.diy API v2").build();
-  const document = SwaggerModule.createDocument(app, config);
+  // Swagger 8+ appends the API version to operation ids and tags every operation with its
+  // controller name; both would rename operations for clients generated from openapi.json.
+  const document = SwaggerModule.createDocument(app, config, {
+    operationIdFactory: (controllerKey, methodKey) => `${controllerKey}_${methodKey}`,
+    autoTagControllers: false,
+  });
   document.paths = groupAndSortPathsByFirstTag(document.paths);
 
   const docsOutputFile = "../../../docs/api-reference/v2/openapi.json";

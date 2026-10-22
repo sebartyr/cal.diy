@@ -1,3 +1,4 @@
+import { Jimp, JimpMime } from "jimp";
 import { describe, expect, it } from "vitest";
 
 import { isBase64Image, MAX_BASE64_IMAGE_BYTES, resizeBase64Image } from "../resizeBase64Image";
@@ -32,5 +33,36 @@ describe("resizeBase64Image — SEC-015 size + magic-bytes guards", () => {
 
   it("rejects when the mimetype prefix is missing", async () => {
     await expect(resizeBase64Image("data:base64,XYZ")).rejects.toThrow(/mimetype/);
+  });
+
+  it("downscales an oversized PNG to maxSize height, keeping the aspect ratio", async () => {
+    const png = await new Jimp({ width: 800, height: 400, color: 0xff0000ff }).getBase64(JimpMime.png);
+
+    const resized = await resizeBase64Image(png, { maxSize: 100 });
+
+    expect(resized.startsWith("data:image/png;base64,")).toBe(true);
+    const image = await Jimp.read(Buffer.from(resized.split(",")[1], "base64"));
+    expect(image.height).toBe(100);
+    expect(image.width).toBe(200);
+  });
+
+  it("re-encodes an image already within maxSize without resizing it", async () => {
+    const jpeg = await new Jimp({ width: 50, height: 40, color: 0x00ff00ff }).getBase64(JimpMime.jpeg);
+
+    const result = await resizeBase64Image(jpeg, { maxSize: 100 });
+
+    expect(result.startsWith("data:image/jpeg;base64,")).toBe(true);
+    const image = await Jimp.read(Buffer.from(result.split(",")[1], "base64"));
+    expect(image.width).toBe(50);
+    expect(image.height).toBe(40);
+  });
+
+  it("encodes with the format of the decoded bytes, not the declared mimetype", async () => {
+    const png = await new Jimp({ width: 10, height: 10, color: 0x0000ffff }).getBase64(JimpMime.png);
+    const mislabelled = png.replace("data:image/png", "data:image/jpg");
+
+    const result = await resizeBase64Image(mislabelled);
+
+    expect(result.startsWith("data:image/png;base64,")).toBe(true);
   });
 });
