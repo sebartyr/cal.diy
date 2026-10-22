@@ -1,4 +1,4 @@
-import jimp from "jimp";
+import { Jimp, JimpMime } from "jimp";
 
 export function isBase64Image(value: string): boolean {
   return /^data:image\/(png|jpe?g);base64,/i.test(value);
@@ -12,13 +12,13 @@ export const MAX_BASE64_IMAGE_BYTES = 8 * 1024 * 1024;
 
 // Magic bytes for PNG and JPEG. SVG is intentionally not accepted here — the
 // SVG path goes through imageUtils.ts which rasterizes to PNG first.
-function looksLikeImage(buf: Buffer): boolean {
-  if (buf.length < 4) return false;
+function detectImageMime(buf: Buffer): typeof JimpMime.png | typeof JimpMime.jpeg | null {
+  if (buf.length < 4) return null;
   // PNG: 89 50 4E 47
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return true;
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return JimpMime.png;
   // JPEG: FF D8 FF
-  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true;
-  return false;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return JimpMime.jpeg;
+  return null;
 }
 
 export async function resizeBase64Image(
@@ -40,7 +40,10 @@ export async function resizeBase64Image(
     throw new Error(`Could not distinguish mimetype`);
   }
   const buffer = Buffer.from(base64OrUrl.replace(/^data:image\/\w+;base64,/, ""), "base64");
-  if (!looksLikeImage(buffer)) {
+  // Encode with the format the bytes actually are, not the declared one, so a
+  // mislabelled data URL (e.g. "image/jpg" over PNG bytes) can't pick the encoder.
+  const imageMime = detectImageMime(buffer);
+  if (!imageMime) {
     throw new Error("Decoded payload does not match a supported image format (PNG or JPEG)");
   }
 
@@ -48,12 +51,12 @@ export async function resizeBase64Image(
     // 96px is the height of the image on https://cal.com/peer
     maxSize = 96 * 4,
   } = opts ?? {};
-  const image = await jimp.read(buffer);
-  const currentSize = Math.max(image.getWidth(), image.getHeight());
+  const image = await Jimp.read(buffer);
+  const currentSize = Math.max(image.width, image.height);
   if (currentSize > maxSize) {
-    image.resize(jimp.AUTO, maxSize);
+    image.resize({ h: maxSize });
   }
-  const newBuffer = await image.getBufferAsync(mimetype);
+  const newBuffer = await image.getBuffer(imageMime);
 
-  return `data:${mimetype};base64,${newBuffer.toString("base64")}`;
+  return `data:${imageMime};base64,${newBuffer.toString("base64")}`;
 }
