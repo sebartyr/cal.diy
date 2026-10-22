@@ -1,7 +1,5 @@
-import { BullModule } from "@nestjs/bull";
 import { Module } from "@nestjs/common";
 import { CalendarsRepository } from "@/platform/calendars/calendars.repository";
-import { CALENDARS_QUEUE } from "@/platform/calendars/processors/calendars.processor";
 import { CalendarsService } from "@/platform/calendars/services/calendars.service";
 import { CalendarsCacheService } from "@/platform/calendars/services/calendars-cache.service";
 import { CalendarsTaskerModule } from "@/lib/modules/calendars-tasker.module";
@@ -18,13 +16,6 @@ import { UsersRepository } from "@/modules/users/users.repository";
   imports: [
     PrismaModule,
     RedisModule,
-    BullModule.registerQueue({
-      name: CALENDARS_QUEUE,
-      limiter: {
-        max: 1,
-        duration: 1000,
-      },
-    }),
     CalendarsTaskerModule,
   ],
   providers: [
