@@ -9,7 +9,7 @@ import { BookingStatus, SchedulingType } from "@calcom/prisma/enums";
 import type { Frame, Page, Request as PlaywrightRequest } from "@playwright/test";
 import { expect } from "@playwright/test";
 import type { Messages } from "mailhog";
-import { totp } from "otplib";
+import { generateSync, stringToBytes } from "otplib";
 import { v4 as uuid } from "uuid";
 import type { createEmailsFixture } from "../fixtures/emails";
 import type { CreateUsersFixture } from "../fixtures/users";
@@ -434,8 +434,7 @@ export function generateTotpCode(email: string) {
     .update(email + process.env.CALENDSO_ENCRYPTION_KEY)
     .digest("hex");
 
-  totp.options = { step: 90 };
-  return totp.generate(secret);
+  return generateSync({ secret: stringToBytes(secret), period: 90 });
 }
 
 export async function fillStripeTestCheckout(page: Page) {

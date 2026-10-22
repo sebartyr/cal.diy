@@ -103,7 +103,7 @@
     "nodemailer": "10.1.1",
     "nuqs": "2.8.2",
     "openid-client": "6.5.0",
-    "otplib": "12.0.1",
+    "otplib": "13.5.0",
     "posthog-js": "1.274.1",
     "qrcode": "1.5.1",
     "raw-body": "2.5.2",

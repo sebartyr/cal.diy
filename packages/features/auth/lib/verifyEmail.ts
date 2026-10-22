@@ -14,7 +14,7 @@ import logger from "@calcom/lib/logger";
 import { getTranslation } from "@calcom/i18n/server";
 import { hashEmail } from "@calcom/lib/server/PiiHasher";
 import { prisma } from "@calcom/prisma";
-import { totp } from "otplib";
+import { generateSync, stringToBytes } from "otplib";
 
 const log = logger.getSubLogger({ prefix: [`[[Auth] `] });
 
@@ -106,8 +106,7 @@ export const sendEmailVerificationByCode = async ({
     .update(email + process.env.CALENDSO_ENCRYPTION_KEY)
     .digest("hex");
 
-  totp.options = { step: 900 };
-  const code = totp.generate(secret);
+  const code = generateSync({ secret: stringToBytes(secret), period: 900 });
 
   await sendEmailVerificationCode({
     language: translation,

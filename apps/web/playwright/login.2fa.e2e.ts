@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-import { authenticator } from "otplib";
+import { generateSync } from "otplib";
 
 import { symmetricDecrypt } from "@calcom/lib/crypto";
 import { totpAuthenticatorCheck } from "@calcom/lib/totp";
@@ -169,11 +169,11 @@ async function removeOtpInput(page: Page) {
 }
 
 async function fillOtp({ page, secret, noRetry }: { page: Page; secret: string; noRetry?: boolean }) {
-  let token = authenticator.generate(secret);
+  let token = generateSync({ secret });
   if (!noRetry && !totpAuthenticatorCheck(token, secret)) {
     console.log("Token expired, Renerating.");
     // Maybe token was just about to expire, try again just once more
-    token = authenticator.generate(secret);
+    token = generateSync({ secret });
   }
   await page.locator('input[name="2fa1"]').waitFor({ state: "visible", timeout: 60_000 });
   await page.fill('input[name="2fa1"]', token[0]);
