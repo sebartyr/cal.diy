@@ -31,6 +31,8 @@ export class MembershipsRepository {
         role: "OWNER",
         accepted: true,
       },
+      // OAuth client credentials act as this user: pick the same one on every request.
+      orderBy: { id: "asc" },
       select: {
         userId: true,
       },
@@ -46,6 +48,8 @@ export class MembershipsRepository {
         role: "ADMIN",
         accepted: true,
       },
+      // OAuth client credentials act as this user: pick the same one on every request.
+      orderBy: { id: "asc" },
       select: {
         userId: true,
       },

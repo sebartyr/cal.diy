@@ -27,6 +27,8 @@ export type ApiAuthGuardUser = UserWithProfile & { isSystemAdmin: boolean };
 export type ApiAuthGuardRequest = Request<Record<string, string>> & {
   authMethod: AuthMethods;
   organizationId: number | null;
+  // Set by PlatformTeamRolesGuard: the team owning the platform OAuth client(s) targeted by the request.
+  platformTeamId?: number;
   user: ApiAuthGuardUser;
   allowedAuthMethods?: AllowedAuthMethod[];
 };
