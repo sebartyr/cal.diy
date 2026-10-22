@@ -1,18 +1,12 @@
 // Import mocked functions
 
 import { WEBAPP_URL } from "@calcom/lib/constants";
-import { get as edgeConfigGet } from "@vercel/edge-config";
 import { NextRequest, NextResponse } from "next/server";
 import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // We'll test the wrapped proxy as it would be used in production
 import proxy from "./proxy";
 import { config } from "./proxy";
-
-// Mock dependencies at module level
-vi.mock("@vercel/edge-config", () => ({
-  get: vi.fn(),
-}));
 
 // Mock NextResponse.json since it's not available in test environment
 vi.mock("next/server", async () => {
@@ -122,14 +116,6 @@ const createTestRequest = (overrides?: {
   return req;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const createEdgeConfigMock = (config: Record<string, any>) => {
-  return (key: string) => {
-    if (key in config) return Promise.resolve(config[key]);
-    return Promise.resolve(undefined);
-  };
-};
-
 // Helper to safely get header value
 const getHeader = (res: Response, name: string) => {
   return res.headers.get(name);
@@ -169,40 +155,6 @@ describe("Middleware Integration Tests", () => {
         expectStatus(res, 200);
         expect(getHeader(res, "x-middleware-next")).toBe("1");
       }
-    });
-  });
-
-  describe("Maintenance Mode", () => {
-    it("should redirect to maintenance when enabled", async () => {
-      (edgeConfigGet as Mock).mockImplementation(
-        createEdgeConfigMock({
-          isInMaintenanceMode: true,
-        })
-      );
-
-      const req = createTestRequest({
-        url: `${WEBAPP_URL}/team/test`,
-      });
-
-      const res = await callProxy(req);
-      expect(res).toBeDefined();
-      expectStatus(res, 200);
-    });
-
-    it("should not affect API routes in maintenance mode", async () => {
-      (edgeConfigGet as Mock).mockImplementation(
-        createEdgeConfigMock({
-          isInMaintenanceMode: true,
-        })
-      );
-
-      const req = createTestRequest({
-        url: `${WEBAPP_URL}/api/bookings`,
-      });
-
-      const res = await callProxy(req);
-      expect(res).toBeDefined();
-      expectStatus(res, 200);
     });
   });
 
@@ -272,32 +224,8 @@ describe("Middleware Integration Tests", () => {
   });
 
   describe("Signup Control", () => {
-    it("should block signup when disabled", async () => {
-      (edgeConfigGet as Mock).mockImplementation(
-        createEdgeConfigMock({
-          isSignupDisabled: true,
-        })
-      );
-
-      const req = createTestRequest({
-        url: `${WEBAPP_URL}/api/auth/signup`,
-        method: "POST",
-      });
-
-      const res = await callProxy(req);
-      expectStatus(res, 503);
-
-      const body = await res.text();
-      expect(body).toContain("Signup is disabled");
-    });
-
-    it("should allow signup when enabled", async () => {
-      (edgeConfigGet as Mock).mockImplementation(
-        createEdgeConfigMock({
-          isSignupDisabled: false,
-        })
-      );
-
+    // Blocking signups is the route's job (NEXT_PUBLIC_DISABLE_SIGNUP), not the proxy's.
+    it("should pass signup requests through to the route", async () => {
       const req = createTestRequest({
         url: `${WEBAPP_URL}/api/auth/signup`,
         method: "POST",
@@ -305,6 +233,7 @@ describe("Middleware Integration Tests", () => {
 
       const res = await callProxy(req);
       expectStatus(res, 200);
+      expect(getHeader(res, "x-middleware-next")).toBe("1");
     });
   });
 
@@ -485,20 +414,6 @@ describe("Middleware Integration Tests", () => {
   });
 
   describe("Error Handling", () => {
-    it("should handle Edge Config errors gracefully", async () => {
-      (edgeConfigGet as Mock).mockImplementation(() => {
-        throw new Error("Config error");
-      });
-
-      const req = createTestRequest({
-        url: `${WEBAPP_URL}/team/test`,
-      });
-
-      const res = await callProxy(req);
-      expect(res).toBeDefined();
-      expectStatus(res, 200);
-    });
-
     it("should handle malformed URLs", async () => {
       const req = createTestRequest({
         url: `${WEBAPP_URL}//double-slash`,

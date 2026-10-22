@@ -2,17 +2,8 @@ import process from "node:process";
 import { WEBAPP_URL } from "@calcom/lib/constants";
 import { type CspMode, getCspHeader, getCspNonce } from "@lib/csp";
 import { getSecondaryHostnameRedirectUrl, parseSecondaryHostnames } from "@lib/secondaryHostnames";
-import { get } from "@vercel/edge-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
-const safeGet = async <T = any>(key: string): Promise<T | undefined> => {
-  try {
-    return get<T>(key);
-  } catch (error) {
-    // Don't crash if EDGE_CONFIG env var is missing
-  }
-};
 
 // Vercel/Edge rejects non‑ASCII header values (see: https://github.com/vercel/next.js/issues/85631)
 const isAscii = (s: string) => {
@@ -94,15 +85,6 @@ const proxy = async (req: NextRequest): Promise<NextResponse<unknown>> => {
 
   const reqWithEnrichedHeaders = enrichRequestWithHeaders({ req });
   const requestHeaders = new Headers(reqWithEnrichedHeaders.headers);
-
-  if (url.pathname.startsWith("/api/auth/signup")) {
-    const isSignupDisabled = await safeGet<boolean>("isSignupDisabled");
-    // If is in maintenance mode, point the url pathname to the maintenance page
-    if (isSignupDisabled) {
-      // TODO: Consider using responseWithHeaders here
-      return NextResponse.json({ error: "Signup is disabled" }, { status: 503 });
-    }
-  }
 
   if (url.pathname.startsWith("/apps/installed")) {
     const returnTo = reqWithEnrichedHeaders.cookies.get("return-to");
