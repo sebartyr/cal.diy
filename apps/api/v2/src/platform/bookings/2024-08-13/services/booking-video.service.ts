@@ -93,12 +93,7 @@ export class BookingVideoService_2024_08_13 {
 
     const integrationToCredentialTypeMap = {
       zoom: "zoom_video",
-      "whereby-video": "whereby_video",
-      "webex-video": "webex_video",
-      tandem: "tandem_video",
-      jitsi: "jitsi_video",
-      huddle: "huddle01_video",
-      "office365-video": "office365_video",
+      openvisio: "openvisio_video",
     } as const;
 
     const credentialType =

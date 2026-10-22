@@ -8,7 +8,6 @@ import { AppsRepository } from "@/modules/apps/apps.repository";
 import { ConferencingRepository } from "@/modules/conferencing/repositories/conferencing.repository";
 import { ConferencingService } from "@/modules/conferencing/services/conferencing.service";
 import { GoogleMeetService } from "@/modules/conferencing/services/google-meet.service";
-import { Office365VideoService } from "@/modules/conferencing/services/office365-video.service";
 import { ZoomVideoService } from "@/modules/conferencing/services/zoom-video.service";
 import { CredentialsRepository } from "@/modules/credentials/credentials.repository";
 import { EmailModule } from "@/modules/email/email.module";
@@ -21,7 +20,6 @@ import { OrganizationsRepository } from "@/modules/organizations/index/organizat
 import { PrismaModule } from "@/modules/prisma/prisma.module";
 import { RedisModule } from "@/modules/redis/redis.module";
 import { RedisService } from "@/modules/redis/redis.service";
-import { StripeModule } from "@/modules/stripe/stripe.module";
 import { TokensRepository } from "@/modules/tokens/tokens.repository";
 import { UsersModule } from "@/modules/users/users.module";
 import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/teams-verified-resources.repository";
@@ -29,7 +27,6 @@ import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/t
 @Module({
   imports: [
     PrismaModule,
-    StripeModule,
     SchedulesModule_2024_06_11,
     UsersModule,
     RedisModule,
@@ -50,7 +47,6 @@ import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/t
     GoogleMeetService,
     ConferencingService,
     ZoomVideoService,
-    Office365VideoService,
     TokensRepository,
     TeamsVerifiedResourcesRepository,
     SchedulesService_2024_06_11,

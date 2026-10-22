@@ -46,7 +46,6 @@ import { PrismaModule } from "@/modules/prisma/prisma.module";
 import { ProfilesModule } from "@/modules/profiles/profiles.module";
 import { RedisModule } from "@/modules/redis/redis.module";
 import { SelectedCalendarsRepository } from "@/modules/selected-calendars/selected-calendars.repository";
-import { StripeModule } from "@/modules/stripe/stripe.module";
 import { TeamsEventTypesRepository } from "@/modules/teams/event-types/teams-event-types.repository";
 import { TeamsRepository } from "@/modules/teams/teams/teams.repository";
 import { TokensModule } from "@/modules/tokens/tokens.module";
@@ -64,7 +63,6 @@ import { UsersModule } from "@/modules/users/users.module";
     SchedulesModule_2024_04_15,
     EventTypesModule_2024_04_15,
     EventTypesModule_2024_06_14,
-    StripeModule,
     MembershipsModule,
     ProfilesModule,
     RegularBookingModule,

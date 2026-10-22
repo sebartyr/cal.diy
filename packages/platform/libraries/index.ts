@@ -159,24 +159,6 @@ export function getClientSecretFromPayment(payment: { data: Record<string, unkno
   return null;
 }
 
-// createNewUsersConnectToOrgIfExists removed (EE feature) — stub for API v2
-export async function createNewUsersConnectToOrgIfExists(_args: {
-  invitations: { usernameOrEmail: string; role: string }[];
-  creationSource?: string;
-  teamId: number;
-  isOrg: boolean;
-  parentId: number | null;
-  autoAcceptEmailDomain: string;
-  orgConnectInfoByUsernameOrEmail: Record<string, { orgId: number; autoAccept: boolean }>;
-  isPlatformManaged?: boolean;
-  timeFormat?: number;
-  weekStart?: string;
-  timeZone?: string;
-  language?: string;
-}): Promise<{ id: number; email: string; username: string }[]> {
-  throw new Error("Organization user creation is not available in community edition");
-}
-
 // sendVerificationCode removed (EE feature) — stub for API v2
 export async function sendVerificationCode(_phoneNumber: string): Promise<void> {
   throw new Error("Phone verification is not available in community edition");
