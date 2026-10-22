@@ -8,7 +8,6 @@ import { AppsRepository } from "@/modules/apps/apps.repository";
 import { ConferencingRepository } from "@/modules/conferencing/repositories/conferencing.repository";
 import { ConferencingService } from "@/modules/conferencing/services/conferencing.service";
 import { GoogleMeetService } from "@/modules/conferencing/services/google-meet.service";
-import { Office365VideoService } from "@/modules/conferencing/services/office365-video.service";
 import { ZoomVideoService } from "@/modules/conferencing/services/zoom-video.service";
 import { CredentialsRepository } from "@/modules/credentials/credentials.repository";
 import { EmailModule } from "@/modules/email/email.module";
@@ -50,7 +49,6 @@ import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/t
     GoogleMeetService,
     ConferencingService,
     ZoomVideoService,
-    Office365VideoService,
     TokensRepository,
     TeamsVerifiedResourcesRepository,
     SchedulesService_2024_06_11,
