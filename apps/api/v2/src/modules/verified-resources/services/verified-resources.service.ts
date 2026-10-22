@@ -1,8 +1,9 @@
 import {
   sendVerificationCode as sendPhoneVerificationCode,
+  verifyCodeUnAuthenticated,
   verifyPhoneNumber,
 } from "@calcom/platform-libraries";
-import { sendEmailVerificationByCode, verifyEmailCodeHandler } from "@calcom/platform-libraries/emails";
+import { sendEmailVerificationByCode } from "@calcom/platform-libraries/emails";
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { TeamsVerifiedResourcesRepository } from "@/modules/verified-resources/teams-verified-resources.repository";
 import { UsersVerifiedResourcesRepository } from "@/modules/verified-resources/users-verified-resources.repository";
@@ -59,18 +60,22 @@ export class VerifiedResourcesService {
     throw new BadRequestException("Could not verify phone number.");
   }
 
-  async verifyEmail(userId: number, email: string, code: string, teamId?: number) {
-    const isValidToken = await verifyEmailCodeHandler({
-      ctx: { user: { id: userId } },
-      input: { email, code, teamId },
-    });
-    if (isValidToken) {
-      const verifiedEmail = teamId
-        ? await this.teamsVerifiedResourcesRepository.getTeamVerifiedEmail(userId, email, teamId)
-        : await this.usersVerifiedResourcesRepository.getUserVerifiedEmail(userId, email);
-      return verifiedEmail;
+  async verifyEmail(userId: number, email: string, code: string) {
+    try {
+      await verifyCodeUnAuthenticated(email, code);
+    } catch {
+      throw new BadRequestException("Invalid Verification Code");
     }
-    throw new BadRequestException("Invalid Verification Code");
+
+    const existingVerifiedEmail = await this.usersVerifiedResourcesRepository.findUserVerifiedEmail(
+      userId,
+      email
+    );
+    if (existingVerifiedEmail) {
+      return existingVerifiedEmail;
+    }
+
+    return this.usersVerifiedResourcesRepository.createUserVerifiedEmail(userId, email);
   }
 
   async getUserVerifiedEmailById(userId: number, id: number) {

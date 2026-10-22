@@ -118,6 +118,7 @@ export {
   bookingWithUserAndEventDetailsSelect,
 } from "@calcom/prisma/selects/booking";
 export { checkEmailVerificationRequired } from "@calcom/trpc/server/routers/publicViewer/checkIfUserEmailVerificationRequired.handler";
+export { createHandler as createApiKeyHandler } from "@calcom/trpc/server/routers/viewer/apiKeys/create.handler";
 export type { CredentialForCalendarService } from "@calcom/types/Credential";
 
 // === Stubs for deleted EE features still imported by API v2 ===
@@ -149,19 +150,6 @@ export async function roundRobinReassignment(_args: {
   // No-op in community edition
 }
 
-// createApiKeyHandler removed (EE feature) — stub for API v2
-export async function createApiKeyHandler(_args: {
-  ctx: { user: { id: number } };
-  input: {
-    note?: string | null;
-    neverExpires?: boolean;
-    expiresAt?: Date | null;
-    teamId?: number;
-  };
-}): Promise<string> {
-  throw new Error("API key creation is not available in community edition");
-}
-
 // getClientSecretFromPayment removed (EE feature) — stub for API v2
 export function getClientSecretFromPayment(payment: { data: Record<string, unknown> }): string | null {
   const data = payment.data;
@@ -169,15 +157,6 @@ export function getClientSecretFromPayment(payment: { data: Record<string, unkno
     return data.client_secret as string;
   }
   return null;
-}
-
-// verifyCodeAuthenticated removed (EE feature) — stub for API v2
-export async function verifyCodeAuthenticated(_args: {
-  user: { id: number; email?: string; [key: string]: unknown };
-  email: string;
-  code: string;
-}): Promise<boolean> {
-  return false;
 }
 
 // sendVerificationCode removed (EE feature) — stub for API v2

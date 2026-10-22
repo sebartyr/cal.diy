@@ -1,23 +1,26 @@
+import type { AppConfig } from "@/config/type";
 import { AtomsSecondaryEmailsRepository } from "@/modules/atoms/atoms-secondary-emails.repository";
 import { CheckEmailVerificationRequiredParams } from "@/modules/atoms/inputs/check-email-verification-required-params";
 import { GetVerifiedEmailsInput } from "@/modules/atoms/inputs/get-verified-emails-params";
 import { SendVerificationEmailInput } from "@/modules/atoms/inputs/send-verification-email.input";
 import { VerifyEmailCodeInput } from "@/modules/atoms/inputs/verify-email-code.input";
 import { MembershipsRepository } from "@/modules/memberships/memberships.repository";
-import { UserWithProfile } from "@/modules/users/users.repository";
 import { UsersRepository } from "@/modules/users/users.repository";
-import { Injectable, BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
+import { Injectable, BadRequestException, ForbiddenException, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 import {
   verifyCodeUnAuthenticated,
-  verifyCodeAuthenticated,
   sendEmailVerificationByCode,
   checkEmailVerificationRequired,
 } from "@calcom/platform-libraries";
 
 @Injectable()
 export class VerificationAtomsService {
+  private readonly logger = new Logger("VerificationAtomsService");
+
   constructor(
+    private readonly config: ConfigService<AppConfig, true>,
     private readonly atomsSecondaryEmailsRepository: AtomsSecondaryEmailsRepository,
     private readonly usersRepository: UsersRepository,
     private readonly membershipsRepository: MembershipsRepository
@@ -32,10 +35,10 @@ export class VerificationAtomsService {
       return await verifyCodeUnAuthenticated(input.email, input.code);
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message === "invalid_code") {
+        if (error.message === "Invalid verification code") {
           throw new BadRequestException("Invalid verification code");
         }
-        if (error.message === "BAD_REQUEST") {
+        if (error.message === "Email and code are required") {
           throw new BadRequestException("Email and code are required");
         }
       }
@@ -43,24 +46,16 @@ export class VerificationAtomsService {
     }
   }
 
-  async verifyEmailCodeAuthenticated(user: UserWithProfile, input: VerifyEmailCodeInput) {
-    try {
-      return await verifyCodeAuthenticated({
-        user,
-        email: input.email,
-        code: input.code,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "invalid_code") {
-          throw new BadRequestException("Invalid verification code");
-        }
-        if (error.message === "BAD_REQUEST") {
-          throw new BadRequestException("Email, code, and user ID are required");
-        }
-      }
-      throw new UnauthorizedException("Verification failed");
+  // The code is a TOTP derived from the email alone, so being authenticated does not change how it is checked.
+  // Dev and E2E skip the check so authenticated atoms can be exercised without receiving the email,
+  // as cal.com did before the fork (its instance-admin bypass is intentionally not kept).
+  async verifyEmailCodeAuthenticated(input: VerifyEmailCodeInput) {
+    if (this.config.get("env.type", { infer: true }) !== "production" || this.config.get("e2e", { infer: true })) {
+      this.logger.warn("Skipping email code verification in dev/E2E environment");
+      return true;
     }
+
+    return this.verifyEmailCodeUnAuthenticated(input);
   }
 
   async sendEmailVerificationCode(input: SendVerificationEmailInput) {

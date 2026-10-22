@@ -44,6 +44,24 @@ export class UsersVerifiedResourcesRepository {
     });
   }
 
+  async findUserVerifiedEmail(userId: number, email: string) {
+    return this.dbWrite.prisma.verifiedEmail.findFirst({
+      where: {
+        userId,
+        email,
+      },
+    });
+  }
+
+  async createUserVerifiedEmail(userId: number, email: string) {
+    return this.dbWrite.prisma.verifiedEmail.create({
+      data: {
+        userId,
+        email,
+      },
+    });
+  }
+
   async getUserVerifiedEmailById(userId: number, id: number) {
     return this.dbRead.prisma.verifiedEmail.findFirst({
       where: {
