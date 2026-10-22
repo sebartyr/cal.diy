@@ -94,11 +94,8 @@ export class AtomsVerificationController {
   @Version(VERSION_NEUTRAL)
   @UseGuards(ApiAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async verifyEmailCodeAuthenticated(
-    @Body() body: VerifyEmailCodeInput,
-    @GetUser() user: UserWithProfile
-  ): Promise<VerifyEmailCodeOutput> {
-    const verified = await this.verificationService.verifyEmailCodeAuthenticated(user, {
+  async verifyEmailCodeAuthenticated(@Body() body: VerifyEmailCodeInput): Promise<VerifyEmailCodeOutput> {
+    const verified = await this.verificationService.verifyEmailCodeAuthenticated({
       email: body.email,
       code: body.code,
     });

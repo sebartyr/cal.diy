@@ -4,13 +4,11 @@ import { GetVerifiedEmailsInput } from "@/modules/atoms/inputs/get-verified-emai
 import { SendVerificationEmailInput } from "@/modules/atoms/inputs/send-verification-email.input";
 import { VerifyEmailCodeInput } from "@/modules/atoms/inputs/verify-email-code.input";
 import { MembershipsRepository } from "@/modules/memberships/memberships.repository";
-import { UserWithProfile } from "@/modules/users/users.repository";
 import { UsersRepository } from "@/modules/users/users.repository";
-import { Injectable, BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
+import { Injectable, BadRequestException, ForbiddenException } from "@nestjs/common";
 
 import {
   verifyCodeUnAuthenticated,
-  verifyCodeAuthenticated,
   sendEmailVerificationByCode,
   checkEmailVerificationRequired,
 } from "@calcom/platform-libraries";
@@ -32,10 +30,10 @@ export class VerificationAtomsService {
       return await verifyCodeUnAuthenticated(input.email, input.code);
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message === "invalid_code") {
+        if (error.message === "Invalid verification code") {
           throw new BadRequestException("Invalid verification code");
         }
-        if (error.message === "BAD_REQUEST") {
+        if (error.message === "Email and code are required") {
           throw new BadRequestException("Email and code are required");
         }
       }
@@ -43,24 +41,9 @@ export class VerificationAtomsService {
     }
   }
 
-  async verifyEmailCodeAuthenticated(user: UserWithProfile, input: VerifyEmailCodeInput) {
-    try {
-      return await verifyCodeAuthenticated({
-        user,
-        email: input.email,
-        code: input.code,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "invalid_code") {
-          throw new BadRequestException("Invalid verification code");
-        }
-        if (error.message === "BAD_REQUEST") {
-          throw new BadRequestException("Email, code, and user ID are required");
-        }
-      }
-      throw new UnauthorizedException("Verification failed");
-    }
+  // The code is a TOTP derived from the email alone, so being authenticated does not change how it is checked.
+  async verifyEmailCodeAuthenticated(input: VerifyEmailCodeInput) {
+    return this.verifyEmailCodeUnAuthenticated(input);
   }
 
   async sendEmailVerificationCode(input: SendVerificationEmailInput) {

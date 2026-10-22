@@ -17,7 +17,6 @@ import {
   sendEmailVerificationByCode,
 } from "@calcom/features/auth/lib/verifyEmail";
 // sendSignupToOrganizationEmail removed (EE/org feature)
-// verifyEmailCodeHandler removed (EE/workflows feature)
 
 export { AttendeeVerifyEmail };
 
@@ -60,12 +59,4 @@ export async function sendSignupToOrganizationEmail(_args: {
   translation?: unknown;
 }): Promise<void> {
   // No-op: organization signup emails are not available in community edition
-}
-
-// verifyEmailCodeHandler stub — used by verified-resources service
-export async function verifyEmailCodeHandler(_opts: {
-  input: { code: string; email: string; teamId?: number };
-  ctx?: { user?: { id: number } };
-}): Promise<boolean> {
-  return false;
 }

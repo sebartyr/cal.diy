@@ -1,17 +1,16 @@
-// @calcom/platform-libraries pulls in ESM-only dependencies that Jest's CommonJS runtime cannot load,
-// and none of its functions are exercised by these tests.
+// @calcom/platform-libraries pulls in ESM-only dependencies that Jest's CommonJS runtime cannot load.
+const mockVerifyCodeUnAuthenticated = jest.fn();
 jest.mock(
   "@calcom/platform-libraries",
   () => ({
-    verifyCodeUnAuthenticated: jest.fn(),
-    verifyCodeAuthenticated: jest.fn(),
+    verifyCodeUnAuthenticated: mockVerifyCodeUnAuthenticated,
     sendEmailVerificationByCode: jest.fn(),
     checkEmailVerificationRequired: jest.fn(),
   }),
   { virtual: true }
 );
 
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AtomsSecondaryEmailsRepository } from "@/modules/atoms/atoms-secondary-emails.repository";
 import { VerificationAtomsService } from "@/modules/atoms/services/verification-atom.service";
@@ -43,6 +42,33 @@ describe("VerificationAtomsService", () => {
     }).compile();
 
     service = module.get<VerificationAtomsService>(VerificationAtomsService);
+  });
+
+  describe("verifyEmailCodeAuthenticated", () => {
+    const input = { email: "alice@example.com", code: "123456" };
+
+    it("should return true when the code is valid", async () => {
+      mockVerifyCodeUnAuthenticated.mockResolvedValue(true);
+
+      await expect(service.verifyEmailCodeAuthenticated(input)).resolves.toBe(true);
+      expect(mockVerifyCodeUnAuthenticated).toHaveBeenCalledWith("alice@example.com", "123456");
+    });
+
+    it("should throw BadRequestException with a specific message when the code is invalid", async () => {
+      mockVerifyCodeUnAuthenticated.mockRejectedValue(new Error("Invalid verification code"));
+
+      await expect(service.verifyEmailCodeAuthenticated(input)).rejects.toThrow(
+        new BadRequestException("Invalid verification code")
+      );
+    });
+
+    it("should throw a generic BadRequestException for unexpected errors", async () => {
+      mockVerifyCodeUnAuthenticated.mockRejectedValue(new Error("boom"));
+
+      await expect(service.verifyEmailCodeAuthenticated(input)).rejects.toThrow(
+        new BadRequestException("Verification failed")
+      );
+    });
   });
 
   describe("removeClientIdFromEmail", () => {
