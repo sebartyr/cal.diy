@@ -11,6 +11,7 @@ jest.mock(
 );
 
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AtomsSecondaryEmailsRepository } from "@/modules/atoms/atoms-secondary-emails.repository";
 import { VerificationAtomsService } from "@/modules/atoms/services/verification-atom.service";
@@ -22,15 +23,18 @@ describe("VerificationAtomsService", () => {
   let mockSecondaryEmailsRepo: { getSecondaryEmailsVerified: jest.Mock };
   let mockUsersRepo: { getUserEmailsVerifiedForTeam: jest.Mock };
   let mockMembershipsRepo: { findMembershipByTeamId: jest.Mock };
+  let config: { "env.type": string; e2e: boolean };
 
   const userId = 7;
   const teamId = 3;
   const oAuthClientId = "clxyz0123456789abcdefghij";
 
   beforeEach(async () => {
+    mockVerifyCodeUnAuthenticated.mockReset();
     mockSecondaryEmailsRepo = { getSecondaryEmailsVerified: jest.fn().mockResolvedValue([]) };
     mockUsersRepo = { getUserEmailsVerifiedForTeam: jest.fn().mockResolvedValue([]) };
     mockMembershipsRepo = { findMembershipByTeamId: jest.fn() };
+    config = { "env.type": "production", e2e: false };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,6 +42,7 @@ describe("VerificationAtomsService", () => {
         { provide: AtomsSecondaryEmailsRepository, useValue: mockSecondaryEmailsRepo },
         { provide: UsersRepository, useValue: mockUsersRepo },
         { provide: MembershipsRepository, useValue: mockMembershipsRepo },
+        { provide: ConfigService, useValue: { get: (key: keyof typeof config) => config[key] } },
       ],
     }).compile();
 
@@ -68,6 +73,20 @@ describe("VerificationAtomsService", () => {
       await expect(service.verifyEmailCodeAuthenticated(input)).rejects.toThrow(
         new BadRequestException("Verification failed")
       );
+    });
+
+    it("should skip the code check in development", async () => {
+      config["env.type"] = "development";
+
+      await expect(service.verifyEmailCodeAuthenticated(input)).resolves.toBe(true);
+      expect(mockVerifyCodeUnAuthenticated).not.toHaveBeenCalled();
+    });
+
+    it("should skip the code check in E2E", async () => {
+      config.e2e = true;
+
+      await expect(service.verifyEmailCodeAuthenticated(input)).resolves.toBe(true);
+      expect(mockVerifyCodeUnAuthenticated).not.toHaveBeenCalled();
     });
   });
 

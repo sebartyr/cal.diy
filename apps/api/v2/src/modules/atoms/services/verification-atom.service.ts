@@ -1,3 +1,4 @@
+import type { AppConfig } from "@/config/type";
 import { AtomsSecondaryEmailsRepository } from "@/modules/atoms/atoms-secondary-emails.repository";
 import { CheckEmailVerificationRequiredParams } from "@/modules/atoms/inputs/check-email-verification-required-params";
 import { GetVerifiedEmailsInput } from "@/modules/atoms/inputs/get-verified-emails-params";
@@ -5,7 +6,8 @@ import { SendVerificationEmailInput } from "@/modules/atoms/inputs/send-verifica
 import { VerifyEmailCodeInput } from "@/modules/atoms/inputs/verify-email-code.input";
 import { MembershipsRepository } from "@/modules/memberships/memberships.repository";
 import { UsersRepository } from "@/modules/users/users.repository";
-import { Injectable, BadRequestException, ForbiddenException } from "@nestjs/common";
+import { Injectable, BadRequestException, ForbiddenException, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 import {
   verifyCodeUnAuthenticated,
@@ -15,7 +17,10 @@ import {
 
 @Injectable()
 export class VerificationAtomsService {
+  private readonly logger = new Logger("VerificationAtomsService");
+
   constructor(
+    private readonly config: ConfigService<AppConfig, true>,
     private readonly atomsSecondaryEmailsRepository: AtomsSecondaryEmailsRepository,
     private readonly usersRepository: UsersRepository,
     private readonly membershipsRepository: MembershipsRepository
@@ -42,7 +47,14 @@ export class VerificationAtomsService {
   }
 
   // The code is a TOTP derived from the email alone, so being authenticated does not change how it is checked.
+  // Dev and E2E skip the check so authenticated atoms can be exercised without receiving the email,
+  // as cal.com did before the fork (its instance-admin bypass is intentionally not kept).
   async verifyEmailCodeAuthenticated(input: VerifyEmailCodeInput) {
+    if (this.config.get("env.type", { infer: true }) !== "production" || this.config.get("e2e", { infer: true })) {
+      this.logger.warn("Skipping email code verification in dev/E2E environment");
+      return true;
+    }
+
     return this.verifyEmailCodeUnAuthenticated(input);
   }
 
