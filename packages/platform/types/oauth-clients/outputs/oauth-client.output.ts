@@ -38,7 +38,11 @@ export class PlatformOAuthClientDto {
   @IsString({ each: true })
   redirectUris!: string[];
 
-  @ApiProperty({ example: 1 })
+  @ApiProperty({
+    example: 1,
+    description:
+      "ID of the team owning the OAuth client. The name is kept for compatibility: organizations are not available in Cal.diy, any team can own OAuth clients.",
+  })
   @IsNumber()
   organizationId!: number;
 

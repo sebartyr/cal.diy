@@ -17,7 +17,6 @@ import { OAuthClientsInputService } from "@/modules/oauth-clients/services/oauth
 import { OAuthClientsOutputService } from "@/modules/oauth-clients/services/oauth-clients/oauth-clients-output.service";
 import { OAuthClientsService } from "@/modules/oauth-clients/services/oauth-clients/oauth-clients.service";
 import { OAuthFlowService } from "@/modules/oauth-clients/services/oauth-flow.service";
-import { OrganizationsModule } from "@/modules/organizations/organizations.module";
 import { PrismaModule } from "@/modules/prisma/prisma.module";
 import { ProfilesModule } from "@/modules/profiles/profiles.module";
 import { RedisModule } from "@/modules/redis/redis.module";
@@ -38,7 +37,6 @@ import { JwtService } from "@nestjs/jwt";
     TokensModule,
     MembershipsModule,
     EventTypesModule_2024_04_15,
-    OrganizationsModule,
     SchedulesModule_2024_04_15,
     ProfilesModule,
   ],
