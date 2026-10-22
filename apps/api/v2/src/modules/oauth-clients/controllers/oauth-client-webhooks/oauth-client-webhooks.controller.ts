@@ -8,6 +8,7 @@ import { plainToClass } from "class-transformer";
 import { API_VERSIONS_VALUES } from "@/lib/api-versions";
 import { MembershipRoles } from "@/modules/auth/decorators/roles/membership-roles.decorator";
 import { ApiAuthGuard } from "@/modules/auth/guards/api-auth/api-auth.guard";
+import { PlatformTeamRolesGuard } from "@/modules/auth/guards/platform-team-roles/platform-team-roles.guard";
 import { GetWebhook } from "@/modules/webhooks/decorators/get-webhook-decorator";
 import { IsOAuthClientWebhookGuard } from "@/modules/webhooks/guards/is-oauth-client-webhook-guard";
 import { CreateWebhookInputDto, UpdateWebhookInputDto } from "@/modules/webhooks/inputs/webhook.input";
@@ -22,13 +23,12 @@ import { WebhookOutputPipe } from "@/modules/webhooks/pipes/WebhookOutputPipe";
 import { OAuthClientWebhooksService } from "@/modules/webhooks/services/oauth-clients-webhooks.service";
 import { WebhooksService } from "@/modules/webhooks/services/webhooks.service";
 
-import { OAuthClientGuard } from "../../guards/oauth-client-guard";
 
 @Controller({
   path: "/v2/oauth-clients/:clientId/webhooks",
   version: API_VERSIONS_VALUES,
 })
-@UseGuards(ApiAuthGuard, OAuthClientGuard)
+@UseGuards(ApiAuthGuard, PlatformTeamRolesGuard)
 @DocsTags("Deprecated: Platform / Webhooks")
 @ApiHeader({
   name: X_CAL_SECRET_KEY,
