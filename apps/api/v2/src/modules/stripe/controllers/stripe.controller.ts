@@ -29,7 +29,7 @@ import { ConfigService } from "@nestjs/config";
 import { ApiTags as DocsTags, ApiOperation, ApiHeader } from "@nestjs/swagger";
 import { plainToClass } from "class-transformer";
 import { Request } from "express";
-import { stringify } from "querystring";
+import { stringify } from "node:querystring";
 
 import { SUCCESS_STATUS } from "@calcom/platform-constants";
 

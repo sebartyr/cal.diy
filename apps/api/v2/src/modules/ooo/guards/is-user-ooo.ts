@@ -7,7 +7,7 @@ export class IsUserOOO implements CanActivate {
   constructor(private oooRepo: UserOOORepository) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request = context.switchToHttp().getRequest<Request<{ oooId: string; userId: string }>>();
     const oooId: string = request.params.oooId;
     const userId: string = request.params.userId;
 

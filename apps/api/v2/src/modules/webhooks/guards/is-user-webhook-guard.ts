@@ -10,7 +10,7 @@ export class IsUserWebhookGuard implements CanActivate {
   constructor(private readonly webhooksService: WebhooksService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<Request & { webhook: Webhook }>();
+    const request = context.switchToHttp().getRequest<Request<{ webhookId: string }> & { webhook: Webhook }>();
     const user = request.user as ApiAuthGuardUser;
     const webhookId = request.params.webhookId;
 
