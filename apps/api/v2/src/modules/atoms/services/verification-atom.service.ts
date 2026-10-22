@@ -3,9 +3,10 @@ import { CheckEmailVerificationRequiredParams } from "@/modules/atoms/inputs/che
 import { GetVerifiedEmailsInput } from "@/modules/atoms/inputs/get-verified-emails-params";
 import { SendVerificationEmailInput } from "@/modules/atoms/inputs/send-verification-email.input";
 import { VerifyEmailCodeInput } from "@/modules/atoms/inputs/verify-email-code.input";
+import { MembershipsRepository } from "@/modules/memberships/memberships.repository";
 import { UserWithProfile } from "@/modules/users/users.repository";
 import { UsersRepository } from "@/modules/users/users.repository";
-import { Injectable, BadRequestException, UnauthorizedException } from "@nestjs/common";
+import { Injectable, BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 
 import {
   verifyCodeUnAuthenticated,
@@ -18,7 +19,8 @@ import {
 export class VerificationAtomsService {
   constructor(
     private readonly atomsSecondaryEmailsRepository: AtomsSecondaryEmailsRepository,
-    private readonly usersRepository: UsersRepository
+    private readonly usersRepository: UsersRepository,
+    private readonly membershipsRepository: MembershipsRepository
   ) {}
 
   async checkEmailVerificationRequired(input: CheckEmailVerificationRequiredParams) {
@@ -75,6 +77,11 @@ export class VerificationAtomsService {
     const userEmailWithoutOauthClientId = this.removeClientIdFromEmail(userEmail);
 
     if (teamId) {
+      const membership = await this.membershipsRepository.findMembershipByTeamId(teamId, userId);
+      if (!membership?.accepted) {
+        throw new ForbiddenException("You are not a member of this team");
+      }
+
       const verifiedEmails: string[] = [];
 
       const teamMembers = await this.usersRepository.getUserEmailsVerifiedForTeam(teamId);
@@ -131,15 +138,9 @@ export class VerificationAtomsService {
     return true;
   }
 
+  // Managed users get a "+<oAuthClientId>" alias (a 25-char cuid) appended to their local part.
+  // Only that alias is stripped, so regular addresses and legitimate "+tag" suffixes are kept intact.
   removeClientIdFromEmail(email: string): string {
-    const [localPart, domain] = email.split("@");
-    const localPartSegments = localPart.split("+");
-
-    localPartSegments.pop();
-
-    const baseEmail = localPartSegments.join("+");
-    const normalizedEmail = `${baseEmail}@${domain}`;
-
-    return normalizedEmail;
+    return email.replace(/\+[a-zA-Z0-9]{25}(?=@)/, "");
   }
 }
