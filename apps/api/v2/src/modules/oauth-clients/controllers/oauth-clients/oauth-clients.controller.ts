@@ -2,7 +2,6 @@ import { SUCCESS_STATUS } from "@calcom/platform-constants";
 import { MembershipRole } from "@calcom/platform-libraries";
 import { CreateOAuthClientInput, Pagination, UpdateOAuthClientInput } from "@calcom/platform-types";
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
