@@ -17,7 +17,7 @@ import { parseRequestData } from "app/api/parseRequestData";
 import { cookies, headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { authenticator } from "otplib";
+import { generateSecret, generateURI } from "otplib";
 import qrcode from "qrcode";
 
 async function postHandler(req: NextRequest) {
@@ -76,7 +76,7 @@ async function postHandler(req: NextRequest) {
 
   // This generates a secret 32 characters in length. Do not modify the number of
   // bytes without updating the sanity checks in the enable and login endpoints.
-  const secret = authenticator.generateSecret(20);
+  const secret = generateSecret({ length: 20 });
 
   // SEC-009: codes are shown to the user exactly once (return payload below);
   // only bcrypt hashes are persisted. See backupCodes.ts.
@@ -95,7 +95,7 @@ async function postHandler(req: NextRequest) {
   });
 
   const name = user.email || user.username || user.id.toString();
-  const keyUri = authenticator.keyuri(name, "Cal", secret);
+  const keyUri = generateURI({ issuer: "Cal", label: name, secret });
   const dataUri = await qrcode.toDataURL(keyUri);
 
   return NextResponse.json({ secret, keyUri, dataUri, backupCodes });
