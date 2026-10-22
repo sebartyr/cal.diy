@@ -4,7 +4,8 @@ const integrationsApiAvailable = {
   "cal-video": z.literal("integrations:daily"),
   "google-meet": z.literal("integrations:google:meet"),
   zoom: z.literal("integrations:zoom"),
-  "office365-video": z.literal("integrations:office365_video"),
+  jitsi: z.literal("integrations:jitsi"),
+  openvisio: z.literal("integrations:openvisio"),
 };
 
 // note(Lauris): these are read only aka they exist in database and are to be returned by a READ operation
@@ -74,6 +75,7 @@ const OrganizerIntegrationSchema = z.object({
     integrationsApiToInternalMappingSchema["discord-video"],
     integrationsApiToInternalMappingSchema["demodesk-video"],
     integrationsApiToInternalMappingSchema["campfire-video"],
+    integrationsApiToInternalMappingSchema["openvisio"],
   ]),
   link: z.string().url().optional(),
   credentialId: z.number().optional(),

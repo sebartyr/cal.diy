@@ -92,6 +92,19 @@ describe("transformLocationsApiToInternal", () => {
     expect(result).toEqual(expectedOutput);
   });
 
+  it("should transform the OpenVisio integration", () => {
+    const input: InputLocation_2024_06_14[] = [
+      {
+        type: "integration",
+        integration: "openvisio",
+      },
+    ];
+
+    const result = transformLocationsApiToInternal(input);
+
+    expect(result).toEqual([{ type: "integrations:openvisio" }]);
+  });
+
   it("should transform phone", () => {
     const input: InputLocation_2024_06_14[] = [
       {

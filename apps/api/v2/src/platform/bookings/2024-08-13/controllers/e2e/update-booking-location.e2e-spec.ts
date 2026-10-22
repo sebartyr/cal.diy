@@ -523,65 +523,6 @@ describe("Bookings Endpoints 2024-08-13 update booking location", () => {
         await bookingsRepositoryFixture.deleteById(bookingWithoutGoogleCal.id);
       });
 
-      it("can update location to type integration (office365-video)", async () => {
-        const office365Credential = await credentialsRepositoryFixture.create(
-          "office365_calendar",
-          { access_token: "mock", refresh_token: "mock", expiry_date: Date.now() + 3600000 },
-          testSetup.organizer.id,
-          "office365-calendar"
-        );
-
-        const msTeamsBooking = await bookingsRepositoryFixture.create({
-          uid: `ms-teams-booking-${randomString(10)}`,
-          title: "ms teams booking",
-          startTime: "2048-10-14T09:00:00.000Z",
-          endTime: "2048-10-14T10:00:00.000Z",
-          eventType: { connect: { id: eventTypeWithAllLocationsId } },
-          status: "ACCEPTED",
-          metadata: {},
-          responses: "null",
-          user: { connect: { id: testSetup.organizer.id } },
-        });
-
-        await bookingReferenceRepositoryFixture.create({
-          type: "office365_calendar",
-          uid: "mock-office365-calendar-event-uid",
-          booking: { connect: { id: msTeamsBooking.id } },
-          credential: { connect: { id: office365Credential.id } },
-          externalCalendarId: "primary",
-        });
-
-        const updatedBookingBody: UpdateBookingLocationInput_2024_08_13 = {
-          location: {
-            type: "integration",
-            integration: "office365-video",
-          },
-        };
-
-        const updatedBookingResponse = await request(app.getHttpServer())
-          .patch(`/v2/bookings/${msTeamsBooking.uid}/location`)
-          .send(updatedBookingBody)
-          .set(CAL_API_VERSION_HEADER, VERSION_2024_08_13)
-          .set("Authorization", `Bearer ${testSetup.organizer.accessToken}`)
-          .expect(200);
-
-        const updatedBookingResponseBody: UpdateBookingLocationOutput_2024_08_13 =
-          updatedBookingResponse.body;
-        expect(updatedBookingResponseBody.status).toEqual(SUCCESS_STATUS);
-        if (!responseDataIsBooking(updatedBookingResponseBody.data)) {
-          throw new Error(
-            "Invalid response data - expected booking but received array of possibly recurring bookings"
-          );
-        }
-        const updatedBooking = updatedBookingResponseBody.data as BookingOutput_2024_08_13;
-        expect(updatedBooking).toHaveProperty("id");
-        expect(updatedBooking.location).toEqual(MOCK_MS_TEAMS_URL);
-
-        await bookingReferenceRepositoryFixture.deleteByBookingId(msTeamsBooking.id);
-        await bookingsRepositoryFixture.deleteById(msTeamsBooking.id);
-        await credentialsRepositoryFixture.delete(office365Credential.id);
-      });
-
       it("should return 400 when updating to unsupported integration", async () => {
         const updatedBookingBody = {
           location: {

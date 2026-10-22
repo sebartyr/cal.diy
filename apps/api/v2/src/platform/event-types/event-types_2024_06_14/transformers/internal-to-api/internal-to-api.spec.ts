@@ -146,6 +146,25 @@ describe("transformLocationsInternalToApi", () => {
     expect(result).toEqual(expectedOutput);
   });
 
+  it("should transform the OpenVisio integration location", () => {
+    const transformedLocation = [
+      {
+        type: "integrations:openvisio" as const,
+      },
+    ];
+
+    const expectedOutput: OutputIntegrationLocation_2024_06_14[] = [
+      {
+        type: "integration",
+        integration: "openvisio",
+      },
+    ];
+
+    const result = transformLocationsInternalToApi(transformedLocation);
+
+    expect(result).toEqual(expectedOutput);
+  });
+
   it("should transform integration location with link and credentialId", () => {
     const transformedLocation = [
       {
