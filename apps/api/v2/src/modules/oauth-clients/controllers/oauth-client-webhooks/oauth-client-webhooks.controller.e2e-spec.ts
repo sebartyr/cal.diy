@@ -3,11 +3,9 @@ import { INestApplication } from "@nestjs/common";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
-import { PlatformBillingRepositoryFixture } from "test/fixtures/repository/billing.repository.fixture";
 import { MembershipRepositoryFixture } from "test/fixtures/repository/membership.repository.fixture";
 import { OAuthClientRepositoryFixture } from "test/fixtures/repository/oauth-client.repository.fixture";
-import { OrganizationRepositoryFixture } from "test/fixtures/repository/organization.repository.fixture";
-import { ProfileRepositoryFixture } from "test/fixtures/repository/profiles.repository.fixture";
+import { TeamRepositoryFixture } from "test/fixtures/repository/team.repository.fixture";
 import { UserRepositoryFixture } from "test/fixtures/repository/users.repository.fixture";
 import { WebhookRepositoryFixture } from "test/fixtures/repository/webhooks.repository.fixture";
 import { randomString } from "test/utils/randomString";
@@ -32,16 +30,14 @@ describe("OAuth client WebhooksController (e2e)", () => {
   let otherUser: UserWithProfile;
   let oAuthClient: PlatformOAuthClient;
   let otherOAuthClient: PlatformOAuthClient;
-  let org: Team;
-  let otherOrg: Team;
+  let team: Team;
+  let otherTeam: Team;
   let oAuthClientRepositoryFixture: OAuthClientRepositoryFixture;
   let userRepositoryFixture: UserRepositoryFixture;
   let webhookRepositoryFixture: WebhookRepositoryFixture;
   let otherOAuthClientWebhook: Webhook;
   let membershipRepositoryFixture: MembershipRepositoryFixture;
-  let profileRepositoryFixture: ProfileRepositoryFixture;
-  let orgRepositoryFixture: OrganizationRepositoryFixture;
-  let platformBillingRepositoryFixture: PlatformBillingRepositoryFixture;
+  let teamRepositoryFixture: TeamRepositoryFixture;
 
   let webhook: OAuthClientWebhookOutputResponseDto["data"];
 
@@ -55,10 +51,8 @@ describe("OAuth client WebhooksController (e2e)", () => {
     userRepositoryFixture = new UserRepositoryFixture(moduleRef);
     webhookRepositoryFixture = new WebhookRepositoryFixture(moduleRef);
     oAuthClientRepositoryFixture = new OAuthClientRepositoryFixture(moduleRef);
-    orgRepositoryFixture = new OrganizationRepositoryFixture(moduleRef);
-    platformBillingRepositoryFixture = new PlatformBillingRepositoryFixture(moduleRef);
+    teamRepositoryFixture = new TeamRepositoryFixture(moduleRef);
     membershipRepositoryFixture = new MembershipRepositoryFixture(moduleRef);
-    profileRepositoryFixture = new ProfileRepositoryFixture(moduleRef);
     user = await userRepositoryFixture.create({
       email: userEmail,
       username: userEmail,
@@ -68,76 +62,24 @@ describe("OAuth client WebhooksController (e2e)", () => {
       username: otherUserEmail,
     });
 
-    org = await orgRepositoryFixture.create({
-      name: `oauth-client-webhooks-organization-${randomString()}`,
-      isOrganization: true,
-      metadata: {
-        isOrganization: true,
-        orgAutoAcceptEmail: "api.com",
-        isOrganizationVerified: true,
-        isOrganizationConfigured: true,
-      },
-      isPlatform: true,
+    // Regular teams own the OAuth clients: organizations cannot be created in Cal.diy.
+    team = await teamRepositoryFixture.create({
+      name: `oauth-client-webhooks-team-${randomString()}`,
     });
-    otherOrg = await orgRepositoryFixture.create({
-      name: `oauth-client-webhooks-other-organization-${randomString()}`,
-      isOrganization: true,
-      metadata: {
-        isOrganization: true,
-        orgAutoAcceptEmail: "api.com",
-        isOrganizationVerified: true,
-        isOrganizationConfigured: true,
-      },
-      isPlatform: true,
+    otherTeam = await teamRepositoryFixture.create({
+      name: `oauth-client-webhooks-other-team-${randomString()}`,
     });
-    await platformBillingRepositoryFixture.create(org.id);
-    await platformBillingRepositoryFixture.create(otherOrg.id);
     await membershipRepositoryFixture.create({
       role: "OWNER",
       user: { connect: { id: user.id } },
-      team: { connect: { id: org.id } },
+      team: { connect: { id: team.id } },
       accepted: true,
     });
     await membershipRepositoryFixture.create({
       role: "OWNER",
       user: { connect: { id: otherUser.id } },
-      team: { connect: { id: otherOrg.id } },
+      team: { connect: { id: otherTeam.id } },
       accepted: true,
-    });
-
-    await profileRepositoryFixture.create({
-      uid: `usr-${user.id}`,
-      username: userEmail,
-      organization: {
-        connect: {
-          id: org.id,
-        },
-      },
-      movedFromUser: {
-        connect: {
-          id: user.id,
-        },
-      },
-      user: {
-        connect: { id: user.id },
-      },
-    });
-    await profileRepositoryFixture.create({
-      uid: `usr-${otherUser.id}`,
-      username: otherUserEmail,
-      organization: {
-        connect: {
-          id: otherOrg.id,
-        },
-      },
-      movedFromUser: {
-        connect: {
-          id: otherUser.id,
-        },
-      },
-      user: {
-        connect: { id: otherUser.id },
-      },
     });
 
     const data = {
@@ -147,10 +89,10 @@ describe("OAuth client WebhooksController (e2e)", () => {
       permissions: 32,
     };
     const secret = "secret";
-    oAuthClient = await oAuthClientRepositoryFixture.create(org.id, data, secret);
-    otherOAuthClient = await oAuthClientRepositoryFixture.create(otherOrg.id, data, secret);
+    oAuthClient = await oAuthClientRepositoryFixture.create(team.id, data, secret);
+    otherOAuthClient = await oAuthClientRepositoryFixture.create(otherTeam.id, data, secret);
     otherOAuthClientWebhook = await webhookRepositoryFixture.create({
-      id: "123abc-123abc-123abc-123abc",
+      id: `oauth-client-webhook-${randomString()}`,
       active: true,
       payloadTemplate: "string",
       subscriberUrl: "https://example.com",
@@ -166,9 +108,9 @@ describe("OAuth client WebhooksController (e2e)", () => {
 
   afterAll(async () => {
     await userRepositoryFixture.deleteByEmail(user.email);
-    await orgRepositoryFixture.delete(org.id);
+    await teamRepositoryFixture.delete(team.id);
     await userRepositoryFixture.deleteByEmail(otherUser.email);
-    await orgRepositoryFixture.delete(otherOrg.id);
+    await teamRepositoryFixture.delete(otherTeam.id);
     await app.close();
   });
 

@@ -80,7 +80,8 @@ describe("OAuth Clients Endpoints", () => {
     let oAuthClientsRepositoryFixture: OAuthClientRepositoryFixture;
 
     let user: User;
-    let org: Team;
+    let team: Team;
+    let existingClient: PlatformOAuthClient;
     let app: INestApplication;
     const userEmail = `oauth-clients-user-${randomString()}@api.com`;
 
@@ -102,60 +103,75 @@ describe("OAuth Clients Endpoints", () => {
       user = await usersFixtures.create({
         email: userEmail,
       });
-      org = await teamFixtures.create({
-        name: `oauth-clients-organization-${randomString()}`,
-        isOrganization: true,
-        metadata: {
-          isOrganization: true,
-          orgAutoAcceptEmail: "api.com",
-          isOrganizationVerified: true,
-          isOrganizationConfigured: true,
-        },
-        isPlatform: true,
+      // A regular team owns the OAuth clients: organizations cannot be created in Cal.diy.
+      team = await teamFixtures.create({
+        name: `oauth-clients-team-${randomString()}`,
       });
+      existingClient = await oAuthClientsRepositoryFixture.create(
+        team.id,
+        {
+          name: `oauth-clients-existing-${randomString()}`,
+          redirectUris: ["http://test-oauth-client.com"],
+          permissions: 32,
+        },
+        "secret"
+      );
       app = moduleRef.createNestApplication();
       bootstrap(app as NestExpressApplication);
       await app.init();
     });
 
-    describe("User is not part of an organization", () => {
+    describe("Owning team not given", () => {
       it(`/GET`, () => {
-        return request(app.getHttpServer()).get("/api/v2/oauth-clients").expect(401);
-      });
-      it(`/GET/:id`, () => {
-        return request(app.getHttpServer()).get("/api/v2/oauth-clients/1234").expect(403);
-      });
-      it(`/POST`, () => {
-        return request(app.getHttpServer()).post("/api/v2/oauth-clients").expect(401);
-      });
-      it(`/PUT/:id`, () => {
-        return request(app.getHttpServer()).patch("/api/v2/oauth-clients/1234").expect(403);
-      });
-      it(`/DELETE/:id`, () => {
-        return request(app.getHttpServer()).delete("/api/v2/oauth-clients/1234").expect(403);
-      });
-    });
-
-    describe("User is part of an organization as Member", () => {
-      let membership: Membership;
-      beforeAll(async () => {
-        membership = await membershipFixtures.addUserToOrg(user, org, "MEMBER", true);
-      });
-
-      it(`/GET`, () => {
-        return request(app.getHttpServer()).get("/api/v2/oauth-clients").expect(200);
-      });
-      it(`/GET/:id - oAuth client does not exist`, () => {
-        return request(app.getHttpServer()).get("/api/v2/oauth-clients/1234").expect(404);
+        return request(app.getHttpServer()).get("/api/v2/oauth-clients").expect(400);
       });
       it(`/POST`, () => {
         return request(app.getHttpServer()).post("/api/v2/oauth-clients").expect(400);
       });
+    });
+
+    describe("User is not part of the team", () => {
+      it(`/GET`, () => {
+        return request(app.getHttpServer()).get(`/api/v2/oauth-clients?teamId=${team.id}`).expect(403);
+      });
+      it(`/GET/:id - oAuth client does not exist`, () => {
+        return request(app.getHttpServer()).get("/api/v2/oauth-clients/1234").expect(404);
+      });
+      it(`/GET/:id`, () => {
+        return request(app.getHttpServer()).get(`/api/v2/oauth-clients/${existingClient.id}`).expect(403);
+      });
+      it(`/POST`, () => {
+        return request(app.getHttpServer()).post(`/api/v2/oauth-clients?teamId=${team.id}`).expect(403);
+      });
       it(`/PUT/:id`, () => {
-        return request(app.getHttpServer()).patch("/api/v2/oauth-clients/1234").expect(404);
+        return request(app.getHttpServer()).patch(`/api/v2/oauth-clients/${existingClient.id}`).expect(403);
       });
       it(`/DELETE/:id`, () => {
-        return request(app.getHttpServer()).delete("/api/v2/oauth-clients/1234").expect(404);
+        return request(app.getHttpServer()).delete(`/api/v2/oauth-clients/${existingClient.id}`).expect(403);
+      });
+    });
+
+    // Members cannot read clients either: responses carry the secret, which authenticates as the team owner.
+    describe("User is part of the team as Member", () => {
+      let membership: Membership;
+      beforeAll(async () => {
+        membership = await membershipFixtures.addUserToOrg(user, team, "MEMBER", true);
+      });
+
+      it(`/GET`, () => {
+        return request(app.getHttpServer()).get(`/api/v2/oauth-clients?teamId=${team.id}`).expect(403);
+      });
+      it(`/GET/:id`, () => {
+        return request(app.getHttpServer()).get(`/api/v2/oauth-clients/${existingClient.id}`).expect(403);
+      });
+      it(`/POST`, () => {
+        return request(app.getHttpServer()).post(`/api/v2/oauth-clients?teamId=${team.id}`).expect(403);
+      });
+      it(`/PUT/:id`, () => {
+        return request(app.getHttpServer()).patch(`/api/v2/oauth-clients/${existingClient.id}`).expect(403);
+      });
+      it(`/DELETE/:id`, () => {
+        return request(app.getHttpServer()).delete(`/api/v2/oauth-clients/${existingClient.id}`).expect(403);
       });
 
       afterAll(async () => {
@@ -163,13 +179,13 @@ describe("OAuth Clients Endpoints", () => {
       });
     });
 
-    describe("User is part of an organization as Admin", () => {
+    describe("User is part of the team as Admin", () => {
       let membership: Membership;
       let client: { clientId: string; clientSecret: string };
       const oAuthClientName = `oauth-clients-admin-${randomString()}`;
 
       beforeAll(async () => {
-        membership = await membershipFixtures.addUserToOrg(user, org, "ADMIN", true);
+        membership = await membershipFixtures.addUserToOrg(user, team, "ADMIN", true);
       });
 
       it(`/POST`, async () => {
@@ -179,7 +195,7 @@ describe("OAuth Clients Endpoints", () => {
           permissions: ["BOOKING_READ", "PROFILE_WRITE"],
         };
         return request(app.getHttpServer())
-          .post("/api/v2/oauth-clients")
+          .post(`/api/v2/oauth-clients?teamId=${team.id}`)
           .send(body)
           .expect(201)
           .then(async (response) => {
@@ -200,14 +216,14 @@ describe("OAuth Clients Endpoints", () => {
       });
       it(`/GET`, () => {
         return request(app.getHttpServer())
-          .get("/api/v2/oauth-clients")
+          .get(`/api/v2/oauth-clients?teamId=${team.id}`)
           .expect(200)
           .then((response) => {
             const responseBody: ApiSuccessResponse<PlatformOAuthClient[]> = response.body;
             expect(responseBody.status).toEqual(SUCCESS_STATUS);
             expect(responseBody.data).toBeDefined();
             expect(responseBody.data).toBeInstanceOf(Array);
-            expect(responseBody.data[0].name).toEqual(oAuthClientName);
+            expect(responseBody.data.map((client) => client.name)).toContain(oAuthClientName);
           });
       });
       it(`/GET/:id`, () => {
@@ -244,7 +260,7 @@ describe("OAuth Clients Endpoints", () => {
       });
     });
 
-    describe("User is part of an organization as Owner", () => {
+    describe("User is part of the team as Owner", () => {
       let membership: Membership;
       let client: { clientId: string; clientSecret: string };
       const oAuthClientName = `oauth-clients-owner-${randomString()}`;
@@ -262,7 +278,7 @@ describe("OAuth Clients Endpoints", () => {
       ];
 
       beforeAll(async () => {
-        membership = await membershipFixtures.addUserToOrg(user, org, "OWNER", true);
+        membership = await membershipFixtures.addUserToOrg(user, team, "OWNER", true);
       });
 
       it(`/POST`, () => {
@@ -272,7 +288,7 @@ describe("OAuth Clients Endpoints", () => {
           permissions: ["*"],
         };
         return request(app.getHttpServer())
-          .post("/api/v2/oauth-clients")
+          .post(`/api/v2/oauth-clients?teamId=${team.id}`)
           .send(body)
           .expect(201)
           .then(async (response) => {
@@ -305,15 +321,15 @@ describe("OAuth Clients Endpoints", () => {
 
       it(`/GET`, () => {
         return request(app.getHttpServer())
-          .get("/api/v2/oauth-clients")
+          .get(`/api/v2/oauth-clients?teamId=${team.id}`)
           .expect(200)
           .then((response) => {
             const responseBody: ApiSuccessResponse<PlatformOAuthClient[]> = response.body;
             expect(responseBody.status).toEqual(SUCCESS_STATUS);
             expect(responseBody.data).toBeDefined();
             expect(responseBody.data).toBeInstanceOf(Array);
-            expect(responseBody.data[0].name).toEqual(oAuthClientName);
-            expect(responseBody.data[0].permissions).toEqual(oAuthClientPermissions);
+            const createdClient = responseBody.data.find((client) => client.name === oAuthClientName);
+            expect(createdClient?.permissions).toEqual(oAuthClientPermissions);
           });
       });
       it(`/GET/:id`, () => {
@@ -352,7 +368,8 @@ describe("OAuth Clients Endpoints", () => {
     });
 
     afterAll(async () => {
-      await teamFixtures.delete(org.id);
+      await oAuthClientsRepositoryFixture.delete(existingClient.id);
+      await teamFixtures.delete(team.id);
       await usersFixtures.delete(user.id);
       await app.close();
     });
