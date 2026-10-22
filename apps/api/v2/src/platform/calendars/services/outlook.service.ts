@@ -9,7 +9,7 @@ import { BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Request } from "express";
-import { stringify } from "querystring";
+import { stringify } from "node:querystring";
 import { z } from "zod";
 
 import {
