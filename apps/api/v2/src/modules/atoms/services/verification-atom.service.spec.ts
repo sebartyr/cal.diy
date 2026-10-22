@@ -20,7 +20,12 @@ import { UsersRepository } from "@/modules/users/users.repository";
 
 describe("VerificationAtomsService", () => {
   let service: VerificationAtomsService;
-  let mockSecondaryEmailsRepo: { getSecondaryEmailsVerified: jest.Mock };
+  let mockSecondaryEmailsRepo: {
+    getSecondaryEmailsVerified: jest.Mock;
+    getExistingSecondaryEmailByUserAndEmail: jest.Mock;
+    getExistingSecondaryEmail: jest.Mock;
+    addSecondaryEmailVerified: jest.Mock;
+  };
   let mockUsersRepo: { getUserEmailsVerifiedForTeam: jest.Mock };
   let mockMembershipsRepo: { findMembershipByTeamId: jest.Mock };
   let config: { "env.type": string; e2e: boolean };
@@ -31,7 +36,12 @@ describe("VerificationAtomsService", () => {
 
   beforeEach(async () => {
     mockVerifyCodeUnAuthenticated.mockReset();
-    mockSecondaryEmailsRepo = { getSecondaryEmailsVerified: jest.fn().mockResolvedValue([]) };
+    mockSecondaryEmailsRepo = {
+      getSecondaryEmailsVerified: jest.fn().mockResolvedValue([]),
+      getExistingSecondaryEmailByUserAndEmail: jest.fn().mockResolvedValue(null),
+      getExistingSecondaryEmail: jest.fn().mockResolvedValue(null),
+      addSecondaryEmailVerified: jest.fn(),
+    };
     mockUsersRepo = { getUserEmailsVerifiedForTeam: jest.fn().mockResolvedValue([]) };
     mockMembershipsRepo = { findMembershipByTeamId: jest.fn() };
     config = { "env.type": "production", e2e: false };
@@ -87,6 +97,37 @@ describe("VerificationAtomsService", () => {
 
       await expect(service.verifyEmailCodeAuthenticated(input)).resolves.toBe(true);
       expect(mockVerifyCodeUnAuthenticated).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("addVerifiedEmail", () => {
+    const params = { userId, existingPrimaryEmail: "alice@example.com", email: "alice+work@example.com", code: "123456" };
+
+    it("should not store the email when the code is invalid", async () => {
+      mockVerifyCodeUnAuthenticated.mockRejectedValue(new Error("Invalid verification code"));
+
+      await expect(service.addVerifiedEmail(params)).rejects.toThrow(BadRequestException);
+      expect(mockSecondaryEmailsRepo.addSecondaryEmailVerified).not.toHaveBeenCalled();
+    });
+
+    it("should store the email when the code is valid", async () => {
+      mockVerifyCodeUnAuthenticated.mockResolvedValue(true);
+
+      await expect(service.addVerifiedEmail(params)).resolves.toBe(true);
+      expect(mockVerifyCodeUnAuthenticated).toHaveBeenCalledWith("alice+work@example.com", "123456");
+      expect(mockSecondaryEmailsRepo.addSecondaryEmailVerified).toHaveBeenCalledWith(userId, "alice+work@example.com");
+    });
+
+    it("should check the code against the address without the OAuth client ID alias", async () => {
+      mockVerifyCodeUnAuthenticated.mockResolvedValue(true);
+
+      await service.addVerifiedEmail({ ...params, email: `bob+${oAuthClientId}@example.com` });
+
+      expect(mockVerifyCodeUnAuthenticated).toHaveBeenCalledWith("bob@example.com", "123456");
+      expect(mockSecondaryEmailsRepo.addSecondaryEmailVerified).toHaveBeenCalledWith(
+        userId,
+        `bob+${oAuthClientId}@example.com`
+      );
     });
   });
 

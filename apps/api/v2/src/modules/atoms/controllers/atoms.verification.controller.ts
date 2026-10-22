@@ -138,6 +138,7 @@ export class AtomsVerificationController {
       userId: user.id,
       existingPrimaryEmail: user.email,
       email: body.email,
+      code: body.code,
     });
 
     return {

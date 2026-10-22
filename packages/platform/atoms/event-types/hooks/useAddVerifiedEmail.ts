@@ -1,8 +1,6 @@
-import { useMutation } from "@tanstack/react-query";
-
 import { SUCCESS_STATUS } from "@calcom/platform-constants";
 import type { ApiErrorResponse, ApiResponse } from "@calcom/platform-types";
-
+import { useMutation } from "@tanstack/react-query";
 import { useAtomsContext } from "../../hooks/useAtomsContext";
 import { appendClientIdToEmail } from "../../lib/appendClientIdToEmail";
 import http from "../../lib/http";
@@ -34,15 +32,17 @@ export const useAddVerifiedEmail = (
     unknown,
     {
       email: string;
+      code: string;
     }
   >({
     mutationFn: (data) => {
-      const { email } = data;
+      const { email, code } = data;
       const emailToSend = appendClientIdToEmail(email, clientId);
 
       return http
         .post(`/atoms/emails/verified-emails`, {
           email: emailToSend,
+          code,
         })
         .then((res) => {
           return res.data;

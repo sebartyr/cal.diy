@@ -111,11 +111,16 @@ export class VerificationAtomsService {
     userId,
     existingPrimaryEmail,
     email,
+    code,
   }: {
     userId: number;
     existingPrimaryEmail: string;
     email: string;
+    code: string;
   }): Promise<boolean> {
+    // Atoms append the OAuth client ID alias to the stored email, but the code was sent to the bare address.
+    await this.verifyEmailCodeAuthenticated({ email: this.removeClientIdFromEmail(email), code });
+
     const existingSecondaryEmail =
       await this.atomsSecondaryEmailsRepository.getExistingSecondaryEmailByUserAndEmail(userId, email);
     const alreadyExistingEmail = await this.atomsSecondaryEmailsRepository.getExistingSecondaryEmail(email);
