@@ -4,25 +4,25 @@ import { ConfigService } from "@nestjs/config";
 import { DeduplicateJoinsPlugin, Kysely, ParseJSONResultsPlugin, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 
-import type { DB } from "@calcom/kysely/types";
+import { type KyselyDB, UtcTimestampPlugin, utcTimestampTypes } from "@calcom/platform-libraries";
 
 @Injectable()
 export class KyselyReadService implements OnModuleDestroy {
   private logger = new Logger("KyselyReadService");
 
-  public kysely: Kysely<DB>;
+  public kysely: Kysely<KyselyDB>;
 
   constructor(readonly configService: ConfigService) {
     const dbUrl = configService.get("db.readUrl", { infer: true });
-    const pool = new Pool({ connectionString: dbUrl });
+    const pool = new Pool({ connectionString: dbUrl, types: utcTimestampTypes });
 
     // 3. Create the Dialect, passing the configured pool instance
     const dialect = new PostgresDialect({
       pool: pool, // Use the pool instance created above
     });
-    this.kysely = new Kysely<DB>({
+    this.kysely = new Kysely<KyselyDB>({
       dialect,
-      plugins: [new ParseJSONResultsPlugin(), new DeduplicateJoinsPlugin()],
+      plugins: [new ParseJSONResultsPlugin(), new DeduplicateJoinsPlugin(), new UtcTimestampPlugin()],
     });
   }
 

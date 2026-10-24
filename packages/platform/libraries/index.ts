@@ -10,6 +10,8 @@ import type { Prisma } from "@calcom/prisma/client";
 import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
 import { paymentDataSelect } from "@calcom/prisma/selects/payment";
 
+export { UtcTimestampPlugin, utcTimestampTypes } from "@calcom/kysely/utcTimestamps";
+export type { DB as KyselyDB } from "@calcom/kysely/types";
 export { slugify } from "@calcom/lib/slugify";
 export { slugifyLenient } from "@calcom/lib/slugify-lenient";
 export { getBookingForReschedule };
