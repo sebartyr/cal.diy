@@ -1003,6 +1003,25 @@ describe("Bookings Endpoints 2024-08-13", () => {
           });
       });
 
+      // The recurring occurrences are created concurrently: their createdAt/updatedAt order does not follow
+      // their start order and two of them can share a millisecond, so expected counts are derived from the
+      // returned timestamps instead of assuming [0] < [1] < [2]. Both filters are inclusive.
+      const bookingsCreatedBeforeRecurring = 2;
+      function countRecurringOccurrences(
+        field: "createdAt" | "updatedAt",
+        { from, to }: { from?: string | null; to?: string | null }
+      ) {
+        return createdRecurringBooking.filter((occurrence) => {
+          const value = occurrence[field];
+          // A null date never matches a date filter in SQL.
+          if (!value) return false;
+          const time = new Date(value).getTime();
+          const isAfterFrom = !from || time >= new Date(from).getTime();
+          const isBeforeTo = !to || time <= new Date(to).getTime();
+          return isAfterFrom && isBeforeTo;
+        }).length;
+      }
+
       it("should get bookings after specified update time", async () => {
         return request(app.getHttpServer())
           .get(`/v2/bookings?afterUpdatedAt=${createdRecurringBooking[1].updatedAt}`)
@@ -1017,7 +1036,9 @@ describe("Bookings Endpoints 2024-08-13", () => {
               | RecurringBookingOutput_2024_08_13
               | GetSeatedBookingOutput_2024_08_13
             )[] = responseBody.data;
-            expect(data.length).toEqual(2);
+            expect(data.length).toEqual(
+              countRecurringOccurrences("updatedAt", { from: createdRecurringBooking[1].updatedAt })
+            );
           });
       });
 
@@ -1035,7 +1056,10 @@ describe("Bookings Endpoints 2024-08-13", () => {
               | RecurringBookingOutput_2024_08_13
               | GetSeatedBookingOutput_2024_08_13
             )[] = responseBody.data;
-            expect(data.length).toEqual(3);
+            expect(data.length).toEqual(
+              bookingsCreatedBeforeRecurring +
+                countRecurringOccurrences("updatedAt", { to: createdRecurringBooking[0].updatedAt })
+            );
           });
       });
 
@@ -1055,7 +1079,12 @@ describe("Bookings Endpoints 2024-08-13", () => {
               | RecurringBookingOutput_2024_08_13
               | GetSeatedBookingOutput_2024_08_13
             )[] = responseBody.data;
-            expect(data.length).toEqual(3);
+            expect(data.length).toEqual(
+              countRecurringOccurrences("updatedAt", {
+                from: createdRecurringBooking[0].updatedAt,
+                to: createdRecurringBooking[2].updatedAt,
+              })
+            );
           });
       });
 
@@ -1074,7 +1103,9 @@ describe("Bookings Endpoints 2024-08-13", () => {
                 | RecurringBookingOutput_2024_08_13
                 | GetSeatedBookingOutput_2024_08_13
               )[] = responseBody.data;
-              expect(data.length).toEqual(2);
+              expect(data.length).toEqual(
+                countRecurringOccurrences("createdAt", { from: createdRecurringBooking[1].createdAt })
+              );
             });
         });
 
@@ -1092,7 +1123,10 @@ describe("Bookings Endpoints 2024-08-13", () => {
                 | RecurringBookingOutput_2024_08_13
                 | GetSeatedBookingOutput_2024_08_13
               )[] = responseBody.data;
-              expect(data.length).toEqual(3);
+              expect(data.length).toEqual(
+                bookingsCreatedBeforeRecurring +
+                  countRecurringOccurrences("createdAt", { to: createdRecurringBooking[0].createdAt })
+              );
             });
         });
 
@@ -1112,7 +1146,12 @@ describe("Bookings Endpoints 2024-08-13", () => {
                 | RecurringBookingOutput_2024_08_13
                 | GetSeatedBookingOutput_2024_08_13
               )[] = responseBody.data;
-              expect(data.length).toEqual(2);
+              expect(data.length).toEqual(
+                countRecurringOccurrences("createdAt", {
+                  from: createdRecurringBooking[0].createdAt,
+                  to: createdRecurringBooking[1].createdAt,
+                })
+              );
             });
         });
       });
