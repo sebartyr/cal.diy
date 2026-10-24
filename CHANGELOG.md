@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.2.1] — 2026-10-24
+
+Patch release: the production web server no longer fails to load `vitest` at
+boot (#137).
+
+### Fixed
+
+- `apps/web/pages/api/book/recurring-event.test.ts` lived in the pages router,
+  where Next.js compiles every file as a route. The test shipped as
+  `/api/book/recurring-event.test` and the production server logged an
+  `unhandledRejection` (`Failed to load external module vitest-…`) at boot.
+  The test now lives in `apps/web/test/handlers/` (#137).
+
+### Upgrade notes
+
+- No schema change, no migration, no new environment variable.
+
 ## [8.2.0] — 2026-10-24
 
 API v2 release: a functional audit makes every remaining endpoint work, moves the
