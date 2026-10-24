@@ -20,8 +20,10 @@ export class ZodExceptionFilter implements ExceptionFilter {
     response.setHeader("X-Request-Id", requestId.toString());
 
     const userContext = extractUserContext(request);
+    // Nest's console logger formats metadata with util.inspect, which throws on a ZodError instance and
+    // turned every validation error into a 500.
     this.logger.error(`ZodError: ${error.message}`, {
-      error,
+      issues: error.issues,
       body: request.body,
       headers: filterReqHeaders(request.headers),
       url: request.url,
