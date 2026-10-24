@@ -96,6 +96,8 @@ describe("OAuth Client Users Endpoints", () => {
     const userEmailTwo = `oauth-client-users-user-2-${randomString(5)}@api.com`;
     const userTimeZoneTwo = "Europe/Rome";
     let postResponseDataTwo: CreateManagedUserOutput["data"];
+    const userUpdatedEmail = "pineapple-pizza@gmail.com";
+    const timeZoneUserIds: number[] = [];
 
     const userEmail2 = `oauth-client-users-user2-${randomString()}@api.com`;
     const userTimeZone2 = "America/New_York";
@@ -470,8 +472,6 @@ describe("OAuth Client Users Endpoints", () => {
       expect(responseBody.status).toEqual(SUCCESS_STATUS);
       expect(responseBody.data).toBeDefined();
       expect(responseBody.data?.length).toBeGreaterThan(0);
-      expect(responseBody.data[0].email).toEqual(postResponseData.user.email);
-      expect(responseBody.data[0].name).toEqual(postResponseData.user.name);
       expect(responseBody.data?.length).toEqual(2);
       const userOne = responseBody.data.find((user) => user.email === postResponseData.user.email);
       const userTwo = responseBody.data.find((user) => user.email === postResponseDataTwo.user.email);
@@ -614,7 +614,6 @@ describe("OAuth Client Users Endpoints", () => {
     });
 
     it(`/PATCH/:id`, async () => {
-      const userUpdatedEmail = "pineapple-pizza@gmail.com";
       const body: UpdateManagedUserInput = { email: userUpdatedEmail, locale: Locales.PT_BR };
 
       const response = await request(app.getHttpServer())
@@ -657,6 +656,10 @@ describe("OAuth Client Users Endpoints", () => {
       expect(response.body?.error?.message).toEqual(
         `User with the username derived from the provided e-mail already exists. Existing user ID=${postResponseDataTwo.user.id}`
       );
+
+      const dbUser = await userRepositoryFixture.get(postResponseData.user.id);
+      expect(dbUser?.email).toEqual(OAuthClientUsersService.getOAuthUserEmail(oAuthClient.id, userUpdatedEmail));
+      expect(dbUser?.username).not.toEqual(postResponseDataTwo.user.username);
     });
 
     it("should force refresh tokens", async () => {
@@ -749,8 +752,8 @@ describe("OAuth Client Users Endpoints", () => {
             .expect(201);
 
           const responseBody: CreateManagedUserOutput = response.body;
+          timeZoneUserIds.push(responseBody.data.user.id);
           expect(responseBody.data.user.timeZone).toEqual("Europe/London");
-          await userRepositoryFixture.delete(responseBody.data.user.id);
         });
 
         it("should allow undefined time zone", async () => {
@@ -767,8 +770,8 @@ describe("OAuth Client Users Endpoints", () => {
             .expect(201);
 
           const responseBody: CreateManagedUserOutput = response.body;
+          timeZoneUserIds.push(responseBody.data.user.id);
           expect(responseBody.data.user.timeZone).toEqual("Europe/London");
-          await userRepositoryFixture.delete(responseBody.data.user.id);
         });
 
         it("should allow valid time zone", async () => {
@@ -785,8 +788,8 @@ describe("OAuth Client Users Endpoints", () => {
             .expect(201);
 
           const responseBody: CreateManagedUserOutput = response.body;
+          timeZoneUserIds.push(responseBody.data.user.id);
           expect(responseBody.data.user.timeZone).toBe("Europe/Rome");
-          await userRepositoryFixture.delete(responseBody.data.user.id);
         });
 
         it("should allow without any time zone", async () => {
@@ -802,8 +805,8 @@ describe("OAuth Client Users Endpoints", () => {
             .expect(201);
 
           const responseBody: CreateManagedUserOutput = response.body;
+          timeZoneUserIds.push(responseBody.data.user.id);
           expect(responseBody.data.user.timeZone).toEqual("Europe/London");
-          await userRepositoryFixture.delete(responseBody.data.user.id);
         });
       });
     });
@@ -826,6 +829,13 @@ describe("OAuth Client Users Endpoints", () => {
         await userRepositoryFixture.delete(postResponseDataTwo.user.id);
       } catch (e) {
         console.log(e);
+      }
+      for (const userId of timeZoneUserIds) {
+        try {
+          await userRepositoryFixture.delete(userId);
+        } catch (e) {
+          console.log(e);
+        }
       }
       try {
         await userRepositoryFixture.delete(platformAdmin.id);
