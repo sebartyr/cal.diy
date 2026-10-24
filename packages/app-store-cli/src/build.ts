@@ -20,9 +20,11 @@ const formatFileWithBiome = (filePath: string) => {
     "yarn",
     ["biome", "format", "--write", "--no-errors-on-unmatched", normalizedPath],
     {
-      stdio: "inherit",
+      // Biome prints "Formatted 1 file" once per generated file; only its errors are worth showing.
+      stdio: ["ignore", "ignore", "inherit"],
       cwd: repoRoot,
-      shell: true,
+      // `yarn` is a .cmd shim on Windows and needs a shell there; elsewhere a shell only triggers DEP0190.
+      shell: process.platform === "win32",
     }
   );
 

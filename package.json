@@ -59,7 +59,7 @@
     "lint:fix": "turbo lint:fix",
     "lint:report": "turbo lint:report",
     "lint": "turbo lint",
-    "postinstall": "husky install && turbo run post-install",
+    "postinstall": "husky && turbo run post-install",
     "pre-commit": "lint-staged",
     "predev": "echo 'Checking env files'",
     "prisma": "yarn workspace @calcom/prisma prisma",
@@ -111,6 +111,11 @@
     "vitest": "4.1.12",
     "vitest-fetch-mock": "0.4.5",
     "vitest-mock-extended": "3.1.0"
+  },
+  "dependenciesMeta": {
+    "@prisma/client": {
+      "built": false
+    }
   },
   "resolutions": {
     "webpack": "5.104.1",
