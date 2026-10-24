@@ -3082,11 +3082,12 @@ describe("Event types Endpoints", () => {
 
       const createdEventType = createResponse.body.data;
 
+      // Jitsi needs no connection since Cal Video now books it, so use an app that does.
       const patchPayload = {
         locations: [
           {
             type: "integration",
-            integration: "jitsi",
+            integration: "zoom",
           },
         ],
       };
@@ -3097,7 +3098,7 @@ describe("Event types Endpoints", () => {
         .send(patchPayload);
 
       expect(patchResponse.status).toBe(400);
-      expect(patchResponse.body.error.message).toBe("jitsi not connected.");
+      expect(patchResponse.body.error.message).toBe("zoom not connected.");
 
       // Cleanup
       await eventTypesRepositoryFixture.delete(createdEventType.id);
