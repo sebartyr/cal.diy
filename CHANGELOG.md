@@ -6,6 +6,99 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.2.0] — 2026-10-24
+
+API v2 release: a functional audit makes every remaining endpoint work, moves the
+platform (OAuth clients, managed users, atoms) from organizations to regular teams,
+deletes routes backed by removed features, and fixes the e2e suite so it runs again.
+It also closes the dependency audit (NestJS 11 / Express 5, runtime advisories) and
+fixes booking date handling on servers not running in UTC (#103–#136).
+
+### Added
+
+- Platform OAuth clients, their webhooks and managed users now hang off a **regular
+  team** (organizations cannot be created in Cal.diy). The owning team comes from a
+  team API key or the new optional `?teamId=` query parameter, and
+  `@MembershipRoles` is enforced again by a new `PlatformTeamRolesGuard` (#121, #122).
+- `POST /v2/oauth-clients/:clientId/users` creates managed users again. They are
+  linked to the team through the OAuth client only (not team members, no
+  organization profile). A derived username that already exists answers 409, on
+  create and on `PATCH` (#123).
+- `openvisio` is accepted as a video integration on event types and booking
+  locations (#120).
+
+### Fixed
+
+- Security (#113, #122):
+  - `GET`/`PATCH /v2/calendars/:calendar/events/:eventUid` let any authenticated user
+    read or modify another user's calendar event. The booking must now belong to the
+    caller (404 otherwise).
+  - `GET /v2/atoms/emails/verified-emails?teamId=` listed the emails of any team's
+    members. It now requires an accepted membership.
+  - `GET /v2/oauth-clients` and `GET /v2/oauth-clients/:clientId` returned the client
+    secret, which authenticates as the team owner, to plain members. They are now
+    ADMIN/OWNER only.
+- Endpoints stubbed out during the EE removal work again: `POST /v2/api-keys/refresh`,
+  authenticated email code verification, and verified email creation. Adding a
+  verified secondary email now requires the email code (#114, #116).
+- The API no longer crashes at startup when only `SENTRY_DSN` is set, and
+  `POST /v2/oauth/:clientId/exchange` answers 400 instead of 500 without an
+  `Authorization` header (#115).
+- `GET /v2/provider/:clientId` reports `organizationId: null` for team-owned clients,
+  so atoms find managed users' public events (#124).
+- Rescheduling a seated booking without `seatUid` and without authentication answers
+  400 instead of 500 (#126).
+- Bookings with the `cal-video` location are accepted on event types stored as Jitsi
+  (#127).
+- Every Zod validation error caught by the API (including union errors) answers 400
+  instead of 500 (#135).
+- Booking date filters (`afterStart`, `beforeEnd`, `afterCreatedAt`/`beforeCreatedAt`,
+  `afterUpdatedAt`/`beforeUpdatedAt`), the upcoming/past split and the dates returned
+  by the bookings listing were shifted by the server's UTC offset when it does not
+  run in UTC. Kysely now reads and writes `timestamp` columns as UTC, like Prisma
+  (#134).
+- `docs/api-reference/v2/openapi.json` is regenerated. The `GET /v2/calendars`
+  response schema no longer loses 7 fields to a name clash with the busy-times input
+  (#132).
+
+### Removed
+
+- API v2 routes whose feature is gone, which could never succeed:
+  `POST /v2/bookings/{bookingUid}/reassign` and `/reassign/{userId}`, the
+  `/v2/verified-resources/phones` routes, and `/v2/stripe/*` (#117, #118).
+- `msteams` and ~20 other video integrations whose app no longer exists are rejected
+  on input. Event types already stored with them still read as before (#119, #120).
+- The unused Bull calendars queue, which also drops a Redis connection at boot (#111).
+- Unused dependencies: `@boxyhq/saml-jackson`, `@vercel/edge-config`, `checkly`, and
+  `stripe` (with its stale peer declarations) (#108, #118, #131).
+
+### Security
+
+- Dependency audit (#103–#109, #112): patched runtime advisories (follow-redirects,
+  markdown-it, sanitize-html, dompurify, ip-address, effect, hono, qs, body-parser,
+  multer, fast-xml-parser…), test and build tooling (vitest, turbo, glob, babel,
+  faker), majors with open advisories (uuid 11, jimp 1, lingo.dev, Sentry 10,
+  nanoid 5, js-cookie 3), and the docs site (mermaid, katex 0.19).
+- API v2 moves to **NestJS 11 and Express 5** (`@nestjs/core` 10 had no patched
+  release for GHSA-36xv-jgw5-4q75) (#107).
+- `otplib` 12 → 13 for TOTP 2FA and email codes. Existing secrets and codes keep
+  working (#109).
+
+### Tests
+
+- The API v2 e2e suite loads and runs again (ESM-only dependencies, production app
+  options in e2e), and the platform specs are rewritten for regular teams. Full suite,
+  run in band in local time: 41 suites, 552 tests passed, 30 skipped (calendar suites need Google credentials) (#125, #128–#130, #133, #136).
+
+### Upgrade notes
+
+- No schema change, no migration.
+- `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, `IS_TEAM_BILLING_ENABLED` and
+  `EDGE_CONFIG` are no longer read and can be removed.
+- API v2 clients: the removed routes and integration values above now answer 404 or
+  400. They never succeeded on Cal.diy. On OAuth client responses, `organizationId`
+  holds the owning **team** id; the field keeps its name.
+
 ## [8.1.1] — 2026-10-15
 
 Patch release: team event types can be created again, and a system admin can
