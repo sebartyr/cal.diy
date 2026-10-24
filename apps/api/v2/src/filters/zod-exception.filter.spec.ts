@@ -1,13 +1,11 @@
 import type { ArgumentsHost } from "@nestjs/common";
-import { Logger } from "@nestjs/common";
-import { inspect } from "node:util";
-import { z, ZodError } from "zod";
+import { z, type ZodError } from "zod";
 
 import { ZodExceptionFilter } from "./zod-exception.filter";
 
-function createZodError(): ZodError {
-  const result = z.object({ origin: z.string() }).safeParse({ origin: null });
-  if (result.success) throw new Error("Expected the schema to reject a null origin");
+function getZodError(schema: z.ZodTypeAny, input: unknown): ZodError {
+  const result = schema.safeParse(input);
+  if (result.success) throw new Error("Expected the schema to reject the input");
   return result.error;
 }
 
@@ -21,14 +19,20 @@ function createHost() {
   return { host, response, json };
 }
 
+// The real Nest console logger is used on purpose: it formats metadata with util.inspect (depth 5), which
+// is what used to throw on ZodError instances. Only its output is silenced.
 describe("ZodExceptionFilter", () => {
+  beforeEach(() => {
+    jest.spyOn(process.stdout, "write").mockImplementation(() => true);
+    jest.spyOn(process.stderr, "write").mockImplementation(() => true);
+  });
+
   afterEach(() => jest.restoreAllMocks());
 
   it("answers 400 with the validation issues", () => {
-    jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
     const { host, response, json } = createHost();
 
-    new ZodExceptionFilter().catch(createZodError(), host);
+    new ZodExceptionFilter().catch(getZodError(z.object({ origin: z.string() }), { origin: null }), host);
 
     expect(response.status).toHaveBeenCalledWith(400);
     expect(json).toHaveBeenCalledWith(
@@ -39,14 +43,12 @@ describe("ZodExceptionFilter", () => {
     );
   });
 
-  it("logs metadata that util.inspect can format", () => {
-    const errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
-    const { host } = createHost();
+  it("answers 400 for a union error whose issues nest other ZodErrors", () => {
+    const { host, response } = createHost();
+    const error = getZodError(z.object({ value: z.union([z.string(), z.number()]) }), { value: null });
 
-    new ZodExceptionFilter().catch(createZodError(), host);
+    new ZodExceptionFilter().catch(error, host);
 
-    const metadata = errorSpy.mock.calls[0][1];
-    expect(() => inspect(metadata)).not.toThrow();
-    expect(metadata).toEqual(expect.objectContaining({ issues: createZodError().issues }));
+    expect(response.status).toHaveBeenCalledWith(400);
   });
 });
