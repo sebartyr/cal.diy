@@ -865,12 +865,10 @@ export class BookingsService_2024_08_13 {
       return true;
     }
 
-    if (!authUserId) {
-      throw new Error(`No auth user found`);
-    }
-
-    if (!bookingUserId) {
-      throw new Error(`No user found for booking`);
+    // Without an authenticated user or a booking host this cannot be an org admin rescheduling the whole
+    // booking, so the request is a plain seated reschedule missing its seatUid: input validation answers 400.
+    if (!authUserId || !bookingUserId) {
+      return false;
     }
 
     const isOrgAdmin = await PrismaOrgMembershipRepository.isLoggedInUserOrgAdminOfBookingHost(
