@@ -52,7 +52,7 @@ describe("WebhooksController (e2e)", () => {
     });
 
     otherWebhook = await webhookRepositoryFixture.create({
-      id: "2mdfnn2",
+      id: `webhooks-controller-${randomString()}`,
       subscriberUrl: "https://example.com",
       eventTriggers: ["BOOKING_CREATED", "BOOKING_RESCHEDULED", "BOOKING_CANCELLED"],
       active: true,
@@ -65,9 +65,9 @@ describe("WebhooksController (e2e)", () => {
   });
 
   afterAll(async () => {
-    userRepositoryFixture.deleteByEmail(user.email);
-    userRepositoryFixture.deleteByEmail(otherUser.email);
-    webhookRepositoryFixture.delete(otherWebhook.id);
+    await webhookRepositoryFixture.delete(otherWebhook.id);
+    await userRepositoryFixture.deleteByEmail(user.email);
+    await userRepositoryFixture.deleteByEmail(otherUser.email);
     await app.close();
   });
 
