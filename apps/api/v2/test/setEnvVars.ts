@@ -38,4 +38,6 @@ process.env = {
   INTEGRATION_TEST_MODE: "true",
   e2e: "true",
   SLOTS_CACHE_TTL: "1",
+  // Specs build their API keys as `cal_test_<key>`, so a local .env prefix must not win here.
+  API_KEY_PREFIX: "cal_test_",
 };
