@@ -2424,7 +2424,7 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/components/schemas/Calendar"
+                "$ref": "#/components/schemas/BusyTimesCalendar"
               },
               "example": "[{ credentialId: \"1\", externalId: \"AQgtJE7RnHEeyisVq2ENs2gAAAgEGAAAACgtJE7RnHEeyisVq2ENs2gAAAhSDAAAA\" }, { credentialId: \"2\", externalId: \"AQM7RnHEeyisVq2ENs2gAAAhFDBBBBB\" }]"
             }
@@ -11335,7 +11335,7 @@
         },
         "required": ["status", "data"]
       },
-      "Calendar": {
+      "BusyTimesCalendar": {
         "type": "object",
         "properties": {
           "credentialId": {
@@ -11495,6 +11495,44 @@
           }
         },
         "required": ["externalId", "primary", "readOnly", "isSelected", "credentialId"]
+      },
+      "Calendar": {
+        "type": "object",
+        "properties": {
+          "externalId": {
+            "type": "string",
+            "format": "email"
+          },
+          "integration": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "format": "email"
+          },
+          "primary": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "isSelected": {
+            "type": "boolean"
+          },
+          "credentialId": {
+            "type": "number"
+          },
+          "delegationCredentialId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["externalId", "readOnly", "isSelected", "credentialId"]
       },
       "ConnectedCalendar": {
         "type": "object",

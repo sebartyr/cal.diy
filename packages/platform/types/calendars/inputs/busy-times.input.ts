@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   IsArray,
@@ -38,6 +38,9 @@ function ValidateTimezoneRequired(
   };
 }
 
+// The connected-calendars output also has a class named Calendar; without a distinct schema name the
+// openapi generator lets this input overwrite it and GET /v2/calendars loses most of its documented fields.
+@ApiSchema({ name: "BusyTimesCalendar" })
 export class Calendar {
   @Transform(({ value }: { value: string }) => value && parseInt(value, 10))
   @IsNumber()
