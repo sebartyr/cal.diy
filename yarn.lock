@@ -13923,6 +13923,9 @@ __metadata:
     vitest: "npm:4.1.12"
     vitest-fetch-mock: "npm:0.4.5"
     vitest-mock-extended: "npm:3.1.0"
+  dependenciesMeta:
+    "@prisma/client":
+      built: false
   languageName: unknown
   linkType: soft
 
