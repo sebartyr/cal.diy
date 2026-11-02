@@ -1,18 +1,26 @@
 import type { ZodObject } from "zod";
 import { z } from "zod";
 
-const dateSchema: z.ZodDate = z.coerce.date();
-const optionalDateSchema: z.ZodNullable<z.ZodDate> = z.coerce.date().nullable();
+const dateSchema: z.ZodCoercedDate = z.coerce.date();
+const optionalDateSchema: z.ZodNullable<z.ZodCoercedDate> = z.coerce.date().nullable();
 
 export const featureSchema: ZodObject<{
   slug: z.ZodString;
   enabled: z.ZodBoolean;
   description: z.ZodNullable<z.ZodString>;
-  type: z.ZodNullable<z.ZodEnum<["RELEASE", "EXPERIMENT", "OPERATIONAL", "PERMISSION", "KILL_SWITCH"]>>;
+  type: z.ZodNullable<
+    z.ZodEnum<{
+      RELEASE: "RELEASE";
+      EXPERIMENT: "EXPERIMENT";
+      OPERATIONAL: "OPERATIONAL";
+      PERMISSION: "PERMISSION";
+      KILL_SWITCH: "KILL_SWITCH";
+    }>
+  >;
   stale: z.ZodNullable<z.ZodBoolean>;
-  lastUsedAt: z.ZodNullable<z.ZodDate>;
-  createdAt: z.ZodNullable<z.ZodDate>;
-  updatedAt: z.ZodNullable<z.ZodDate>;
+  lastUsedAt: z.ZodNullable<z.ZodCoercedDate>;
+  createdAt: z.ZodNullable<z.ZodCoercedDate>;
+  updatedAt: z.ZodNullable<z.ZodCoercedDate>;
   updatedBy: z.ZodNullable<z.ZodNumber>;
 }> = z.object({
   slug: z.string(),

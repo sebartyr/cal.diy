@@ -20,7 +20,6 @@ export type TCreateClientInputSchema = {
 
 export const ZCreateClientInputSchema: z.ZodType<
   TCreateClientInputSchema,
-  z.ZodTypeDef,
   TCreateClientInputSchemaInput
 > = z.object({
   name: z.string(),

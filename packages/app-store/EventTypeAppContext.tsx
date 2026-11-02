@@ -1,6 +1,8 @@
 import React from "react";
 import type { z, ZodType } from "zod";
 
+import type { eventTypeAppCardZod } from "./eventTypeAppCardZod";
+
 export type GetAppData = (key: string) => unknown;
 export type SetAppData = (key: string, value: unknown) => void;
 type LockedIcon = JSX.Element | false | undefined;
@@ -31,7 +33,8 @@ type GetAppDataGeneric<TAppData extends ZodType> = <TKey extends keyof z.infer<T
   key: TKey
 ) => z.infer<TAppData>[TKey];
 
-export const useAppContextWithSchema = <TAppData extends ZodType>() => {
+// Without a schema, only the keys every app card shares (enabled, credentialId, ...) are known.
+export const useAppContextWithSchema = <TAppData extends ZodType = typeof eventTypeAppCardZod>() => {
   type GetAppData = GetAppDataGeneric<TAppData>;
   type SetAppData = SetAppDataGeneric<TAppData>;
   // TODO: Not able to do it without type assertion here

@@ -44,7 +44,7 @@ describe("BookingPageTagManager", () => {
         eventType={{
           metadata: {
             apps: {
-              zoomvideo: {
+              qr_code: {
                 enabled: true,
               },
             },
@@ -54,7 +54,7 @@ describe("BookingPageTagManager", () => {
         }}
       />
     );
-    const scripts = screen.queryAllByTestId("cal-analytics-app-zoomvideo");
+    const scripts = screen.queryAllByTestId("cal-analytics-app-qr_code");
     expect(scripts.length).toBe(0);
   });
 

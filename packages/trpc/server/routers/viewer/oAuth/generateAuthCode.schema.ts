@@ -10,7 +10,7 @@ export type TGenerateAuthCodeInputSchema = {
   codeChallengeMethod?: "S256";
 };
 
-export const ZGenerateAuthCodeInputSchema: z.ZodType<TGenerateAuthCodeInputSchema> = z.object({
+export const ZGenerateAuthCodeInputSchema: z.ZodType<TGenerateAuthCodeInputSchema, TGenerateAuthCodeInputSchema> = z.object({
   clientId: z.string(),
   redirectUri: z.string(),
   scopes: z.array(z.string()),

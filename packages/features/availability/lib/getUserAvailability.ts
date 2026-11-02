@@ -62,7 +62,7 @@ type GetUsersAvailabilityQuery = {
   mode?: string;
 };
 
-const availabilitySchema: z.ZodType<GetUserAvailabilityParams, z.ZodTypeDef, unknown> = z.object({
+const availabilitySchema: z.ZodType<GetUserAvailabilityParams, unknown> = z.object({
   dateFrom: stringToDayjsZod,
   dateTo: stringToDayjsZod,
   eventTypeId: z.number().optional(),

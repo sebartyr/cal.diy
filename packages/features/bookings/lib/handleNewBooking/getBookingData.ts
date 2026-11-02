@@ -3,27 +3,29 @@ import dayjs from "@calcom/dayjs";
 import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventResponses";
 import { ErrorCode } from "@calcom/lib/errorCodes";
 import { withReporting } from "@calcom/lib/sentryWrapper";
-import type { EventTypeCustomInput } from "@calcom/prisma/client";
 import type z from "zod";
+import type { EventTypeCustomInput } from "@calcom/prisma/client";
 import { bookingCreateSchemaLegacyPropsForApi } from "../bookingCreateBodySchema";
-import type { TgetBookingDataSchema } from "../getBookingDataSchema";
+import type { BookingDataSchemaGetter } from "../dto/types";
 import type { getEventTypeResponse } from "./getEventTypesFromDB";
 import { handleCustomInputs } from "./handleCustomInputs";
 
-type ReqBodyWithEnd = TgetBookingDataSchema & { end: string };
+type BookingDataSchema = ReturnType<BookingDataSchemaGetter>;
+type BookingData = z.infer<BookingDataSchema>;
+type ReqBodyWithEnd = BookingData & { end: string };
 
 // Define the function with underscore prefix
-const _getBookingData = async <T extends z.ZodType>({
+const _getBookingData = async ({
   reqBody,
   eventType,
   schema,
 }: {
   reqBody: Record<string, any>;
   eventType: getEventTypeResponse;
-  schema: T;
+  schema: BookingDataSchema;
 }) => {
-  const parsedBody = await schema.parseAsync(reqBody);
-  const parsedBodyWithEnd = (body: TgetBookingDataSchema): body is ReqBodyWithEnd => {
+  const parsedBody: BookingData = await schema.parseAsync(reqBody);
+  const parsedBodyWithEnd = (body: BookingData): body is ReqBodyWithEnd => {
     // Use the event length to auto-set the event end time.
     if (!Object.prototype.hasOwnProperty.call(body, "end")) {
       body.end = dayjs.utc(body.start).add(eventType.length, "minutes").format();

@@ -21,7 +21,7 @@ export type EventTypeLocation = {
  * Schema for event type locations
  * Validates an array of location objects for event types
  */
-export const eventTypeLocations: z.ZodType<EventTypeLocation[]> = z.array(
+export const eventTypeLocations: z.ZodType<EventTypeLocation[], EventTypeLocation[]> = z.array(
   z.object({
     // TODO: Couldn't find a way to make it a union of types from App Store locations
     // Creating a dynamic union by iterating over the object doesn't seem to make TS happy

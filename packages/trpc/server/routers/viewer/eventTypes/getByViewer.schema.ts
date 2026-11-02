@@ -9,7 +9,7 @@ export type TFilterQuerySchemaStrict = {
   schedulingTypes?: SchedulingType[];
 };
 
-export const filterQuerySchemaStrict: z.ZodType<TFilterQuerySchemaStrict> = z.object({
+export const filterQuerySchemaStrict: z.ZodType<TFilterQuerySchemaStrict, TFilterQuerySchemaStrict> = z.object({
   teamIds: z.number().array().optional(),
   // A user can only filter by only his userId
   upIds: z.string().array().max(1).optional(),
@@ -20,7 +20,7 @@ export type TEventTypeInputSchema = {
   filters?: TFilterQuerySchemaStrict;
 } | null | undefined;
 
-export const ZEventTypeInputSchema: z.ZodType<TEventTypeInputSchema> = z
+export const ZEventTypeInputSchema: z.ZodType<TEventTypeInputSchema, TEventTypeInputSchema> = z
   .object({
     filters: filterQuerySchemaStrict.optional(),
   })
@@ -42,7 +42,7 @@ export type TGetEventTypesFromGroupSchema = {
   searchQuery?: string;
 };
 
-export const ZGetEventTypesFromGroupSchema: z.ZodType<TGetEventTypesFromGroupSchema, z.ZodTypeDef, TGetEventTypesFromGroupSchemaInput> = z.object({
+export const ZGetEventTypesFromGroupSchema: z.ZodType<TGetEventTypesFromGroupSchema, TGetEventTypesFromGroupSchemaInput> = z.object({
   filters: filterQuerySchemaStrict.optional(),
   cursor: z.number().nullish(),
   limit: z.number().default(10),

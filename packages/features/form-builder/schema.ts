@@ -67,6 +67,7 @@ export const fieldTypeConfigSchema = z
          */
         toggleLabel: z.string().optional(),
         variants: z.record(
+          z.string(),
           z.object({
             /**
              * That's how the variant would be labelled in App UI. This label represents the field in booking questions' list
@@ -74,6 +75,7 @@ export const fieldTypeConfigSchema = z
              */
             label: z.string(),
             fieldsMap: z.record(
+              z.string(),
               z.object({
                 /**
                  * Supports translation
@@ -293,6 +295,4 @@ export const fieldTypesSchemaMap = {
   }),
 };
 
-export type FieldZodCtx = {
-  addIssue: (issue: z.IssueData) => void;
-};
+export type FieldZodCtx = Pick<z.core.$RefinementCtx, "addIssue">;

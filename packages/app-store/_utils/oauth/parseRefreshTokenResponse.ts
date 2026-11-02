@@ -22,7 +22,7 @@ export type ParseRefreshTokenResponse<S extends z.ZodTypeAny> =
   | z.infer<typeof minimumTokenResponseSchema>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const parseRefreshTokenResponse = (response: any, schema: z.ZodTypeAny) => {
+const parseRefreshTokenResponse = (response: any, schema: z.ZodType<{ refresh_token?: unknown }>) => {
   let refreshTokenResponse;
   const credentialSyncingEnabled =
     APP_CREDENTIAL_SHARING_ENABLED && process.env.CALCOM_CREDENTIAL_SYNC_ENDPOINT;

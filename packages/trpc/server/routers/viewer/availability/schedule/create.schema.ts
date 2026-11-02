@@ -6,7 +6,7 @@ export type TCreateInputSchema = {
   eventTypeId?: number;
 };
 
-export const ZCreateInputSchema: z.ZodType<TCreateInputSchema> = z.object({
+export const ZCreateInputSchema: z.ZodType<TCreateInputSchema, TCreateInputSchema> = z.object({
   name: z.string().trim().min(1, "Schedule name cannot be empty"),
   schedule: z
     .array(

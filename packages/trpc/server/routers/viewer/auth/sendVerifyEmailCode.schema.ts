@@ -8,7 +8,7 @@ export type TSendVerifyEmailCodeSchema = {
   eventTypeId?: number;
 };
 
-export const ZSendVerifyEmailCodeSchema: z.ZodType<TSendVerifyEmailCodeSchema> = z.object({
+export const ZSendVerifyEmailCodeSchema: z.ZodType<TSendVerifyEmailCodeSchema, TSendVerifyEmailCodeSchema> = z.object({
   email: z.string().min(1),
   username: z.string().optional(),
   language: z.string(),

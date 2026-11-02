@@ -38,7 +38,7 @@ describe("ZodExceptionFilter", () => {
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "error",
-        error: expect.objectContaining({ message: "origin - Expected string, received null, " }),
+        error: expect.objectContaining({ message: "origin - Invalid input: expected string, received null, " }),
       })
     );
   });

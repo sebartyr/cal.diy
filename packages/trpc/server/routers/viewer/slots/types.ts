@@ -21,10 +21,12 @@ export const getScheduleSchemaObject = z.object({
   usernameList: z.array(z.string()).min(1).optional(),
   debug: z.boolean().optional(),
   // to handle event types with multiple duration options
+  // optional() comes last so the key stays optional in the parsed type; the transform still
+  // leaves "" as is and turns "30" into 30.
   duration: z
     .string()
-    .optional()
-    .transform((val) => val && parseInt(val)),
+    .transform((val) => val && parseInt(val))
+    .optional(),
   rescheduleUid: z.string().nullish(),
   // whether to do team event or user event
   isTeamEvent: z.boolean().optional().default(false),

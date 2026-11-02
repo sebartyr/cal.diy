@@ -3,8 +3,7 @@ import type { AnyRouter } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ZodIssue } from "zod";
-import { ZodError } from "zod";
+import { z } from "zod";
 import { createNextApiHandler } from "./createNextApiHandler";
 import { errorFormatter } from "./errorFormatter";
 import { onErrorHandler } from "./onErrorHandler";
@@ -52,15 +51,8 @@ describe("createNextApiHandler", () => {
 
   describe("error formatting", () => {
     it("should format ZodError as BAD_REQUEST", () => {
-      const zodError = new ZodError([
-        {
-          path: ["name"],
-          message: "Required",
-          code: "invalid_type",
-          expected: "string",
-          received: "undefined",
-        } as ZodIssue,
-      ]);
+      // A real parse error: zod 4's are Error instances, which TRPCError keeps as its cause.
+      const zodError = z.object({ name: z.string({ error: "Required" }) }).safeParse({}).error;
 
       const error = new TRPCError({
         code: "INTERNAL_SERVER_ERROR",

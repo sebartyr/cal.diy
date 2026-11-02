@@ -25,7 +25,7 @@ describe("zodFormResolver", () => {
     const result = await resolver({ email: "not-an-email", csrfToken: "token" }, undefined, options);
 
     expect(result.values).toEqual({});
-    expect(result.errors.email).toMatchObject({ type: "invalid_string" });
+    expect(result.errors.email).toMatchObject({ type: "invalid_format" });
   });
 
   it("validates async refinements in async mode", async () => {

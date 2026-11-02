@@ -4,7 +4,7 @@ export type TAddNotificationsSubscriptionInputSchema = {
   subscription: string;
 };
 
-export const ZAddNotificationsSubscriptionInputSchema: z.ZodType<TAddNotificationsSubscriptionInputSchema> =
+export const ZAddNotificationsSubscriptionInputSchema: z.ZodType<TAddNotificationsSubscriptionInputSchema, TAddNotificationsSubscriptionInputSchema> =
   z.object({
     subscription: z.string(),
   });

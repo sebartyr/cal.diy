@@ -22,11 +22,17 @@ import { z } from "zod";
 
 export type TUpdateInputSchema = EventTypeUpdateInput;
 
+// z.coerce.date() accepts any input (a Date, an ISO string, ...) and converts it.
+type CoercedDateFields = "periodStartDate" | "periodEndDate" | "createdAt" | "updatedAt";
+type TUpdateInputSchemaInput = Omit<TUpdateInputSchema, CoercedDateFields> & {
+  [K in CoercedDateFields]?: unknown;
+};
+
 // ============================================================================
 // ZOD SCHEMAS
 // ============================================================================
 
-const hashedLinkInputSchema: z.ZodType<HashedLinkInput> = z
+const hashedLinkInputSchema: z.ZodType<HashedLinkInput, HashedLinkInput> = z
   .object({
     link: z.string(),
     expiresAt: z.date().nullish(),
@@ -46,7 +52,7 @@ const hostLocationSchema = z.object({
   phoneNumber: z.string().optional().nullable(),
 });
 
-const hostSchema: z.ZodType<HostInput> = z.object({
+const hostSchema: z.ZodType<HostInput, HostInput> = z.object({
   userId: z.number(),
   profileId: z.number().or(z.null()).optional(),
   isFixed: z.boolean().optional(),
@@ -57,12 +63,12 @@ const hostSchema: z.ZodType<HostInput> = z.object({
   location: hostLocationSchema.optional().nullable(),
 });
 
-const hostGroupSchema: z.ZodType<HostGroupInput> = z.object({
+const hostGroupSchema: z.ZodType<HostGroupInput, HostGroupInput> = z.object({
   id: z.string().uuid(),
   name: z.string(),
 });
 
-const childSchema: z.ZodType<ChildInput> = z.object({
+const childSchema: z.ZodType<ChildInput, ChildInput> = z.object({
   owner: z.object({
     id: z.number(),
     name: z.string(),
@@ -72,7 +78,7 @@ const childSchema: z.ZodType<ChildInput> = z.object({
   hidden: z.boolean(),
 });
 
-const destinationCalendarInputSchema: z.ZodType<DestinationCalendarInput> = z
+const destinationCalendarInputSchema: z.ZodType<DestinationCalendarInput, DestinationCalendarInput> = z
   .object({
     integration: z.string(),
     externalId: z.string(),
@@ -86,7 +92,7 @@ const destinationCalendarInputSchema: z.ZodType<DestinationCalendarInput> = z
  * inferring the complex type through the schema chain. This is a key
  * optimization that reduces type-checking time significantly.
  */
-const BaseEventTypeUpdateInput: z.ZodType<TUpdateInputSchema> = z
+const BaseEventTypeUpdateInput: z.ZodType<TUpdateInputSchema, TUpdateInputSchemaInput> = z
   .object({
     // Required field
     id: z.number().int(),

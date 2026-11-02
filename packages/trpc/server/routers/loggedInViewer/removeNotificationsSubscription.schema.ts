@@ -4,7 +4,7 @@ export type TRemoveNotificationsSubscriptionInputSchema = {
   subscription: string;
 };
 
-export const ZRemoveNotificationsSubscriptionInputSchema: z.ZodType<TRemoveNotificationsSubscriptionInputSchema> =
+export const ZRemoveNotificationsSubscriptionInputSchema: z.ZodType<TRemoveNotificationsSubscriptionInputSchema, TRemoveNotificationsSubscriptionInputSchema> =
   z.object({
     subscription: z.string(),
   });
