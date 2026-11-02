@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-
 import { getBookingFieldsWithSystemFields } from "./getBookingFields";
 
-const defaults = {
+const defaults: Pick<
+  Parameters<typeof getBookingFieldsWithSystemFields>[0],
+  "disableGuests" | "customInputs" | "metadata"
+> = {
   disableGuests: false,
   customInputs: [],
   metadata: {},

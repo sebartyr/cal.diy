@@ -10,7 +10,10 @@ export type TConnectedCalendarsInputSchema =
     }
   | undefined;
 
-export const ZConnectedCalendarsInputSchema: z.ZodType<TConnectedCalendarsInputSchema, TConnectedCalendarsInputSchema> = z
+export const ZConnectedCalendarsInputSchema: z.ZodType<
+  TConnectedCalendarsInputSchema,
+  TConnectedCalendarsInputSchema
+> = z
   .object({
     onboarding: z.boolean().optional(),
     // Fetches the calendars for this event-type only if present

@@ -132,7 +132,10 @@ export const defaultBookerLayoutSettings = {
 
 export type BookerLayoutSettings = z.infer<typeof bookerLayouts>;
 
-export const RequiresConfirmationThresholdUnits: z.ZodType<UnitTypeLongPlural, UnitTypeLongPlural> = z.enum(["hours", "minutes"]);
+export const RequiresConfirmationThresholdUnits: z.ZodType<UnitTypeLongPlural, UnitTypeLongPlural> = z.enum([
+  "hours",
+  "minutes",
+]);
 
 const _eventTypeMetaDataSchemaWithoutApps = z.object({
   smartContractAddress: z.string().optional(),

@@ -5,7 +5,10 @@ export type TRequestRescheduleInputSchema = {
   rescheduleReason?: string;
 };
 
-export const ZRequestRescheduleInputSchema: z.ZodType<TRequestRescheduleInputSchema, TRequestRescheduleInputSchema> = z.object({
+export const ZRequestRescheduleInputSchema: z.ZodType<
+  TRequestRescheduleInputSchema,
+  TRequestRescheduleInputSchema
+> = z.object({
   bookingUid: z.string(),
   rescheduleReason: z.string().optional(),
 });

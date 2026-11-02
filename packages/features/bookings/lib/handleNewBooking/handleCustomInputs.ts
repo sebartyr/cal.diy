@@ -45,7 +45,5 @@ function validatePhoneInput(value: string | boolean | undefined, errorMessage: s
 }
 
 function validateStringInput(value: string | boolean | undefined, errorMessage: string) {
-  z.string({ error: errorMessage })
-    .min(1, { error: errorMessage })
-    .parse(value);
+  z.string({ error: errorMessage }).min(1, { error: errorMessage }).parse(value);
 }
