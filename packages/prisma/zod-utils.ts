@@ -366,7 +366,7 @@ export const createdEventSchema = z
   .passthrough();
 
 const schemaDefaultConferencingApp = z.object({
-  appSlug: z.string().default("jitsi").optional(),
+  appSlug: z.string().optional(),
   appLink: z.string().optional(),
 });
 
@@ -873,7 +873,7 @@ export const baseFieldSchema = z.object({
    * Supports translation
    */
   defaultPlaceholder: z.string().optional(),
-  required: z.boolean().default(false).optional(),
+  required: z.boolean().optional(),
   /**
    * It is the list of options that is valid for a certain type of fields.
    *
@@ -971,10 +971,10 @@ export const fieldSchema = baseFieldSchema.merge(
     /**
      * It is used to hide fields such as location when there are less than two options
      */
-    hideWhenJustOneOption: z.boolean().default(false).optional(),
+    hideWhenJustOneOption: z.boolean().optional(),
 
     hidden: z.boolean().optional(),
-    editable: EditableSchema.default("user").optional(),
+    editable: EditableSchema.optional(),
     sources: z
       .array(
         z.object({
@@ -988,7 +988,7 @@ export const fieldSchema = baseFieldSchema.merge(
         })
       )
       .optional(),
-    disableOnPrefill: z.boolean().default(false).optional(),
+    disableOnPrefill: z.boolean().optional(),
   })
 );
 
