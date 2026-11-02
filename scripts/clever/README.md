@@ -83,7 +83,6 @@ API v2 reads the same environment as the web app, plus:
 | `DATABASE_READ_URL`, `DATABASE_WRITE_URL` | no | Default to `DATABASE_URL`. Set them only to send reads to a replica. |
 | `JWT_SECRET` | yes | |
 | `API_URL` | yes | The public URL followed by `/api`, e.g. `https://calendar.example.com/api`. API v2 appends `/v2` to build the OAuth redirect URIs of its calendar and conferencing endpoints; it defaults to `http://localhost`. |
-| `WEB_APP_URL` | yes | The public URL, like `NEXT_PUBLIC_WEBAPP_URL`. Defaults to `https://app.cal.com`. |
 | `REDIS_URL` | no | Without it, rate limits and caches live in the process's memory, which is only correct with a single instance. Use a Redis add-on before scaling out. |
 | `NEXT_PUBLIC_API_V2_URL` | must be unset | It points `/api/v2/*` to a separately deployed API instead. |
 | `ENABLE_SLOTS_WORKERS`, `SLOTS_WORKER_POOL_SIZE` | no (`true`, `4`) | API v2 computes slots in worker threads, which share the web app's memory. Lower the pool size or disable the workers on small instances. |
