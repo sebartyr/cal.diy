@@ -1,35 +1,56 @@
 import { AppConfig } from "@/config/type";
+import { InMemoryRedis, type RedisClient } from "@/modules/redis/in-memory-redis";
 import { Injectable, OnModuleDestroy, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Redis } from "ioredis";
 
+// Several modules list RedisService in their own providers, so Nest creates one instance per module.
+// With Redis they all reach the same server; without it they must share one store, or a cache
+// invalidated through one instance would stay stale in the others.
+let sharedInMemoryRedis: InMemoryRedis | null = null;
+
 @Injectable()
 export class RedisService implements OnModuleDestroy {
-  public redis: Redis;
+  public redis: RedisClient;
+  /** The ioredis connection, or null when REDIS_URL is not set and `redis` is in-memory. */
+  public readonly connection: Redis | null;
   private readonly logger = new Logger("RedisService");
   private isReady = false; // Track connection status
 
   constructor(readonly configService: ConfigService<AppConfig>) {
     const dbUrl = configService.get<string>("db.redisUrl", { infer: true });
-    if (!dbUrl) throw new Error("Misconfigured Redis, halting.");
+    if (!dbUrl) {
+      if (!sharedInMemoryRedis) {
+        this.logger.warn(
+          "REDIS_URL is not set: rate limits and caches are kept in this process's memory, which is only correct when the API runs as a single instance."
+        );
+        sharedInMemoryRedis = new InMemoryRedis();
+      }
+      this.redis = sharedInMemoryRedis;
+      this.connection = null;
+      this.isReady = true;
+      return;
+    }
 
-    this.redis = new Redis(dbUrl);
+    const connection = new Redis(dbUrl);
+    this.connection = connection;
+    this.redis = connection;
 
-    this.redis.on("error", (err) => {
+    connection.on("error", (err) => {
       this.logger.error(`IoRedis connection error: ${err.message}`);
       this.isReady = false;
     });
 
-    this.redis.on("connect", () => {
+    connection.on("connect", () => {
       this.logger.log("IoRedis connected!");
       this.isReady = true;
     });
 
-    this.redis.on("reconnecting", (delay: string) => {
+    connection.on("reconnecting", (delay: string) => {
       this.logger.warn(`IoRedis reconnecting... next retry in ${delay}ms`);
     });
 
-    this.redis.on("end", () => {
+    connection.on("end", () => {
       this.logger.warn("IoRedis connection ended.");
       this.isReady = false;
     });

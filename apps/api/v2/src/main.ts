@@ -24,35 +24,42 @@ const logger: Logger = new Logger("App");
  * Ensures we only initialize the app once per container lifecycle.
  */
 class NestServer {
-  private static server: Express; // The underlying Express instance
+  // The promise, not the server, is cached: requests that arrive while Nest is still initialising
+  // must wait for that initialisation instead of each creating an app with its own DB pools and
+  // slot workers, which is what happens on the first burst of traffic after a restart.
+  private static serverPromise: Promise<Express> | null = null;
 
   private constructor() {}
 
-  /**
-   * Returns the cached server instance.
-   * If it doesn't exist, it creates, bootstraps, and initializes it.
-   */
-  public static async getInstance(): Promise<Express> {
-    if (!NestServer.server) {
-      const app = await createNestApp();
+  public static getInstance(): Promise<Express> {
+    NestServer.serverPromise ??= NestServer.initialize().catch((error: unknown) => {
+      // Let the next request retry instead of caching the failure for the life of the process.
+      NestServer.serverPromise = null;
+      throw error;
+    });
+    return NestServer.serverPromise;
+  }
 
-      // Execute bootstrap (Pipes, Interceptors, CORS, etc.)
-      bootstrap(app);
+  private static async initialize(): Promise<Express> {
+    const app = await createNestApp();
 
-      // Initialize the app (connects to DB, resolves modules)
-      await app.init();
+    // Execute bootstrap (Pipes, Interceptors, CORS, etc.)
+    bootstrap(app);
 
-      // extract the Express instance to pass to Vercel
-      NestServer.server = app.getHttpAdapter().getInstance();
-    }
-    return NestServer.server;
+    // Initialize the app (connects to DB, resolves modules)
+    await app.init();
+
+    // extract the Express instance to pass to Vercel
+    return app.getHttpAdapter().getInstance();
   }
 }
 
 // -----------------------------------------------------------------------------
 // LOCAL DEVELOPMENT STARTUP
 // -----------------------------------------------------------------------------
-if (!process.env.VERCEL) {
+// ENABLE_API_V2=true means the web app serves the API through the default export below, in its own process
+// and port (apps/web/pages/api/v2/[...path].ts). VERCEL cannot be reused for that: the web app reads it.
+if (!process.env.VERCEL && process.env.ENABLE_API_V2 !== "true") {
   run().catch((error: Error) => {
     logger.error("Failed to start Cal Platform API", { error: error.stack });
     process.exit(1);

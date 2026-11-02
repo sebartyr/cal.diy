@@ -625,6 +625,12 @@ docker-calcom-1  | @calcom/web:start:   message: 'request to http://testing.loca
 docker-calcom-1  | @calcom/web:start: }
 ```
 
+### Clever Cloud
+
+Cal.diy runs on [Clever Cloud](https://www.clever-cloud.com) as a single Node.js application with a
+PostgreSQL add-on, optionally serving API v2 from the same process. See
+[`scripts/clever/README.md`](scripts/clever/README.md) for the settings, build hooks and options.
+
 ### Railway
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/cal)
