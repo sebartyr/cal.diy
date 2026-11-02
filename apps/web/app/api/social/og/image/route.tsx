@@ -1,12 +1,13 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
-import type { SatoriOptions } from "satori";
 import { z, ZodError } from "zod";
 
 import { Meeting, App, Generic, getOGImageVersion } from "@calcom/lib/OgImages";
 import { WEBAPP_URL } from "@calcom/lib/constants";
 
 export const runtime = "edge";
+
+type OgFont = NonNullable<NonNullable<ConstructorParameters<typeof ImageResponse>[1]>["fonts"]>[number];
 
 const meetingSchema = z.object({
   imageType: z.literal("meeting"),
@@ -42,7 +43,7 @@ async function handler(req: NextRequest) {
       fetch(new URL("/fonts/Inter-Medium.ttf", WEBAPP_URL)).then((res) => res.arrayBuffer()),
     ]);
 
-    const fonts: SatoriOptions["fonts"] = [];
+    const fonts: OgFont[] = [];
 
     if (fontResults[1].status === "fulfilled") {
       fonts.push({ name: "inter", data: fontResults[1].value, weight: 400 });
