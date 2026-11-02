@@ -4,6 +4,11 @@ import { Injectable, OnModuleDestroy, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Redis } from "ioredis";
 
+// Several modules list RedisService in their own providers, so Nest creates one instance per module.
+// With Redis they all reach the same server; without it they must share one store, or a cache
+// invalidated through one instance would stay stale in the others.
+let sharedInMemoryRedis: InMemoryRedis | null = null;
+
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   public redis: RedisClient;
@@ -15,10 +20,13 @@ export class RedisService implements OnModuleDestroy {
   constructor(readonly configService: ConfigService<AppConfig>) {
     const dbUrl = configService.get<string>("db.redisUrl", { infer: true });
     if (!dbUrl) {
-      this.logger.warn(
-        "REDIS_URL is not set: rate limits and caches are kept in this process's memory, which is only correct when the API runs as a single instance."
-      );
-      this.redis = new InMemoryRedis();
+      if (!sharedInMemoryRedis) {
+        this.logger.warn(
+          "REDIS_URL is not set: rate limits and caches are kept in this process's memory, which is only correct when the API runs as a single instance."
+        );
+        sharedInMemoryRedis = new InMemoryRedis();
+      }
+      this.redis = sharedInMemoryRedis;
       this.connection = null;
       this.isReady = true;
       return;

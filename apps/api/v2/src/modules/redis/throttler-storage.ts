@@ -14,7 +14,7 @@ class InMemoryThrottlerStorage extends ThrottlerStorageService {
   }
 }
 
-const storages = new WeakMap<RedisService, ThrottlerStorageWithCache>();
+const storages = new WeakMap<RedisClient, ThrottlerStorageWithCache>();
 
 /**
  * Rate-limit counters live in Redis when it is configured, otherwise in this process's memory.
@@ -22,14 +22,14 @@ const storages = new WeakMap<RedisService, ThrottlerStorageWithCache>();
  * instance it opens its own connection to localhost:6379.
  */
 export function getThrottlerStorage(redisService: RedisService): ThrottlerStorageWithCache {
-  const existing = storages.get(redisService);
+  const existing = storages.get(redisService.redis);
   if (existing) return existing;
 
   const storage = redisService.connection
     ? new ThrottlerStorageRedisService(redisService.connection)
     : new InMemoryThrottlerStorage(redisService.redis);
-  // AppModule asks for a storage twice (ThrottlerModule options and the guard's provider); with the
-  // in-memory store they must share the same counters.
-  storages.set(redisService, storage);
+  // Keyed by client: RedisService has one instance per module that provides it, and with the
+  // in-memory store every caller must share the same counters.
+  storages.set(redisService.redis, storage);
   return storage;
 }
