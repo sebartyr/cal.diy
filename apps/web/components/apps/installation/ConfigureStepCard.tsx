@@ -1,9 +1,9 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import type { Dispatch, SetStateAction } from "react";
 import type { FC } from "react";
 import React, { forwardRef, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFieldArray, useFormContext } from "react-hook-form";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -75,7 +75,7 @@ const EventTypeAppSettingsForm = forwardRef<HTMLButtonElement, EventTypeAppSetti
         bookingFields: eventType?.bookingFields ?? undefined,
         seatsPerTimeSlot: eventType?.seatsPerTimeSlot ?? undefined,
       },
-      resolver: zodResolver(
+      resolver: zodFormResolver<TFormType>(
         z.object({
           locations: locationsResolver(t),
         })

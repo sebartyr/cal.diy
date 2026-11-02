@@ -12,7 +12,7 @@ import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { validateIntervalLimitOrder } from "@calcom/lib/intervalLimits/validateIntervalLimitOrder";
 import { validateBookerLayouts } from "@calcom/lib/validateBookerLayouts";
 import { eventTypeBookingFields as eventTypeBookingFieldsSchema } from "@calcom/prisma/zod-utils";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -138,7 +138,7 @@ export const useEventTypeForm = ({
 
   const form = useForm<FormValues>({
     defaultValues,
-    resolver: zodResolver(
+    resolver: zodFormResolver<FormValues>(
       z
         .object({
           // Length if string, is converted to a number or it can be a number

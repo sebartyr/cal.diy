@@ -20,6 +20,7 @@ import { Button } from "@calcom/ui/components/button";
 import { DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@calcom/ui/components/dialog";
 import { Editor } from "@calcom/ui/components/editor";
 import { Form, Label, PasswordField, TextField } from "@calcom/ui/components/form";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { ImageUploader } from "@calcom/ui/components/image-uploader";
 import { showToast } from "@calcom/ui/components/toast";
 import { DisplayInfo } from "@calcom/web/modules/users/components/UserTable/EditSheet/DisplayInfo";
@@ -29,7 +30,6 @@ import SecondaryEmailConfirmModal from "@components/settings/SecondaryEmailConfi
 import SecondaryEmailModal from "@components/settings/SecondaryEmailModal";
 import { UsernameAvailabilityField } from "@components/ui/UsernameAvailability";
 import { InfoIcon } from "@coss/ui/icons";
-import { zodResolver } from "@hookform/resolvers/zod";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { revalidateSettingsProfile } from "app/cache/path/settings/my-account";
 // eslint-disable-next-line no-restricted-imports
@@ -537,7 +537,7 @@ const ProfileForm = ({
 
   const formMethods = useForm<FormValues>({
     defaultValues,
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodFormResolver<FormValues>(profileFormSchema),
   });
 
   const {

@@ -20,11 +20,6 @@ export type UpdateUsersDefaultConferencingAppParams = {
   onErrorCallback: () => void;
 };
 
-type LocationTypeSetLinkDialogFormProps = {
-  link?: string;
-  type: EventLocationType["type"];
-};
-
 export function AppSetDefaultLinkDialog({
   locationType,
   setLocationType,
@@ -39,7 +34,7 @@ export function AppSetDefaultLinkDialog({
   const { t } = useLocale();
   const eventLocationTypeOptions = getLocationByType(locationType.type);
 
-  const form = useForm<LocationTypeSetLinkDialogFormProps>({
+  const form = useForm({
     resolver: zodResolver(
       z.object({ link: z.string().regex(new RegExp(eventLocationTypeOptions?.urlRegExp ?? "")) })
     ),

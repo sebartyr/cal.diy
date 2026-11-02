@@ -16,22 +16,13 @@ import { PasswordField } from "@calcom/ui/components/form";
 import { TextField } from "@calcom/ui/components/form";
 import { SelectField } from "@calcom/ui/components/form";
 
-interface IFormData {
-  url: string;
-  username: string;
-  password: string;
-  authenticationMethod: ExchangeAuthentication;
-  exchangeVersion: ExchangeVersion;
-  useCompression: boolean;
-}
-
 const schema = z
   .object({
     url: z.string().url(),
     username: emailSchema,
     password: z.string(),
-    authenticationMethod: z.number().default(ExchangeAuthentication.STANDARD),
-    exchangeVersion: z.number().default(ExchangeVersion.Exchange2016),
+    authenticationMethod: z.nativeEnum(ExchangeAuthentication).default(ExchangeAuthentication.STANDARD),
+    exchangeVersion: z.nativeEnum(ExchangeVersion).default(ExchangeVersion.Exchange2016),
     useCompression: z.boolean().default(false),
   })
   .strict();
@@ -40,7 +31,7 @@ export default function ExchangeSetup() {
   const { t } = useLocale();
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
-  const form = useForm<IFormData>({
+  const form = useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({
     defaultValues: {
       authenticationMethod: ExchangeAuthentication.NTLM,
       exchangeVersion: ExchangeVersion.Exchange2016,

@@ -1154,7 +1154,7 @@ __metadata:
   dependencies:
     "@calcom/prisma": "workspace:*"
     "@calcom/types": "workspace:*"
-    react-hook-form: "npm:7.43.3"
+    react-hook-form: "npm:7.91.0"
   languageName: unknown
   linkType: soft
 
@@ -1807,6 +1807,7 @@ __metadata:
     "@calcom/lib": "workspace:*"
     "@calcom/tsconfig": "workspace:*"
     "@formkit/auto-animate": "npm:1.0.0-beta.5"
+    "@hookform/resolvers": "npm:7.0.1"
     "@lexical/code": "npm:0.9.0"
     "@lexical/html": "npm:0.9.0"
     "@lexical/link": "npm:0.9.0"
@@ -1841,7 +1842,7 @@ __metadata:
     react-colorful: "npm:5.6.1"
     react-day-picker: "npm:8.10.1"
     react-easy-crop: "npm:5.0.0"
-    react-hook-form: "npm:7.43.3"
+    react-hook-form: "npm:7.91.0"
     react-inlinesvg: "npm:4.1.3"
     react-select: "npm:5.8.0"
     sonner: "npm:1.7.4"
@@ -1888,7 +1889,7 @@ __metadata:
     "@googleapis/calendar": "npm:9.7.9"
     "@googleapis/oauth2": "npm:1.0.7"
     "@hookform/error-message": "npm:2.0.0"
-    "@hookform/resolvers": "npm:2.9.7"
+    "@hookform/resolvers": "npm:7.0.1"
     "@microsoft/microsoft-graph-types-beta": "npm:0.15.0-preview"
     "@next/bundle-analyzer": "npm:16.1.5"
     "@next/third-parties": "npm:14.2.5"
@@ -1972,7 +1973,7 @@ __metadata:
     react-digit-input: "npm:2.1.0"
     react-dom: "npm:18.2.0"
     react-easy-crop: "npm:3.5.3"
-    react-hook-form: "npm:7.43.3"
+    react-hook-form: "npm:7.91.0"
     react-i18next: "npm:12.3.1"
     react-phone-input-2: "npm:2.15.1"
     react-schemaorg: "npm:2.0.0"
@@ -3321,12 +3322,84 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hookform/resolvers@npm:2.9.7":
-  version: 2.9.7
-  resolution: "@hookform/resolvers@npm:2.9.7"
+"@hookform/resolvers@npm:7.0.1":
+  version: 7.0.1
+  resolution: "@hookform/resolvers@npm:7.0.1"
+  dependencies:
+    "@standard-schema/utils": "npm:^0.3.0"
   peerDependencies:
-    react-hook-form: ^7.0.0
-  checksum: 10/65c2dbf61a7eec70b247409cea592e9ab6b9e0f6be3dd95da14f0e68a199cd9f902b7d7f9d4c44b0eb6de1d9b1917d58585d5d8cf25f0ce6387cd0b4ca122293
+    "@standard-schema/spec": ^1.0.0
+    "@vinejs/vine": ^2.0.0 || ^3.0.0 || ^4.0.0
+    ajv: ^8.12.0
+    ajv-errors: ^3.0.0
+    ajv-formats: ^2.1.1
+    arktype: ^2.0.0
+    ata-validator: ^1.23.0
+    class-transformer: ">=0.4.0"
+    class-validator: ">=0.12.0"
+    computed-types: ^1.0.0
+    effect: ^4.0.0
+    fluentvalidation-ts: ^3.0.0
+    fp-ts: ^2.7.0
+    io-ts: ^2.0.0
+    joi: ^17.0.0 || ^18.0.0
+    nope-validator: ">=0.12.0"
+    react-hook-form: ^7.55.0
+    superstruct: ">=0.12.0"
+    typanion: ^3.3.2
+    typebox: ^1.0.0
+    valibot: ">=0.31.0 || ^1.0.0-beta.4 || ^1.0.0-rc"
+    vest: ">=6.0.0"
+    yup: ^1.0.0
+    zod: ^3.25.0 || ^4.0.0
+  peerDependenciesMeta:
+    "@standard-schema/spec":
+      optional: true
+    "@vinejs/vine":
+      optional: true
+    ajv:
+      optional: true
+    ajv-errors:
+      optional: true
+    ajv-formats:
+      optional: true
+    arktype:
+      optional: true
+    ata-validator:
+      optional: true
+    class-transformer:
+      optional: true
+    class-validator:
+      optional: true
+    computed-types:
+      optional: true
+    effect:
+      optional: true
+    fluentvalidation-ts:
+      optional: true
+    fp-ts:
+      optional: true
+    io-ts:
+      optional: true
+    joi:
+      optional: true
+    nope-validator:
+      optional: true
+    superstruct:
+      optional: true
+    typanion:
+      optional: true
+    typebox:
+      optional: true
+    valibot:
+      optional: true
+    vest:
+      optional: true
+    yup:
+      optional: true
+    zod:
+      optional: true
+  checksum: 10/0f17d35262354d6500bc8ac244315f9ad1d456b20a4477e28e0941da11cbf2885374051a797df7c79452baebc6a8b36966ce942421d404122a9c2c6fcfe02bc6
   languageName: node
   linkType: hard
 
@@ -10052,6 +10125,13 @@ __metadata:
   version: 1.1.0
   resolution: "@standard-schema/spec@npm:1.1.0"
   checksum: 10/a209615c9e8b2ea535d7db0a5f6aa0f962fd4ab73ee86a46c100fb78116964af1f55a27c1794d4801e534a196794223daa25ff5135021e03c7828aa3d95e1763
+  languageName: node
+  linkType: hard
+
+"@standard-schema/utils@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@standard-schema/utils@npm:0.3.0"
+  checksum: 10/7084f875d322792f2e0a5904009434c8374b9345b09ba89828b68fd56fa3c2b366d35bf340d9e8c72736ef01793c2f70d350c372ed79845dc3566c58d34b4b51
   languageName: node
   linkType: hard
 
@@ -26169,12 +26249,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-hook-form@npm:7.43.3":
-  version: 7.43.3
-  resolution: "react-hook-form@npm:7.43.3"
+"react-hook-form@npm:7.91.0":
+  version: 7.91.0
+  resolution: "react-hook-form@npm:7.91.0"
   peerDependencies:
-    react: ^16.8.0 || ^17 || ^18
-  checksum: 10/df766b8b8b5f298e773d517c232fe6717dcb6451337fbdf388af08b9a4aa451d7783bb92872e10c1debe7011dd930411126e378b03fed445e357aa7932535bce
+    "@types/react": "*"
+    react: ^16.8.0 || ^17 || ^18 || ^19
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10/ae6897f95a6a0e0289c44f36230867ad2c9c7380b8d8b8eab2ae0a559e706fdfc96508d2dcc150d70ee00b40c4a7e4b7e2e04b6082cc24d098b5f258cd9b9d50
   languageName: node
   linkType: hard
 

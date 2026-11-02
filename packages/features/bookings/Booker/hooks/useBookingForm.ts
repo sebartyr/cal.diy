@@ -1,6 +1,6 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { z } from "zod";
 
 import type { EventLocationType } from "@calcom/app-store/locations";
@@ -80,15 +80,9 @@ export const useBookingForm = ({
 
   const bookingForm = useForm<BookingFormValues>({
     defaultValues: initialValues,
-    resolver: zodResolver(
-      // Since this isn't set to strict we only validate the fields in the schema
-      bookingFormSchema,
-      {},
-      {
-        // bookingFormSchema is an async schema, so inform RHF to do async validation.
-        mode: "async",
-      }
-    ),
+    // Since this isn't set to strict we only validate the fields in the schema.
+    // bookingFormSchema is an async schema, so inform RHF to do async validation.
+    resolver: zodFormResolver<BookingFormValues>(bookingFormSchema, { mode: "async" }),
   });
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import { useCompatSearchParams } from "@calcom/lib/hooks/useCompatSearchParams";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { Alert } from "@calcom/ui/components/alert";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { Icon } from "@calcom/ui/components/icon";
 import AddToHomescreen from "@components/AddToHomescreen";
 import BackupCode from "@components/auth/BackupCode";
@@ -16,7 +17,6 @@ import { Field, FieldLabel } from "@coss/ui/components/field";
 import { Input } from "@coss/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@coss/ui/components/input-group";
 import { Separator } from "@coss/ui/components/separator";
-import { zodResolver } from "@hookform/resolvers/zod";
 import type { inferSSRProps } from "@lib/types/inferSSRProps";
 import type { getServerSideProps } from "@server/lib/auth/login/getServerSideProps";
 import { Eye, EyeOff } from "lucide-react";
@@ -118,7 +118,7 @@ export default function Login({
     // Passthrough other fields like totpCode
     .passthrough();
   const methods = useForm<LoginValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodFormResolver<LoginValues>(formSchema),
     defaultValues: totpEmail ? { email: totpEmail } : undefined,
   });
   const { register, formState } = methods;
