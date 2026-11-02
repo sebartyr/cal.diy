@@ -29,7 +29,6 @@ import SecondaryEmailConfirmModal from "@components/settings/SecondaryEmailConfi
 import SecondaryEmailModal from "@components/settings/SecondaryEmailModal";
 import { UsernameAvailabilityField } from "@components/ui/UsernameAvailability";
 import { InfoIcon } from "@coss/ui/icons";
-import { zodResolver } from "@hookform/resolvers/zod";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { revalidateSettingsProfile } from "app/cache/path/settings/my-account";
 // eslint-disable-next-line no-restricted-imports
@@ -39,6 +38,7 @@ import type React from "react";
 import type { BaseSyntheticEvent } from "react";
 import { useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { z } from "zod";
 import { CompanyEmailOrganizationBanner } from "./components/CompanyEmailOrganizationBanner";
 
@@ -537,7 +537,7 @@ const ProfileForm = ({
 
   const formMethods = useForm<FormValues>({
     defaultValues,
-    resolver: zodResolver(profileFormSchema),
+    resolver: zodFormResolver<FormValues>(profileFormSchema),
   });
 
   const {

@@ -51,7 +51,7 @@ export default function ApiKeyDialogForm({
     neverExpires: false,
   });
 
-  const form = useForm({
+  const form = useForm<{ note: string; neverExpires: boolean; expiresAt: Date }>({
     defaultValues: {
       note: defaultValues?.note || "",
       neverExpires: defaultValues?.neverExpires || false,
@@ -67,7 +67,9 @@ export default function ApiKeyDialogForm({
           message: t("api_key_name_too_long", { max: API_NAME_LENGTH_MAX_LIMIT }),
         };
       }
-      return { values, errors };
+      // react-hook-form only accepts values alongside an empty error object.
+      if (errors.note) return { values: {}, errors };
+      return { values, errors: {} };
     },
   });
   const watchNeverExpires = form.watch("neverExpires");

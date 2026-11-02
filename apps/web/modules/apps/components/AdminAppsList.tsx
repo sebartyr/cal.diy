@@ -23,12 +23,13 @@ import { SkeletonButton, SkeletonContainer, SkeletonText } from "@calcom/ui/comp
 import { showToast } from "@calcom/ui/components/toast";
 import AppListCardWebWrapper from "@calcom/web/modules/apps/components/AppListCardWebWrapper";
 import { PencilIcon } from "@coss/ui/icons";
-import { zodResolver } from "@hookform/resolvers/zod";
 // eslint-disable-next-line no-restricted-imports
 import { noop } from "lodash";
 import type { FC } from "react";
 import { useReducer, useState } from "react";
+import type { FieldValues } from "react-hook-form";
 import { Controller, useForm } from "react-hook-form";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { z } from "zod";
 
 type App = RouterOutputs["viewer"]["apps"]["listLocal"][number];
@@ -202,8 +203,9 @@ const EditKeysModal: FC<{
   const { dirName, slug, type, isOpen, keys, handleModelClose, fromEnabled, appName } = props;
   const appKeySchema = appKeysSchemas[dirName as keyof typeof appKeysSchemas];
 
-  const formMethods = useForm({
-    resolver: zodResolver(appKeySchema),
+  // The keys, and the JSON type of their values, differ per app.
+  const formMethods = useForm<FieldValues>({
+    resolver: zodFormResolver(appKeySchema),
   });
 
   const saveKeysMutation = trpc.viewer.apps.saveKeys.useMutation({

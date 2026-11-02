@@ -1,8 +1,9 @@
 import { ErrorMessage } from "@hookform/error-message";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { isValidPhoneNumber } from "libphonenumber-js/max";
 import { useEffect, useState } from "react";
+import type { FieldValues } from "react-hook-form";
 import { Controller, useForm, useWatch, useFormContext } from "react-hook-form";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { z } from "zod";
 
 import type { EventLocationType, LocationObject } from "@calcom/app-store/locations";
@@ -153,9 +154,10 @@ export const EditLocationDialog = (props: ISetLocationDialog) => {
 
   const [isLocationUpdating, setIsLocationUpdating] = useState(false);
 
-  const locationFormMethods = useForm({
+  // Each location type stores its value under its own `variable` key, so the form is a record of them.
+  const locationFormMethods = useForm<FieldValues>({
     mode: "onSubmit",
-    resolver: zodResolver(locationFormSchema),
+    resolver: zodFormResolver(locationFormSchema),
   });
 
   const selectedLocation = useWatch({

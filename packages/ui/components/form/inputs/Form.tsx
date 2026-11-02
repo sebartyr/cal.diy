@@ -7,12 +7,16 @@ import { getErrorFromUnknown } from "@calcom/lib/errors";
 
 import { showToast } from "../../toast";
 
-type FormProps<T extends object> = { form: UseFormReturn<T>; handleSubmit: SubmitHandler<T> } & Omit<
-  JSX.IntrinsicElements["form"],
-  "onSubmit"
->;
+// TTransformedValues is what the resolver hands to handleSubmit, e.g. a zod schema's output.
+type FormProps<TFieldValues extends FieldValues, TContext, TTransformedValues> = {
+  form: UseFormReturn<TFieldValues, TContext, TTransformedValues>;
+  handleSubmit: SubmitHandler<TTransformedValues>;
+} & Omit<JSX.IntrinsicElements["form"], "onSubmit">;
 
-const PlainForm = <T extends FieldValues>(props: FormProps<T>, ref: Ref<HTMLFormElement>) => {
+const PlainForm = <TFieldValues extends FieldValues, TContext, TTransformedValues>(
+  props: FormProps<TFieldValues, TContext, TTransformedValues>,
+  ref: Ref<HTMLFormElement>
+) => {
   const { form, handleSubmit, ...passThrough } = props;
 
   return (
@@ -37,6 +41,10 @@ const PlainForm = <T extends FieldValues>(props: FormProps<T>, ref: Ref<HTMLForm
   );
 };
 
-export const Form = forwardRef(PlainForm) as <T extends FieldValues>(
-  p: FormProps<T> & { ref?: Ref<HTMLFormElement> }
+export const Form = forwardRef(PlainForm) as <
+  TFieldValues extends FieldValues,
+  TContext = unknown,
+  TTransformedValues = TFieldValues,
+>(
+  p: FormProps<TFieldValues, TContext, TTransformedValues> & { ref?: Ref<HTMLFormElement> }
 ) => ReactElement;
