@@ -17,11 +17,11 @@ describe("embeddedApiV2", () => {
 
   const load = () => import("./embeddedApiV2");
 
-  it("is enabled only by API_V2_EMBEDDED=true", async () => {
-    const { isApiV2Embedded } = await load();
-    expect(isApiV2Embedded({ API_V2_EMBEDDED: "true" })).toBe(true);
-    expect(isApiV2Embedded({ API_V2_EMBEDDED: "1" })).toBe(false);
-    expect(isApiV2Embedded({})).toBe(false);
+  it("is enabled only by ENABLE_API_V2=true", async () => {
+    const { isApiV2Enabled } = await load();
+    expect(isApiV2Enabled({ ENABLE_API_V2: "true" })).toBe(true);
+    expect(isApiV2Enabled({ ENABLE_API_V2: "1" })).toBe(false);
+    expect(isApiV2Enabled({})).toBe(false);
   });
 
   it.each([

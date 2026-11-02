@@ -1,5 +1,5 @@
 import logger from "@calcom/lib/logger";
-import { isApiV2Embedded, loadApiV2Handler, toApiV2Url } from "@lib/embeddedApiV2";
+import { isApiV2Enabled, loadApiV2Handler, toApiV2Url } from "@lib/embeddedApiV2";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const log = logger.getSubLogger({ prefix: ["embedded-api-v2"] });
@@ -14,7 +14,7 @@ export const config = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!isApiV2Embedded()) {
+  if (!isApiV2Enabled()) {
     res.status(404).json({ message: "Not found" });
     return;
   }

@@ -44,7 +44,7 @@ describe("pages/api/v2/[...path]", () => {
   });
 
   it("hands the request to the API under its own path, without Next's parsed query", async () => {
-    vi.stubEnv("API_V2_EMBEDDED", "true");
+    vi.stubEnv("ENABLE_API_V2", "true");
     const { req, res } = buildRequest("/api/v2/bookings?take=10");
 
     await handler(req, res);
@@ -55,7 +55,7 @@ describe("pages/api/v2/[...path]", () => {
   });
 
   it("answers 503 when the compiled API cannot be loaded", async () => {
-    vi.stubEnv("API_V2_EMBEDDED", "true");
+    vi.stubEnv("ENABLE_API_V2", "true");
     loadApiV2Handler.mockRejectedValue(new Error("Cannot find module"));
     const { req, res, status } = buildRequest("/api/v2/bookings");
 

@@ -14,8 +14,8 @@ function hasDefaultHandler(mod: unknown): mod is { default: ApiV2Handler } {
 
 let handlerPromise: Promise<ApiV2Handler> | null = null;
 
-export function isApiV2Embedded(env: Record<string, string | undefined> = process.env): boolean {
-  return env.API_V2_EMBEDDED === "true";
+export function isApiV2Enabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.ENABLE_API_V2 === "true";
 }
 
 /** The API's controllers are mounted under /v2, the web app exposes them under /api/v2. */

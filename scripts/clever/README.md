@@ -70,7 +70,7 @@ Measured on a release build: 6.1 GB before trimming, 3.0 GB with the caches remo
 
 ## API v2 in the web app
 
-With `API_V2_EMBEDDED=true`, the web app also serves API v2 under `/api/v2`, in the same process and
+With `ENABLE_API_V2=true`, the web app also serves API v2 under `/api/v2`, in the same process and
 on the same port: no second application, port or run command. The variable must be set for both the
 build and the run. `post-build.sh` then builds API v2 and keeps its dependencies (about 100 MB more,
 most being shared with the web app), and `apps/web/pages/api/v2/[...path].ts` hands `/api/v2/*`
@@ -95,7 +95,7 @@ The API is then reachable at `https://<your domain>/api/v2/...`, e.g.
   message lists which.
 - **The build log shows the size before and after trimming** (`post-build: … is X before
   trimming` / `after trimming`).
-- **`/api/v2/*` answers 404**: `API_V2_EMBEDDED` is not `true` at run time. **503**: the compiled API
-  is missing, usually because `API_V2_EMBEDDED` was not set during the build; the server log says why.
+- **`/api/v2/*` answers 404**: `ENABLE_API_V2` is not `true` at run time. **503**: the compiled API
+  is missing, usually because `ENABLE_API_V2` was not set during the build; the server log says why.
 - **A user created from the admin panel cannot sign in with OIDC**: accounts created before v8.2.3 have
   no verified email; run `UPDATE "users" SET "emailVerified" = now() WHERE id = <id>;`.

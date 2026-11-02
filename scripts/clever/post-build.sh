@@ -15,7 +15,7 @@ echo "post-build: ${PWD} is $(size) before trimming"
 # Custom variable. The web app serves API v2 in its own process under /api/v2
 # (apps/web/pages/api/v2/[...path].ts), loading the `nest build` output at
 # runtime, so it is built here, before the prune removes the Nest CLI.
-if [ "${API_V2_EMBEDDED:-false}" = "true" ]; then
+if [ "${ENABLE_API_V2:-false}" = "true" ]; then
   echo "post-build: building API v2 for the web app to serve"
   yarn workspace @calcom/api-v2 dev:build
   yarn workspace @calcom/api-v2 build
@@ -51,7 +51,7 @@ if [ "${PRUNE_DEV_DEPENDENCIES:-false}" = "true" ]; then
       for (const line of input.trim().split("\n")) {
         const { location, name } = JSON.parse(line);
         if (location === "apps/web" || location.startsWith("packages/app-store/")) console.log(name);
-        if (location === "apps/api/v2" && process.env.API_V2_EMBEDDED === "true") console.log(name);
+        if (location === "apps/api/v2" && process.env.ENABLE_API_V2 === "true") console.log(name);
       }
     });
   ')

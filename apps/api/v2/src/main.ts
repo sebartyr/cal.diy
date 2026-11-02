@@ -52,9 +52,9 @@ class NestServer {
 // -----------------------------------------------------------------------------
 // LOCAL DEVELOPMENT STARTUP
 // -----------------------------------------------------------------------------
-// API_V2_EMBEDDED: the web app serves the API through the default export below, in its own process
+// ENABLE_API_V2=true means the web app serves the API through the default export below, in its own process
 // and port (apps/web/pages/api/v2/[...path].ts). VERCEL cannot be reused for that: the web app reads it.
-if (!process.env.VERCEL && process.env.API_V2_EMBEDDED !== "true") {
+if (!process.env.VERCEL && process.env.ENABLE_API_V2 !== "true") {
   run().catch((error: Error) => {
     logger.error("Failed to start Cal Platform API", { error: error.stack });
     process.exit(1);
