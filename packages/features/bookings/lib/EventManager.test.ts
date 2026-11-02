@@ -28,7 +28,9 @@ import process from "node:process";
 import { CredentialRepository } from "@calcom/features/credentials/repositories/CredentialRepository";
 import { symmetricDecrypt } from "@calcom/lib/crypto";
 import type { DestinationCalendar } from "@calcom/prisma/client";
+import type { CalendarEvent } from "@calcom/types/Calendar";
 import type { CredentialForCalendarService } from "@calcom/types/Credential";
+import { Logger } from "tslog";
 import EventManager from "./EventManager";
 
 vi.mock("@calcom/prisma", () => ({
@@ -628,5 +630,63 @@ describe("EventManager credential lookup methods", () => {
       expect(result).toMatchObject({ id: 22, type: "google_calendar" });
       expect(mockedCredentialRepository.findCredentialForCalendarServiceById).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("EventManager getVideoCredentialByCalendarEvent", () => {
+  const jitsiEvent = { location: "integrations:jitsi" } as CalendarEvent;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("uses the credential matching the location without warning when conferenceCredentialId is missing", () => {
+    const warn = vi.spyOn(Logger.prototype, "warn");
+    const jitsiCredential = buildVideoCredential({ id: 3, type: "jitsi_video" });
+    const eventManager = new EventManager({
+      credentials: [buildVideoCredential({ id: 1, type: "zoom_video" }), jitsiCredential],
+      destinationCalendar: null,
+    });
+
+    const result = eventManager["getVideoCredentialByCalendarEvent"](jitsiEvent);
+
+    expect(result).toMatchObject({ id: 3, type: "jitsi_video" });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("uses the credential referenced by conferenceCredentialId", () => {
+    const eventManager = new EventManager({
+      credentials: [
+        buildVideoCredential({ id: 1, type: "zoom_video" }),
+        buildVideoCredential({ id: 2, type: "zoom_video" }),
+      ],
+      destinationCalendar: null,
+    });
+
+    const result = eventManager["getVideoCredentialByCalendarEvent"]({
+      location: "integrations:zoom",
+      conferenceCredentialId: 2,
+    } as CalendarEvent);
+
+    expect(result).toMatchObject({ id: 2 });
+  });
+
+  it("warns and falls back to Jitsi when no credential matches the location", () => {
+    const warn = vi.spyOn(Logger.prototype, "warn");
+    const eventManager = new EventManager({ credentials: [], destinationCalendar: null });
+
+    const result = eventManager["getVideoCredentialByCalendarEvent"]({
+      location: "integrations:zoom",
+    } as CalendarEvent);
+
+    expect(result).toMatchObject({ type: "jitsi_video" });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Falling back to Jitsi"));
+  });
+
+  it("returns undefined when the event has no location", () => {
+    const eventManager = new EventManager({ credentials: [], destinationCalendar: null });
+
+    expect(eventManager["getVideoCredentialByCalendarEvent"]({} as CalendarEvent)).toBeUndefined();
   });
 });
