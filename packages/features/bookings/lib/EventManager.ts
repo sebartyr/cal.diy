@@ -1045,8 +1045,10 @@ export default class EventManager {
       videoCredential = this.videoCredentials.find((credential: CredentialForCalendarService) =>
         credential.type.includes(integrationName)
       );
-      log.warn(
-        `Could not find conferenceCredentialId for event with location: ${event.location}, trying to use last added video credential`
+      // Expected for locations saved without a credentialId (e.g. Jitsi, which needs no API key).
+      // A missing credential is reported by the fallback warning below, so this stays at debug.
+      log.debug(
+        `No conferenceCredentialId for event with location: ${event.location}, using the first video credential matching "${integrationName}"`
       );
     }
 
