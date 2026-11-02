@@ -1444,6 +1444,7 @@ __metadata:
     "@calcom/atoms": "workspace:*"
     "@calcom/dayjs": "workspace:*"
     "@calcom/i18n": "workspace:*"
+    "@calcom/kysely": "workspace:*"
     "@calcom/lib": "workspace:*"
     "@calcom/testing": "workspace:*"
     "@calcom/trpc": "workspace:*"
@@ -1463,6 +1464,7 @@ __metadata:
     deasync: "npm:^0.1.31"
     dub-package: "npm:dub@^0.61.12"
     framer-motion: "npm:10.12.8"
+    jsonwebtoken: "npm:9.0.0"
     react-select: "npm:5.8.0"
     react-sticky-box: "npm:2.0.4"
     trigger.dev: "npm:4.7.4"
@@ -1540,7 +1542,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@calcom/kysely@workspace:packages/kysely":
+"@calcom/kysely@workspace:*, @calcom/kysely@workspace:packages/kysely":
   version: 0.0.0-use.local
   resolution: "@calcom/kysely@workspace:packages/kysely"
   dependencies:
@@ -1759,6 +1761,7 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:2.3.10"
     "@calcom/i18n": "workspace:*"
+    "@calcom/kysely": "workspace:*"
     "@formbricks/api": "npm:3.0.0"
     "@tanstack/react-query": "npm:5.17.19"
     "@trpc/client": "npm:11.0.0-next-beta.222"
