@@ -32,3 +32,4 @@ API v2 reads the same environment as the web app, plus:
 | `JWT_SECRET` | yes | |
 | `REDIS_URL` | no | Without it, rate limits and caches live in the process's memory: only correct with a single instance. |
 | `NEXT_PUBLIC_API_V2_URL` | must be unset | It rewrites `/api/v2/*` to a separate API deployment. |
+| `ENABLE_SLOTS_WORKERS`, `SLOTS_WORKER_POOL_SIZE` | no (`true`, `4`) | API v2 computes slots in worker threads, which now share the web app's memory. Lower the pool size or disable the workers on small instances. |
