@@ -1,7 +1,6 @@
 import type { ResolverOptions } from "react-hook-form";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-
 import { zodFormResolver } from "./zodFormResolver";
 
 type FormValues = { email: string; csrfToken: string; totpCode?: string };
