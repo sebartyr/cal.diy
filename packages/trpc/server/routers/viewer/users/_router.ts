@@ -1,38 +1,17 @@
 import { adminUserSelect } from "@calcom/features/users/repositories/UserRepository";
 import { WEBAPP_URL } from "@calcom/lib/constants";
-import { CreationSource, RedirectType, UserPermissionRole } from "@calcom/prisma/enums";
-import { UserSchema } from "@calcom/prisma/zod/modelSchema/UserSchema";
+import { RedirectType } from "@calcom/prisma/enums";
 import { authedAdminProcedure } from "@calcom/trpc/server/procedures/authedProcedure";
 import { router } from "@calcom/trpc/server/trpc";
 import type { inferRouterOutputs } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { userBodySchema } from "./userBody.schema";
 
 export type UserAdminRouter = typeof userAdminRouter;
 export type UserAdminRouterOutputs = inferRouterOutputs<UserAdminRouter>;
 
 const userIdSchema = z.object({ userId: z.coerce.number() });
-
-// `role` is deliberately absent: it can only change through `viewer.admin.setUserRole`, which
-// enforces the self/last-admin/locked guards and the audit trail. `identityProvider` is absent
-// because it is owned by the sign-in flow (it is paired with `identityProviderId`, and a non-CAL
-// value skips the admin password/2FA policy and enables OAuth auto-linking by email).
-const userBodySchema = UserSchema.pick({
-  name: true,
-  email: true,
-  username: true,
-  bio: true,
-  timeZone: true,
-  weekStart: true,
-  theme: true,
-  defaultScheduleId: true,
-  locale: true,
-  timeFormat: true,
-  // brandColor: true,
-  // darkBrandColor: true,
-  allowDynamicBooking: true,
-  avatarUrl: true,
-});
 
 /** Reusable logic that checks for admin permissions and if the requested user exists */
 //const authedAdminWithUserMiddleware = middleware();
@@ -66,13 +45,9 @@ export const userAdminRouter = router({
     const users = await prisma.user.findMany({ select: adminUserSelect });
     return users;
   }),
-  add: authedAdminProcedure.input(userBodySchema).mutation(async ({ ctx, input }) => {
-    const { prisma } = ctx;
-    const user = await prisma.user.create({
-      data: { ...input, role: UserPermissionRole.USER, creationSource: CreationSource.WEBAPP },
-      select: adminUserSelect,
-    });
-    return { user, message: `User with id: ${user.id} added successfully` };
+  add: authedAdminProcedure.input(userBodySchema).mutation(async (opts) => {
+    const { default: handler } = await import("./add.handler");
+    return handler(opts);
   }),
   update: authedAdminProcedureWithRequestedUser
     .input(userBodySchema.partial())
