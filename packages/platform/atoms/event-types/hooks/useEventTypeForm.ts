@@ -12,9 +12,9 @@ import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { validateIntervalLimitOrder } from "@calcom/lib/intervalLimits/validateIntervalLimitOrder";
 import { validateBookerLayouts } from "@calcom/lib/validateBookerLayouts";
 import { eventTypeBookingFields as eventTypeBookingFieldsSchema } from "@calcom/prisma/zod-utils";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { z } from "zod";
 
 type Fields = z.infer<typeof eventTypeBookingFieldsSchema>;

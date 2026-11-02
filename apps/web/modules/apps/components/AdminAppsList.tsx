@@ -18,6 +18,7 @@ import {
 } from "@calcom/ui/components/dialog";
 import { EmptyScreen } from "@calcom/ui/components/empty-screen";
 import { Form, Switch, TextField } from "@calcom/ui/components/form";
+import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { List } from "@calcom/ui/components/list";
 import { SkeletonButton, SkeletonContainer, SkeletonText } from "@calcom/ui/components/skeleton";
 import { showToast } from "@calcom/ui/components/toast";
@@ -29,7 +30,6 @@ import type { FC } from "react";
 import { useReducer, useState } from "react";
 import type { FieldValues } from "react-hook-form";
 import { Controller, useForm } from "react-hook-form";
-import { zodFormResolver } from "@calcom/ui/components/form/zodFormResolver";
 import { z } from "zod";
 
 type App = RouterOutputs["viewer"]["apps"]["listLocal"][number];
