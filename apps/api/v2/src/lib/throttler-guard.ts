@@ -2,6 +2,7 @@ import { getEnv } from "@/env";
 import { sha256Hash, isApiKey, stripApiKey } from "@/lib/api-key";
 import { Throttle } from "@/lib/endpoint-throttler-decorator";
 import { PrismaReadService } from "@/modules/prisma/prisma-read.service";
+import type { ThrottlerStorageWithCache } from "@/modules/redis/throttler-storage";
 import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
 import { Inject, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
@@ -42,7 +43,7 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
 
   constructor(
     options: ThrottlerModuleOptions,
-    @Inject(ThrottlerStorageRedisService) protected readonly storageService: ThrottlerStorageRedisService,
+    @Inject(ThrottlerStorageRedisService) protected readonly storageService: ThrottlerStorageWithCache,
     reflector: Reflector,
     private readonly dbRead: PrismaReadService
   ) {

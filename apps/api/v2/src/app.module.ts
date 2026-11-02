@@ -21,6 +21,7 @@ import { JwtModule } from "@/modules/jwt/jwt.module";
 import { PrismaModule } from "@/modules/prisma/prisma.module";
 import { RedisModule } from "@/modules/redis/redis.module";
 import { RedisService } from "@/modules/redis/redis.service";
+import { getThrottlerStorage } from "@/modules/redis/throttler-storage";
 import { VercelWebhookController } from "@/vercel-webhook.controller";
 
 @Module({
@@ -48,7 +49,7 @@ import { VercelWebhookController } from "@/vercel-webhook.controller";
             limit: 120,
           },
         ],
-        storage: new ThrottlerStorageRedisService(redisService.redis),
+        storage: getThrottlerStorage(redisService),
       }),
     }),
     PrismaModule,
@@ -64,9 +65,7 @@ import { VercelWebhookController } from "@/vercel-webhook.controller";
     },
     {
       provide: ThrottlerStorageRedisService,
-      useFactory: (redisService: RedisService) => {
-        return new ThrottlerStorageRedisService(redisService.redis);
-      },
+      useFactory: (redisService: RedisService) => getThrottlerStorage(redisService),
       inject: [RedisService],
     },
     {
