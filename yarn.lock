@@ -1706,7 +1706,7 @@ __metadata:
     ts-node: "npm:10.9.2"
     uuid: "npm:11.1.1"
     zod: "npm:3.25.76"
-    zod-prisma-types: "npm:3.2.4"
+    zod-prisma-types: "npm:3.3.11"
   bin:
     prisma-enum-generator: ./run-enum-generator.js
   languageName: unknown
@@ -6702,6 +6702,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@prisma/client-runtime-utils@npm:^7.3.0":
+  version: 7.10.1
+  resolution: "@prisma/client-runtime-utils@npm:7.10.1"
+  checksum: 10/7828fa51acbaa6836d89bac1e7f6ad0a2be6c9d50f6277592dd97722df7db8eb08e51230ab230975ff5ef44d82a414741bc51a6bdb3ad8c6861302c917ba80e1
+  languageName: node
+  linkType: hard
+
 "@prisma/client@npm:6.16.1":
   version: 6.16.1
   resolution: "@prisma/client@npm:6.16.1"
@@ -6793,6 +6800,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@prisma/debug@npm:7.10.1":
+  version: 7.10.1
+  resolution: "@prisma/debug@npm:7.10.1"
+  checksum: 10/c3c5bc4cb04b6402cd37e4dfd1b51d08b812ed4de44bf3ffcda0b8091a0021124a1fbd94ab17e91e4122fb51435ab78c54e377216d7d3367c1f41ec135d853f8
+  languageName: node
+  linkType: hard
+
 "@prisma/dmmf@npm:6.15.0":
   version: 6.15.0
   resolution: "@prisma/dmmf@npm:6.15.0"
@@ -6804,6 +6818,13 @@ __metadata:
   version: 6.16.2
   resolution: "@prisma/dmmf@npm:6.16.2"
   checksum: 10/9541d22f4a11ee6df17232693866b1303a504ecf78a7c46b2d1137d83afd9597e1e37fb7e8bd376d20b86452251c109977ac57fa51ea6c815300f05587a94e67
+  languageName: node
+  linkType: hard
+
+"@prisma/dmmf@npm:7.10.1, @prisma/dmmf@npm:^7.3.0":
+  version: 7.10.1
+  resolution: "@prisma/dmmf@npm:7.10.1"
+  checksum: 10/156a2ff33949655d3a961121ec6a1d298e07a894286aab239ef27f6b44d25bbe721a35df275145b0cbefc0e7509d639902031094eedb53da239f984c34183ba4
   languageName: node
   linkType: hard
 
@@ -6976,7 +6997,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@prisma/generator-helper@npm:6.16.2, @prisma/generator-helper@npm:^6.3.0":
+"@prisma/generator-helper@npm:6.16.2":
   version: 6.16.2
   resolution: "@prisma/generator-helper@npm:6.16.2"
   dependencies:
@@ -6984,6 +7005,17 @@ __metadata:
     "@prisma/dmmf": "npm:6.16.2"
     "@prisma/generator": "npm:6.16.2"
   checksum: 10/0e9f274016c9fadd6a34a8d47f0eda5e2bc2a2cf58c86a9e41da026851513fffbff2360fcff8a5899d94af145c734fb9d9a6ae09580a6acf90a49e9e9d6dfb90
+  languageName: node
+  linkType: hard
+
+"@prisma/generator-helper@npm:^7.3.0":
+  version: 7.10.1
+  resolution: "@prisma/generator-helper@npm:7.10.1"
+  dependencies:
+    "@prisma/debug": "npm:7.10.1"
+    "@prisma/dmmf": "npm:7.10.1"
+    "@prisma/generator": "npm:7.10.1"
+  checksum: 10/730fcbe48ecb35398c1f99e97a4d629c7ba2c21ecf19009af1dc64712d6fbb3e95a566f2cc7cb081104d31673b9d700f3d9100b73bc3783551acaab45ece7d99
   languageName: node
   linkType: hard
 
@@ -6998,6 +7030,13 @@ __metadata:
   version: 6.16.2
   resolution: "@prisma/generator@npm:6.16.2"
   checksum: 10/961062d8a15e88333516ed69be8ddd07b171ebfa6fbe7f4d32f51f834c2324dc81aeef7094775f0bb16b07c0c7ccf3361a67b34c25d71893a3e31431fd2ef994
+  languageName: node
+  linkType: hard
+
+"@prisma/generator@npm:7.10.1":
+  version: 7.10.1
+  resolution: "@prisma/generator@npm:7.10.1"
+  checksum: 10/beaba25935e9d3bd934560511ef1bee61f5bd2a79a0a3b21b817772e18b1b57483e8611d7f521f0509c8e71212946ef7b3f88c226c61f7a6dfe4a86a66074884
   languageName: node
   linkType: hard
 
@@ -14486,13 +14525,6 @@ __metadata:
   version: 4.6.0
   resolution: "co@npm:4.6.0"
   checksum: 10/a5d9f37091c70398a269e625cedff5622f200ed0aa0cff22ee7b55ed74a123834b58711776eb0f1dc58eb6ebbc1185aa7567b57bd5979a948c6e4f85073e2c05
-  languageName: node
-  linkType: hard
-
-"code-block-writer@npm:^12.0.0":
-  version: 12.0.0
-  resolution: "code-block-writer@npm:12.0.0"
-  checksum: 10/7dc531e652b4654f6e0487923df74cda7294da01c6ac225f523256c6ae5f7f4eb5c4dc7902a9e64b81dba4b22e7d843454ed71a59954d31aa8656184c6c0c8ff
   languageName: node
   linkType: hard
 
@@ -31644,20 +31676,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod-prisma-types@npm:3.2.4":
-  version: 3.2.4
-  resolution: "zod-prisma-types@npm:3.2.4"
+"zod-prisma-types@npm:3.3.11":
+  version: 3.3.11
+  resolution: "zod-prisma-types@npm:3.3.11"
   dependencies:
-    "@prisma/generator-helper": "npm:^6.3.0"
-    code-block-writer: "npm:^12.0.0"
-    lodash: "npm:^4.17.21"
-    zod: "npm:^3.24.1"
+    "@prisma/client-runtime-utils": "npm:^7.3.0"
+    "@prisma/dmmf": "npm:^7.3.0"
+    "@prisma/generator-helper": "npm:^7.3.0"
+    code-block-writer: "npm:^13.0.3"
+    lodash: "npm:^4.17.23"
+    zod: "npm:^4.3.6"
   peerDependencies:
-    "@prisma/client": ^4.x.x || ^5.x.x || ^6.x.x
-    prisma: ^4.x.x || ^5.x.x || ^6.x.x
+    "@prisma/client": ^4.x.x || ^5.x.x || ^6.x.x || ^7.x.x
+    prisma: ^4.x.x || ^5.x.x || ^6.x.x || ^7.x.x
+    zod: ^3.25.0 || ^4.0.0
   bin:
     zod-prisma-types: dist/bin.js
-  checksum: 10/efee5f138ca36108eba876df49819de9c94a4c7e64aca42f5af0082af1026182e1cc55720bb4512962818f4cd3f30c913d175e88740d8a0af1cc499c03094188
+  checksum: 10/437a7104a5fcf1f65bc0783d3d21d1f39309849192195b3b68b1df427484b2177f4fdc20cf1a0619e0044fa1be7f7d433a7133dd563e3777e90bf0431c75f1f7
   languageName: node
   linkType: hard
 
@@ -31688,7 +31723,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:3.25.76, zod@npm:^3.23.8, zod@npm:^3.24.1":
+"zod@npm:3.25.76, zod@npm:^3.23.8":
   version: 3.25.76
   resolution: "zod@npm:3.25.76"
   checksum: 10/f0c963ec40cd96858451d1690404d603d36507c1fc9682f2dae59ab38b578687d542708a7fdbf645f77926f78c9ed558f57c3d3aa226c285f798df0c4da16995
@@ -31716,7 +31751,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^3.25.0 || ^4.0.0, zod@npm:^3.25.56 || ^4.0.0":
+"zod@npm:^3.25.0 || ^4.0.0, zod@npm:^3.25.56 || ^4.0.0, zod@npm:^4.3.6":
   version: 4.6.7
   resolution: "zod@npm:4.6.7"
   checksum: 10/3ca8b8d6bb401538e59504c543db629ea7beaa775e504c3f22269b406fdffbf1431c856d59a597bf66d8487e4d2be12b03a55d76fc2c63d9f046eae1ca173bca
