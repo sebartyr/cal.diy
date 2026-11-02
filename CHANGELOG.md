@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.2.3] — 2026-11-02
+
+Patch release: users created from the admin panel can sign in with the OIDC
+provider (e.g. Keycloak), and Jitsi bookings no longer log a misleading warning.
+
+### Fixed
+
+- Users created from **Admin → Users → Add** had no password and no
+  `emailVerified`, so OIDC/OAuth sign-in refused to link them
+  (`unverified-email`) and they could not log in at all. Their email is now
+  marked as verified at creation, since an instance admin vouches for it (#139).
+- `EventManager` logged `Could not find conferenceCredentialId ..., trying to use
+  last added video credential` as a warning on every booking whose location has
+  no credential (e.g. Jitsi), even when a credential was found. It is now a
+  debug message describing what actually happens; a truly missing credential is
+  still reported by the Jitsi fallback warning (#140).
+
+### Upgrade notes
+
+- No schema change, no migration, no new environment variable.
+- Accounts created from the admin panel before this release are not changed. To
+  let one of them sign in with OIDC, run
+  `UPDATE "users" SET "emailVerified" = now() WHERE id = <id>;` and make sure the
+  IdP sends `email_verified: true` for that user.
+
 ## [8.2.2] — 2026-10-24
 
 Patch release: installs and builds no longer drown their output in recurring
