@@ -15,7 +15,7 @@ describe("embeddedApiV2", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  const load = () => import("./embeddedApiV2");
+  const load = (): Promise<typeof import("./embeddedApiV2")> => import("./embeddedApiV2");
 
   it("is enabled only by ENABLE_API_V2=true", async () => {
     const { isApiV2Enabled } = await load();

@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { loadApiV2Handler, apiV2 } = vi.hoisted(() => ({
+const { loadApiV2Handler, apiV2 }: { loadApiV2Handler: Mock; apiV2: Mock } = vi.hoisted(() => ({
   loadApiV2Handler: vi.fn(),
   apiV2: vi.fn(),
 }));
@@ -13,7 +14,9 @@ vi.mock("@lib/embeddedApiV2", async (importOriginal) => {
 
 import handler from "../../pages/api/v2/[...path]";
 
-function buildRequest(url: string) {
+type RequestFixture = { req: NextApiRequest; res: NextApiResponse; status: Mock; json: Mock };
+
+function buildRequest(url: string): RequestFixture {
   const req = { url, method: "GET", query: { path: ["bookings"], take: "10" } };
   const res = {
     status: vi.fn().mockReturnThis(),
