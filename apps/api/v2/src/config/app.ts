@@ -23,8 +23,9 @@ const loadConfig = (): AppConfig => {
       licenseKeyUrl: getEnv("GET_LICENSE_KEY_URL", "https://console.cal.com/api/license"),
     },
     db: {
-      readUrl: getEnv("DATABASE_READ_URL"),
-      writeUrl: getEnv("DATABASE_WRITE_URL"),
+      // Separate URLs only matter with a read replica; a single database is reachable at DATABASE_URL.
+      readUrl: process.env.DATABASE_READ_URL ?? getEnv("DATABASE_URL"),
+      writeUrl: process.env.DATABASE_WRITE_URL ?? getEnv("DATABASE_URL"),
       readPoolMax: getEnv("DATABASE_READ_POOL_MAX", 9),
       writePoolMax: getEnv("DATABASE_WRITE_POOL_MAX", 7),
       workerReadPoolMax: getEnv("DATABASE_READ_WORKER_POOL_MAX", 4),

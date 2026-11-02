@@ -80,7 +80,7 @@ API v2 reads the same environment as the web app, plus:
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_READ_URL`, `DATABASE_WRITE_URL` | yes | Usually the same value as `DATABASE_URL`. |
+| `DATABASE_READ_URL`, `DATABASE_WRITE_URL` | no | Default to `DATABASE_URL`. Set them only to send reads to a replica. |
 | `JWT_SECRET` | yes | |
 | `API_URL` | yes | The public URL followed by `/api`, e.g. `https://calendar.example.com/api`. API v2 appends `/v2` to build the OAuth redirect URIs of its calendar and conferencing endpoints; it defaults to `http://localhost`. |
 | `WEB_APP_URL` | yes | The public URL, like `NEXT_PUBLIC_WEBAPP_URL`. Defaults to `https://app.cal.com`. |
