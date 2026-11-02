@@ -12,6 +12,15 @@ cd "$(dirname "$0")/../.."
 size() { du -sh . 2>/dev/null | cut -f1; }
 echo "post-build: ${PWD} is $(size) before trimming"
 
+# Custom variable. The web app serves API v2 in its own process under /api/v2
+# (apps/web/pages/api/v2/[...path].ts), loading the `nest build` output at
+# runtime, so it is built here, before the prune removes the Nest CLI.
+if [ "${ENABLE_API_V2:-false}" = "true" ]; then
+  echo "post-build: building API v2 for the web app to serve"
+  yarn workspace @calcom/api-v2 dev:build
+  yarn workspace @calcom/api-v2 build
+fi
+
 # Custom variable, not a Clever Cloud one. Opt-in because it changes what the
 # run command may rely on: turbo, ts-node and every other devDependency
 # disappear, so the app must be started with `yarn workspace @calcom/web start`
@@ -34,13 +43,15 @@ if [ "${PRUNE_DEV_DEPENDENCIES:-false}" = "true" ]; then
   # The apps are separate workspaces that @calcom/web does not depend on, yet
   # their dependencies (e.g. the Exchange calendars' ews-javascript-api) are
   # loaded at runtime. `--all` would also keep the production dependencies of
-  # API v2, docs and examples, ~0.8 GB that the web server never reads.
+  # docs and examples, and of API v2 unless it is embedded, ~0.8 GB that the
+  # web server never reads.
   runtime_workspaces=$(yarn workspaces list --json | node -e '
     let input = "";
     process.stdin.on("data", (chunk) => (input += chunk)).on("end", () => {
       for (const line of input.trim().split("\n")) {
         const { location, name } = JSON.parse(line);
         if (location === "apps/web" || location.startsWith("packages/app-store/")) console.log(name);
+        if (location === "apps/api/v2" && process.env.ENABLE_API_V2 === "true") console.log(name);
       }
     });
   ')
