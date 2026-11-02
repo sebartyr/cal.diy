@@ -6,6 +6,58 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.3.0] — 2026-11-02
+
+Minor release: API v2 can run inside the web app's process, without Redis;
+Clever Cloud deployments are about a third smaller; security patches; zod 4.
+
+### Added
+
+- **API v2 served by the web app.** With `ENABLE_API_V2=true` (set for both the
+  build and the run), the web app serves API v2 under `/api/v2`, in the same
+  process and on the same port: no second application or run command. The
+  Clever post-build hook then builds API v2 and keeps its dependencies. Nest is
+  initialised once, on the first request (#143).
+- **Redis is optional for API v2.** Without `REDIS_URL`, rate limits and caches
+  live in the process's memory, which is only correct with a single instance
+  (#142).
+- `DATABASE_READ_URL` and `DATABASE_WRITE_URL` default to `DATABASE_URL`; set
+  them only to send API v2 reads to a replica (#143).
+- `scripts/clever/README.md` is now a full Clever Cloud deployment guide (#143).
+
+### Changed
+
+- **Smaller Clever Cloud deployments.** With `PRUNE_DEV_DEPENDENCIES=true`, the
+  post-build hook keeps only the dependencies of the web app and the app-store
+  apps, not those of API v2 (unless embedded), docs and examples. The new
+  `DELETE_SOURCE_MAPS=true` also removes the `.map` files (~270 MB). Measured
+  on a release build: 3.0 GB → 2.2 GB, 2.0 GB with both options (#141).
+- **zod 3 → 4.6.7** everywhere, with `react-hook-form` 7.91,
+  `@hookform/resolvers` 7 and `zod-prisma-types` 3.3.11 (#145, #146, #147).
+  44 tRPC input schemas now declare their input type, so tRPC checks what
+  callers send again. zod's default validation messages change (e.g.
+  `Required` → `Invalid input: expected string, received undefined`); error
+  codes and response shapes do not.
+
+### Security
+
+- `next` 16.3.8 → 16.4.4 (critical: image optimizer and `use cache` RCEs, not
+  reachable here; high: Server Actions DoS), `body-parser`, `multer`,
+  `follow-redirects`, `systeminformation`, `nodemailer`, `fast-uri`, `vite`
+  (#144).
+- zod 4.6.7 fixes the memory exhaustion on oversized constrained collections
+  that affects every zod 3 release (#147).
+- Removed the unused `@vercel/og` and its vulnerable `satori` (#144).
+
+### Upgrade notes
+
+- No schema change, no migration. No new required variable.
+- The Clever run command must not go through `turbo` when
+  `PRUNE_DEV_DEPENDENCIES=true` (e.g. `yarn workspace @calcom/web start`).
+- To serve API v2 from the web app, add `ENABLE_API_V2=true` and
+  `API_URL=https://<your domain>/api`; `JWT_SECRET` must be set. Leave
+  `NEXT_PUBLIC_API_V2_URL` unset. See `scripts/clever/README.md`.
+
 ## [8.2.3] — 2026-11-02
 
 Patch release: users created from the admin panel can sign in with the OIDC
