@@ -35,16 +35,16 @@ export const fieldTypeConfigSchema = z
   .object({
     label: z.string(),
     value: fieldTypeEnum,
-    isTextType: z.boolean().default(false).optional(),
-    systemOnly: z.boolean().default(false).optional(),
-    needsOptions: z.boolean().default(false).optional(),
+    isTextType: z.boolean().optional(),
+    systemOnly: z.boolean().optional(),
+    needsOptions: z.boolean().optional(),
     supportsLengthCheck: z
       .object({
         maxLength: z.number(),
       })
       .optional(),
-    supportsPricing: z.boolean().default(false).optional(),
-    optionsSupportPricing: z.boolean().default(false).optional(),
+    supportsPricing: z.boolean().optional(),
+    optionsSupportPricing: z.boolean().optional(),
     propsType: z.enum([
       "text",
       "textList",
@@ -67,6 +67,7 @@ export const fieldTypeConfigSchema = z
          */
         toggleLabel: z.string().optional(),
         variants: z.record(
+          z.string(),
           z.object({
             /**
              * That's how the variant would be labelled in App UI. This label represents the field in booking questions' list
@@ -74,6 +75,7 @@ export const fieldTypeConfigSchema = z
              */
             label: z.string(),
             fieldsMap: z.record(
+              z.string(),
               z.object({
                 /**
                  * Supports translation
@@ -86,7 +88,7 @@ export const fieldTypeConfigSchema = z
                 /**
                  * Decides if a variant field's required property can be changed or not
                  */
-                canChangeRequirability: z.boolean().default(true).optional(),
+                canChangeRequirability: z.boolean().optional(),
               })
             ),
           })
@@ -293,6 +295,4 @@ export const fieldTypesSchemaMap = {
   }),
 };
 
-export type FieldZodCtx = {
-  addIssue: (issue: z.IssueData) => void;
-};
+export type FieldZodCtx = Pick<z.core.$RefinementCtx, "addIssue">;

@@ -8,8 +8,9 @@ export type TReportBookingInputSchema = {
   description?: string;
 };
 
-export const ZReportBookingInputSchema: z.ZodType<TReportBookingInputSchema> = z.object({
-  bookingUid: z.string(),
-  reason: z.nativeEnum(BookingReportReason),
-  description: z.string().optional(),
-});
+export const ZReportBookingInputSchema: z.ZodType<TReportBookingInputSchema, TReportBookingInputSchema> =
+  z.object({
+    bookingUid: z.string(),
+    reason: z.nativeEnum(BookingReportReason),
+    description: z.string().optional(),
+  });

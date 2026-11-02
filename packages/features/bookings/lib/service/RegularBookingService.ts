@@ -1711,8 +1711,8 @@ async function handler(
       if (booking?.id && eventType.seatsPerTimeSlot) {
         const currentAttendee = booking.attendees.find(
           (attendee) =>
-            attendee.email === bookingData.responses.email ||
-            (bookingData.responses.attendeePhoneNumber &&
+            attendee.email === bookingData.responses?.email ||
+            (bookingData.responses?.attendeePhoneNumber &&
               attendee.phoneNumber === bookingData.responses.attendeePhoneNumber)
         );
 

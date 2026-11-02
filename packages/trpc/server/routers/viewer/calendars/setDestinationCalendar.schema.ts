@@ -7,7 +7,10 @@ export type TSetDestinationCalendarInputSchema = {
   bookingId?: number | null;
 };
 
-export const ZSetDestinationCalendarInputSchema: z.ZodType<TSetDestinationCalendarInputSchema> = z.object({
+export const ZSetDestinationCalendarInputSchema: z.ZodType<
+  TSetDestinationCalendarInputSchema,
+  TSetDestinationCalendarInputSchema
+> = z.object({
   integration: z.string(),
   externalId: z.string(),
   eventTypeId: z.number().nullish(),

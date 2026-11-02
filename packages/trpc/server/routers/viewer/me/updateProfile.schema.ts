@@ -8,7 +8,10 @@ export type TUpdateUserMetadataAllowedKeys = {
   defaultBookerLayouts?: z.infer<typeof bookerLayouts>;
 };
 
-export const updateUserMetadataAllowedKeys: z.ZodType<TUpdateUserMetadataAllowedKeys> = z.object({
+export const updateUserMetadataAllowedKeys: z.ZodType<
+  TUpdateUserMetadataAllowedKeys,
+  TUpdateUserMetadataAllowedKeys
+> = z.object({
   sessionTimeout: z.number().optional(), // Minutes
   defaultBookerLayouts: bookerLayouts.optional(),
 });
@@ -81,48 +84,45 @@ export type TUpdateProfileInputSchema = {
   }[];
 };
 
-export const ZUpdateProfileInputSchema: z.ZodType<
-  TUpdateProfileInputSchema,
-  z.ZodTypeDef,
-  TUpdateProfileInputSchemaInput
-> = z.object({
-  username: z.string().optional(),
-  name: z.string().max(FULL_NAME_LENGTH_MAX_LIMIT).optional(),
-  email: z.string().optional(),
-  bio: z.string().optional(),
-  avatarUrl: z.string().nullable().optional(),
-  timeZone: timeZoneSchema.optional(),
-  weekStart: z.string().optional(),
-  hideBranding: z.boolean().optional(),
-  allowDynamicBooking: z.boolean().optional(),
-  allowSEOIndexing: z.boolean().optional(),
-  receiveMonthlyDigestEmail: z.boolean().optional(),
-  requiresBookerEmailVerification: z.boolean().optional(),
-  brandColor: z.string().optional(),
-  darkBrandColor: z.string().optional(),
-  theme: z.string().optional().nullable(),
-  appTheme: z.string().optional().nullable(),
-  completedOnboarding: z.boolean().optional(),
-  locale: z.string().optional(),
-  timeFormat: z.number().optional(),
-  metadata: userMetadata.optional(),
-  travelSchedules: z
-    .array(
-      z.object({
-        id: z.number().optional(),
-        timeZone: timeZoneSchema,
-        endDate: z.date().optional(),
-        startDate: z.date(),
-      })
-    )
-    .optional(),
-  secondaryEmails: z
-    .array(
-      z.object({
-        id: z.number(),
-        email: z.string(),
-        isDeleted: z.boolean().default(false),
-      })
-    )
-    .optional(),
-});
+export const ZUpdateProfileInputSchema: z.ZodType<TUpdateProfileInputSchema, TUpdateProfileInputSchemaInput> =
+  z.object({
+    username: z.string().optional(),
+    name: z.string().max(FULL_NAME_LENGTH_MAX_LIMIT).optional(),
+    email: z.string().optional(),
+    bio: z.string().optional(),
+    avatarUrl: z.string().nullable().optional(),
+    timeZone: timeZoneSchema.optional(),
+    weekStart: z.string().optional(),
+    hideBranding: z.boolean().optional(),
+    allowDynamicBooking: z.boolean().optional(),
+    allowSEOIndexing: z.boolean().optional(),
+    receiveMonthlyDigestEmail: z.boolean().optional(),
+    requiresBookerEmailVerification: z.boolean().optional(),
+    brandColor: z.string().optional(),
+    darkBrandColor: z.string().optional(),
+    theme: z.string().optional().nullable(),
+    appTheme: z.string().optional().nullable(),
+    completedOnboarding: z.boolean().optional(),
+    locale: z.string().optional(),
+    timeFormat: z.number().optional(),
+    metadata: userMetadata.optional(),
+    travelSchedules: z
+      .array(
+        z.object({
+          id: z.number().optional(),
+          timeZone: timeZoneSchema,
+          endDate: z.date().optional(),
+          startDate: z.date(),
+        })
+      )
+      .optional(),
+    secondaryEmails: z
+      .array(
+        z.object({
+          id: z.number(),
+          email: z.string(),
+          isDeleted: z.boolean().default(false),
+        })
+      )
+      .optional(),
+  });

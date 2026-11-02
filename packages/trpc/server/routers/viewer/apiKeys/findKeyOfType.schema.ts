@@ -5,7 +5,8 @@ export type TFindKeyOfTypeInputSchema = {
   teamId?: number;
 };
 
-export const ZFindKeyOfTypeInputSchema: z.ZodType<TFindKeyOfTypeInputSchema> = z.object({
-  appId: z.string().optional(),
-  teamId: z.number().optional(),
-});
+export const ZFindKeyOfTypeInputSchema: z.ZodType<TFindKeyOfTypeInputSchema, TFindKeyOfTypeInputSchema> =
+  z.object({
+    appId: z.string().optional(),
+    teamId: z.number().optional(),
+  });

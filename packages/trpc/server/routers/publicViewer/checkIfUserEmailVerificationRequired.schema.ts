@@ -5,9 +5,10 @@ export type TUserEmailVerificationRequiredSchema = {
   email: string;
 };
 
-export const ZUserEmailVerificationRequiredSchema: z.ZodType<TUserEmailVerificationRequiredSchema> = z.object(
-  {
-    userSessionEmail: z.string().optional(),
-    email: z.string(),
-  }
-);
+export const ZUserEmailVerificationRequiredSchema: z.ZodType<
+  TUserEmailVerificationRequiredSchema,
+  TUserEmailVerificationRequiredSchema
+> = z.object({
+  userSessionEmail: z.string().optional(),
+  email: z.string(),
+});

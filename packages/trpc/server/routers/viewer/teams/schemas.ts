@@ -83,7 +83,7 @@ export const ZAcceptOrLeaveInput = z.object({
 // can scale past the previous hardcoded take: 200 cap.
 export const ZAdminListInput = z.object({
   search: z.string().max(128).optional(),
-  limit: z.number().int().positive().max(200).default(50).optional(),
+  limit: z.number().int().positive().max(200).optional(),
   cursor: z.number().int().positive().optional(),
 });
 

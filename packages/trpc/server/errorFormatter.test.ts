@@ -5,6 +5,14 @@ import { TRPCError } from "@trpc/server";
 
 import { errorFormatter } from "./errorFormatter";
 
+// Built through a real parse: unlike a hand-built `new z.ZodError()`, zod 4's parse errors are Error
+// instances, which TRPCError keeps as its cause.
+function zodErrorFrom(schema: z.ZodType, input: unknown): z.ZodError {
+  const result = schema.safeParse(input);
+  if (result.success) throw new Error("Expected the input to be invalid");
+  return result.error;
+}
+
 describe("errorFormatter", () => {
   const baseShape = {
     message: "Internal Server Error",
@@ -17,15 +25,7 @@ describe("errorFormatter", () => {
   };
 
   it("should format ZodError as BAD_REQUEST", () => {
-    const zodError = new z.ZodError([
-      {
-        path: ["name"],
-        message: "Required",
-        code: "invalid_type",
-        expected: "string",
-        received: "undefined",
-      },
-    ]);
+    const zodError = zodErrorFrom(z.object({ name: z.string({ error: "Required" }) }), {});
 
     const error = new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
@@ -63,20 +63,11 @@ describe("errorFormatter", () => {
     const schema = z.object({
       user: z.object({
         name: z.string(),
-        age: z.number().min(18),
+        age: z.number().min(18, "Number must be greater than or equal to 18"),
       }),
     });
 
-    const zodError = new z.ZodError([
-      {
-        path: ["user", "age"],
-        message: "Number must be greater than or equal to 18",
-        code: "too_small",
-        minimum: 18,
-        type: "number",
-        inclusive: true,
-      },
-    ]);
+    const zodError = zodErrorFrom(schema, { user: { name: "Jane", age: 10 } });
 
     const error = new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
@@ -111,23 +102,13 @@ describe("errorFormatter", () => {
   });
 
   it("should handle multiple ZodError issues", () => {
-    const zodError = new z.ZodError([
-      {
-        path: ["name"],
-        message: "Required",
-        code: "invalid_type",
-        expected: "string",
-        received: "undefined",
-      },
-      {
-        path: ["age"],
-        message: "Number must be greater than or equal to 18",
-        code: "too_small",
-        minimum: 18,
-        type: "number",
-        inclusive: true,
-      },
-    ]);
+    const zodError = zodErrorFrom(
+      z.object({
+        name: z.string({ error: "Required" }),
+        age: z.number().min(18, "Number must be greater than or equal to 18"),
+      }),
+      { age: 10 }
+    );
 
     const error = new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
@@ -201,7 +182,9 @@ describe("errorFormatter", () => {
   });
 
   it("should handle empty ZodError", () => {
-    const zodError = new z.ZodError([]);
+    // No parse yields an empty ZodError, so empty a real one.
+    const zodError = zodErrorFrom(z.string(), 1);
+    zodError.issues.splice(0);
     const error = new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Internal Server Error",
