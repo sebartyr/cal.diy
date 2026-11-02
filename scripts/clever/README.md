@@ -10,8 +10,9 @@ CC_POST_BUILD_HOOK=./scripts/clever/post-build.sh
 
 | Variable | Default | Effect |
 |---|---|---|
-| `PRUNE_DEV_DEPENDENCIES` (custom, set it in the app env) | `false` | `yarn workspaces focus --all --production` after the build — drops ~2 GB of devDependencies. Requires a run command that does not go through `turbo` (e.g. `yarn workspace @calcom/web start`). |
+| `PRUNE_DEV_DEPENDENCIES` (custom, set it in the app env) | `false` | `yarn workspaces focus --production` on `@calcom/web` and the `packages/app-store/*` workspaces after the build — drops the devDependencies and the production dependencies of the workspaces the web server never loads (API v2, docs, examples), ~3 GB in all. Requires a run command that does not go through `turbo` (e.g. `yarn workspace @calcom/web start`). |
 | `SENTRY_AUTH_TOKEN` | — | When set, `yarn build` has uploaded the source maps to Sentry and the hook deletes the local `.map` files. |
+| `DELETE_SOURCE_MAPS` (custom) | `false` | Deletes the `.map` files (~270 MB) even without Sentry. Stack traces then point to minified code. |
 
 Always removed: `.turbo`, `.yarn/cache`, `.yarn/install-state.gz`,
 `apps/web/.next/cache`.

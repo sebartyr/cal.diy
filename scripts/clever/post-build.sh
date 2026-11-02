@@ -30,7 +30,22 @@ if [ "${PRUNE_DEV_DEPENDENCIES:-false}" = "true" ]; then
     delete pkg.scripts.postinstall;
     fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
   '
-  YARN_ENABLE_SCRIPTS=0 yarn workspaces focus --all --production
+  # Only the workspaces `next start` loads: the web app and the app-store apps.
+  # The apps are separate workspaces that @calcom/web does not depend on, yet
+  # their dependencies (e.g. the Exchange calendars' ews-javascript-api) are
+  # loaded at runtime. `--all` would also keep the production dependencies of
+  # API v2, docs and examples, ~0.8 GB that the web server never reads.
+  runtime_workspaces=$(yarn workspaces list --json | node -e '
+    let input = "";
+    process.stdin.on("data", (chunk) => (input += chunk)).on("end", () => {
+      for (const line of input.trim().split("\n")) {
+        const { location, name } = JSON.parse(line);
+        if (location === "apps/web" || location.startsWith("packages/app-store/")) console.log(name);
+      }
+    });
+  ')
+  # shellcheck disable=SC2086 # one workspace name per word
+  YARN_ENABLE_SCRIPTS=0 yarn workspaces focus --production $runtime_workspaces
   mv package.json.pre-prune package.json
   trap - EXIT
   # No `prisma generate` here: the client lives in packages/prisma/generated,
@@ -39,10 +54,11 @@ if [ "${PRUNE_DEV_DEPENDENCIES:-false}" = "true" ]; then
 fi
 
 # Sentry uploads source maps during `yarn build` (create-sentry-release.js), so
-# the .map files have already served their purpose. Kept when no Sentry auth
-# token is set: without an upload they are the only way to read a stack trace.
-if [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
-  echo "post-build: removing browser source maps"
+# the .map files have already served their purpose. Kept by default when no
+# Sentry auth token is set, as they are then the only way to read a stack trace;
+# DELETE_SOURCE_MAPS=true (custom variable) trades that for ~270 MB.
+if [ -n "${SENTRY_AUTH_TOKEN:-}" ] || [ "${DELETE_SOURCE_MAPS:-false}" = "true" ]; then
+  echo "post-build: removing source maps"
   find apps/web/.next -name '*.map' -type f -delete
 fi
 
