@@ -1,7 +1,6 @@
-import { v4 as uuidv4 } from "uuid";
-
+import process from "node:process";
 import type { PrismaClient } from "@calcom/prisma";
-
+import { v4 as uuidv4 } from "uuid";
 import { generateUniqueAPIKey as generateHashedApiKey } from "../lib/apiKeys";
 
 export class PrismaApiKeyRepository {
@@ -44,6 +43,13 @@ export class PrismaApiKeyRepository {
       }
       return true;
     });
+  }
+
+  async deleteByIdAndUserId({ id, userId }: { id: string; userId: number }): Promise<number> {
+    const { count } = await this.prismaClient.apiKey.deleteMany({
+      where: { id, userId },
+    });
+    return count;
   }
 
   async createApiKey({
