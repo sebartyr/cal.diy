@@ -1455,13 +1455,11 @@ __metadata:
     "@tanstack/react-virtual": "npm:3.10.9"
     "@testing-library/react-hooks": "npm:8.0.1"
     "@trigger.dev/sdk": "npm:4.7.4"
-    "@types/deasync": "npm:^0"
     "@types/web-push": "npm:3.6.3"
     "@vercel/functions": "npm:1.4.0"
     city-timezones: "npm:1.2.1"
     class-variance-authority: "npm:0.7.1"
     date-fns-tz: "npm:3.2.0"
-    deasync: "npm:^0.1.31"
     dub-package: "npm:dub@^0.61.12"
     framer-motion: "npm:10.12.8"
     jsonwebtoken: "npm:9.0.0"
@@ -11607,13 +11605,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/deasync@npm:^0":
-  version: 0.1.5
-  resolution: "@types/deasync@npm:0.1.5"
-  checksum: 10/5a8fec89572abc6fbcce7b4f5b5357ba58b2d6d6860b640eb452eb9e87a8d44f787a40450e456b6e2d7fa12cf52bac2ab0d2f9be431dd51bd40584e316ffaa2c
-  languageName: node
-  linkType: hard
-
 "@types/debug@npm:^4.0.0":
   version: 4.1.12
   resolution: "@types/debug@npm:4.1.12"
@@ -13652,15 +13643,6 @@ __metadata:
   version: 2.2.0
   resolution: "binary-extensions@npm:2.2.0"
   checksum: 10/ccd267956c58d2315f5d3ea6757cf09863c5fc703e50fbeb13a7dc849b812ef76e3cf9ca8f35a0c48498776a7478d7b4a0418e1e2b8cb9cb9731f2922aaad7f8
-  languageName: node
-  linkType: hard
-
-"bindings@npm:^1.5.0":
-  version: 1.5.0
-  resolution: "bindings@npm:1.5.0"
-  dependencies:
-    file-uri-to-path: "npm:1.0.0"
-  checksum: 10/593d5ae975ffba15fbbb4788fe5abd1e125afbab849ab967ab43691d27d6483751805d98cb92f7ac24a2439a8a8678cd0131c535d5d63de84e383b0ce2786133
   languageName: node
   linkType: hard
 
@@ -15872,16 +15854,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deasync@npm:^0.1.31":
-  version: 0.1.31
-  resolution: "deasync@npm:0.1.31"
-  dependencies:
-    bindings: "npm:^1.5.0"
-    node-addon-api: "npm:^1.7.1"
-  checksum: 10/e3430cea041d7de593e0cc80a88f9f9b9b8c4f5cc635bcd3a237b7a5371d62dbd50daed0f14ed4d148754a345b993aa7a1e4da848bda69f69c60fb58fd5fac07
-  languageName: node
-  linkType: hard
-
 "debounce@npm:^1.2.1":
   version: 1.2.1
   resolution: "debounce@npm:1.2.1"
@@ -17634,13 +17606,6 @@ __metadata:
     token-types: "npm:^6.1.1"
     uint8array-extras: "npm:^1.4.0"
   checksum: 10/42d5cf6aafb998fb2f0357e96ea7c48bcce5249f899523a3a5a4c297f4fe2346cc0aff9cf04243ada5c54b6457183550b2a04902b6533cd5e64aaa344d78e0eb
-  languageName: node
-  linkType: hard
-
-"file-uri-to-path@npm:1.0.0":
-  version: 1.0.0
-  resolution: "file-uri-to-path@npm:1.0.0"
-  checksum: 10/b648580bdd893a008c92c7ecc96c3ee57a5e7b6c4c18a9a09b44fb5d36d79146f8e442578bc0e173dc027adf3987e254ba1dfd6e3ec998b7c282873010502144
   languageName: node
   linkType: hard
 
@@ -23618,15 +23583,6 @@ __metadata:
   version: 3.0.1
   resolution: "node-abort-controller@npm:3.0.1"
   checksum: 10/7437b015830a2f714692fd372c01ce5c8c66f332a205455f58ddc8b3228314e588a20abd34a2b037c9cc438ced74e75492c7fc04f4dc0cf7bf0c0ac4160175e3
-  languageName: node
-  linkType: hard
-
-"node-addon-api@npm:^1.7.1":
-  version: 1.7.2
-  resolution: "node-addon-api@npm:1.7.2"
-  dependencies:
-    node-gyp: "npm:latest"
-  checksum: 10/6bf8217a8cd8148f4bbfd319b46d33587e9fb2e63e3c856ded67a76715167f7a6b17e1d9b8bbf3b8508befeb6a4adb10d92b8998ed5c19ca8448343f4cea11d6
   languageName: node
   linkType: hard
 

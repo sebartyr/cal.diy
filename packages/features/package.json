@@ -30,7 +30,6 @@
     "city-timezones": "1.2.1",
     "class-variance-authority": "0.7.1",
     "date-fns-tz": "3.2.0",
-    "deasync": "^0.1.31",
     "dub-package": "npm:dub@^0.61.12",
     "framer-motion": "10.12.8",
     "jsonwebtoken": "9.0.0",
@@ -49,7 +48,6 @@
   "devDependencies": {
     "@calcom/testing": "workspace:*",
     "@testing-library/react-hooks": "8.0.1",
-    "@types/deasync": "^0",
     "@types/web-push": "3.6.3",
     "trigger.dev": "4.7.4"
   }
