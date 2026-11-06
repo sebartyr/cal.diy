@@ -49,7 +49,6 @@ export default defineConfig({
       "playwright",
       "chromium-bidi",
       "http-cookie-agent",
-      "deasync",
     ],
     extensions: canSyncEnvVars
       ? [
