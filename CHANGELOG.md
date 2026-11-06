@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.3.1] — 2026-11-06
+
+Patch release: builds again on Node.js 26; the API keys page shows changes
+right away.
+
+### Fixed
+
+- **Node.js 26 builds.** `yarn install` failed because `deasync` has no
+  prebuilt binary for Node 26 and fell back to `node-gyp`; it was unused and is
+  removed, with no change in behaviour (Exchange cookie authentication never
+  loaded it). `yarn build` then failed in `zod-prisma-types` 3.3.11, which calls
+  an `fs.rmdirSync` option that Node 26 removed; a Yarn patch switches it to
+  `fs.rmSync` (#149).
+- **API keys page.** A new, edited or deleted key now shows up without
+  reloading the page. Deleting a key that is already gone returns "not found"
+  instead of a server error (#148).
+
+### Upgrade notes
+
+- No schema change, no migration. No new variable.
+- Node 24 keeps working. Clever Cloud uses the latest Node.js unless the
+  deployment's `package.json` pins it: set `"engines": { "node": "26.x" }` there
+  so the next major is not picked up unannounced.
+
 ## [8.3.0] — 2026-11-02
 
 Minor release: API v2 can run inside the web app's process, without Redis;
