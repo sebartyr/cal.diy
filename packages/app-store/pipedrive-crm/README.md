@@ -1,19 +1,16 @@
-## Pipedrive Integration via Revert
+## Pipedrive Integration
 
-#### Obtaining Pipedrive Client ID and Secret
+#### Creating a Pipedrive OAuth app
 
-- Open [Pipedrive Developers Corner](https://developers.pipedrive.com/) and sign in to your account, or create a new one
-- Go to Settings > (company name) Developer Hub
-- Create a Pipedrive app, using the steps mentioned [here](https://pipedrive.readme.io/docs/marketplace-creating-a-proper-app#create-an-app-in-5-simple-steps)
-  - You can skip this step and use the default revert Pipedrive app
-- Set `https://app.revert.dev/oauth-callback/pipedrive` as a callback url for your app
-- **Get your client_id and client_secret**:
-  - Go to the "OAuth & access scopes" tab of your app
-  - Copy your client_id and client_secret
+- Sign in to Pipedrive and open Settings > (company name) Developer Hub, or go to the [Pipedrive Developers Corner](https://developers.pipedrive.com/)
+- Create a private app, following the steps mentioned [here](https://pipedrive.readme.io/docs/marketplace-creating-a-proper-app#create-an-app-in-5-simple-steps)
+- Set `<NEXT_PUBLIC_WEBAPP_URL>/api/integrations/pipedrive-crm/callback` as the callback URL of your app
+- In the "OAuth & access scopes" tab, enable full access to **Deals**, **Activities** and **Contacts**
+- Copy your `client_id` and `client_secret`
 
-#### Obtaining Revert API keys
+#### Configuring Cal.diy
 
-- Create an account on Revert if you don't already have one. (https://app.revert.dev/sign-up)
-- Login to your revert dashboard (https://app.revert.dev/sign-in) and click on `Customize your apps` - `Pipedrive`
-- Enter the `client_id` and `client_secret` you copied in the previous step
-- Enter the `client_id` and `client_secret` previously copied to `Settings > Admin > Apps > CRM > Pipedrive` by clicking the `Edit` button on the app settings.
+- Go to `Settings > Admin > Apps > CRM > Pipedrive CRM`, click `Edit` and enter the `client_id` and `client_secret`
+- Install the app from the App Store, then enable it on the event types that should sync to Pipedrive
+
+Each booking creates a "meeting" activity in Pipedrive, linked to the attendee. Attendees are matched to existing persons by email and only created when no person with that email exists.
