@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.3.3] — 2026-11-17
+
+Security release: patches published advisories in Next.js, Hono, its Node.js
+adapter and `glob`.
+
+### Security
+
+| Package | Before | After | Advisories |
+|---|---|---|---|
+| `next` (`apps/web`, platform example) | 16.4.4 | 16.4.6 | Information disclosure with `use cache` |
+| `hono` (via trigger.dev) | 4.13.13 | 4.13.19 | 5 advisories: CSRF, middleware bypass, form validation |
+| `@hono/node-server` (via trigger.dev) | 1.19.17 | 2.1.8 | 2 advisories on request path parsing |
+| `glob` (`apps/web`, build only) | 10.5.0 | 14.0.6 | `AbortSignal` bypass |
+
+`hono` and `@hono/node-server` are pinned through the existing root
+`resolutions`; the MCP SDK and trigger.dev already accept `@hono/node-server`
+2.x. `glob` 14 matches the same 259 route files and 105 static files as 10 (#151).
+
+### Not patched
+
+- `glob` 11/13 and `minimatch`: pulled only by dev tooling, would need major
+  upgrades of those tools.
+- Remaining audit entries are deprecation notices.
+
+### Upgrade notes
+
+- No schema change, no migration. No new variable.
+- Not validated by a full build or E2E run before release.
+
 ## [8.3.2] — 2026-11-17
 
 Patch release: the Pipedrive CRM app creates its activities again and no
