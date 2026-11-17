@@ -1,10 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-
-import { createDefaultInstallation } from "@calcom/app-store/_utils/installation";
 import { getServerSession } from "@calcom/features/auth/lib/getServerSession";
 import { WEBAPP_URL_FOR_OAUTH } from "@calcom/lib/constants";
 import { HttpError } from "@calcom/lib/http-error";
-
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import { encodeOAuthState } from "../../_utils/oauth/encodeOAuthState";
 import appConfig from "../config.json";
@@ -18,19 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!client_id) return res.status(400).json({ message: "Pipedrive client id missing." });
 
   req.session = await getServerSession({ req });
-  const { teamId } = req.query;
-  const user = req.session?.user;
-  if (!user) {
+  if (!req.session?.user) {
     throw new HttpError({ statusCode: 401, message: "You must be logged in to do this" });
   }
-
-  await createDefaultInstallation({
-    appType: `${appConfig.slug}_other_calendar`,
-    user,
-    slug: appConfig.slug,
-    key: {},
-    teamId: Number(teamId),
-  });
 
   const redirectUri = `${WEBAPP_URL_FOR_OAUTH}/api/integrations/pipedrive-crm/callback`;
   const state = encodeOAuthState(req);

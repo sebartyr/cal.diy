@@ -1,10 +1,10 @@
+import { getLocation } from "@calcom/lib/CalEventParser";
 import {
   APP_CREDENTIAL_SHARING_ENABLED,
   CREDENTIAL_SYNC_ENDPOINT,
   CREDENTIAL_SYNC_SECRET,
   CREDENTIAL_SYNC_SECRET_HEADER_NAME,
 } from "@calcom/lib/constants";
-import { getLocation } from "@calcom/lib/CalEventParser";
 import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import type {
@@ -14,12 +14,11 @@ import type {
   NewCalendarEventType,
 } from "@calcom/types/Calendar";
 import type { CredentialPayload } from "@calcom/types/Credential";
-import type { ContactCreateInput, CRM, Contact } from "@calcom/types/CrmService";
-
+import type { Contact, ContactCreateInput, CRM } from "@calcom/types/CrmService";
 import { invalidateCredential } from "../../_utils/invalidateCredential";
-import { OAuthManager } from "../../_utils/oauth/OAuthManager";
 import { getTokenObjectFromCredential } from "../../_utils/oauth/getTokenObjectFromCredential";
 import { markTokenAsExpired } from "../../_utils/oauth/markTokenAsExpired";
+import { OAuthManager } from "../../_utils/oauth/OAuthManager";
 import { updateTokenObjectInDb } from "../../_utils/oauth/updateTokenObject";
 import appConfig from "../config.json";
 import { getPipedriveAppKeys } from "./getPipedriveAppKeys";
@@ -30,6 +29,12 @@ type PipedriveContact = {
   first_name: string;
   last_name: string;
   email: Array<{ value: string; primary: boolean }>;
+};
+
+type PipedrivePersonSearchItem = {
+  id: number;
+  name: string;
+  emails: string[];
 };
 
 type PipedriveActivity = {
@@ -89,7 +94,7 @@ class PipedriveCrmService implements CRM {
           }),
         });
       },
-      isTokenObjectUnusable: async function (response) {
+      isTokenObjectUnusable: async (response) => {
         const myLog = logger.getSubLogger({ prefix: ["pipedrive-crm:isTokenObjectUnusable"] });
         myLog.debug(safeStringify({ status: response.status, ok: response.ok }));
         if (!response.ok) {
@@ -107,7 +112,7 @@ class PipedriveCrmService implements CRM {
         }
         return null;
       },
-      isAccessTokenUnusable: async function (response) {
+      isAccessTokenUnusable: async (response) => {
         const myLog = logger.getSubLogger({ prefix: ["pipedrive-crm:isAccessTokenUnusable"] });
         myLog.debug(safeStringify({ status: response.status, ok: response.ok }));
         if (!response.ok && response.status === 401) {
@@ -203,34 +208,30 @@ class PipedriveCrmService implements CRM {
   async getContacts({ emails }: { emails: string | string[] }): Promise<Contact[]> {
     const emailArray = Array.isArray(emails) ? emails : [emails];
 
-    const result = emailArray.map(async (email) => {
+    const result = emailArray.map(async (email): Promise<Contact | null> => {
       try {
         const response = await this.requestPipedrive<{
           success: boolean;
-          data: { items: Array<{ item: PipedriveContact }> };
-        }>(`persons/search?term=${encodeURIComponent(email)}&fields=email`);
+          data?: { items: Array<{ item: PipedrivePersonSearchItem }> };
+        }>(`persons/search?term=${encodeURIComponent(email)}&fields=email&exact_match=true`);
 
-        if (response.success && response.data?.items) {
-          return response.data.items.map((item) => {
-            const contact = item.item;
-            return {
-              id: contact.id.toString(),
-              email: contact.email[0]?.value || email,
-              firstName: contact.first_name,
-              lastName: contact.last_name,
-              name: contact.name,
-            };
-          });
-        }
-        return [];
+        const normalizedEmail = email.toLowerCase();
+        // Several persons can share an email in Pipedrive; returning one per attendee keeps
+        // CrmManager's "every attendee already exists" check accurate. Search results are ranked.
+        const match = response.data?.items.find(({ item }) =>
+          item.emails.some((personEmail) => personEmail.toLowerCase() === normalizedEmail)
+        );
+        if (!match) return null;
+
+        return { id: match.item.id.toString(), email };
       } catch (error) {
         this.log.error("Error searching contacts:", error);
-        return [];
+        return null;
       }
     });
 
     const results = await Promise.all(result);
-    return results.flat();
+    return results.filter((contact): contact is Contact => contact !== null);
   }
 
   private getMeetingBody = (event: CalendarEvent): string => {
@@ -257,7 +258,7 @@ class PipedriveCrmService implements CRM {
         location: event.location,
         uid: event.uid,
       }),
-     person_id: parseInt(contacts[0].id),
+      person_id: parseInt(contacts[0].id),
     };
 
     return this.requestPipedrive<{ success: boolean; data: PipedriveActivity }>("activities", {
