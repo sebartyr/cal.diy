@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.3.2] — 2026-11-17
+
+Patch release: the Pipedrive CRM app creates its activities again and no
+longer duplicates persons.
+
+### Fixed
+
+- **Pipedrive: no activity after install.** Installing the app first created an
+  empty `pipedrive-crm_other_calendar` credential, a leftover from the Revert
+  integration. Event types could bind to it, which filtered out the real OAuth
+  credential: bookings then created nothing in Pipedrive, with only a warning in
+  the logs. The empty credential is no longer created (#150).
+- **Pipedrive: duplicate persons.** Attendees were never matched to existing
+  persons, because the search response was read with the wrong field name, so
+  every booking created a new person. Persons are now matched by exact email,
+  one per attendee (#150).
+
+### Upgrade notes
+
+- No schema change, no migration. No new variable.
+- Installs made before this release keep their empty credential. For each one,
+  delete the `pipedrive-crm_other_calendar` credential, then disable and
+  re-enable Pipedrive on the affected event types so they bind to the
+  `pipedrive-crm_crm` credential:
+
+  ```sql
+  DELETE FROM "Credential" WHERE "appId" = 'pipedrive-crm' AND type = 'pipedrive-crm_other_calendar';
+  ```
+
+- The Pipedrive app README now documents the OAuth app setup and its scopes
+  (Deals, Activities and Contacts, full access).
+
 ## [8.3.1] — 2026-11-06
 
 Patch release: builds again on Node.js 26; the API keys page shows changes
