@@ -6,9 +6,9 @@ import {
   getConnectedCalendars,
 } from "@calcom/features/calendars/lib/CalendarManager";
 import { DestinationCalendarRepository } from "@calcom/features/calendars/repositories/DestinationCalendarRepository";
+import { SelectedCalendarRepository } from "@calcom/features/selectedCalendar/repositories/SelectedCalendarRepository";
 import { isDelegationCredential } from "@calcom/lib/delegationCredential";
 import logger from "@calcom/lib/logger";
-import { SelectedCalendarRepository } from "@calcom/features/selectedCalendar/repositories/SelectedCalendarRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import prisma from "@calcom/prisma";
 import type { DestinationCalendar, SelectedCalendar, User } from "@calcom/prisma/client";
@@ -203,8 +203,11 @@ function findMatchingCalendar({
 }): Required<ConnectedCalendarsFromGetConnectedCalendars[number]>["calendars"][number] | undefined {
   // Check if destinationCalendar exists in connectedCalendars
   const allCals = connectedCalendars.flatMap((cal) => cal.calendars ?? []);
+  // An unlisted calendar must not count as found, otherwise a destination the provider dropped is
+  // never moved to the primary calendar.
   const matchingCalendar = allCals.find(
-    (cal) => cal.externalId === calendar.externalId && cal.integration === calendar.integration
+    (cal) =>
+      !cal.isUnlisted && cal.externalId === calendar.externalId && cal.integration === calendar.integration
   );
   if (!matchingCalendar) return;
   return matchingCalendar;
@@ -242,10 +245,11 @@ function getSelectedCalendars({
 }: {
   user: UserWithCalendars;
   eventTypeId: number | null;
-}): Pick<
+}): (Pick<
   SelectedCalendar,
   "externalId" | "integration" | "eventTypeId" | "updatedAt" | "googleChannelId" | "id"
->[] {
+> &
+  Partial<Pick<SelectedCalendar, "credentialId">>)[] {
   if (eventTypeId) {
     return user.allSelectedCalendars.filter((calendar) => calendar.eventTypeId === eventTypeId);
   }
@@ -253,14 +257,16 @@ function getSelectedCalendars({
 }
 
 export type UserWithCalendars = Pick<User, "id" | "email"> & {
-  allSelectedCalendars: Pick<
+  allSelectedCalendars: (Pick<
     SelectedCalendar,
     "externalId" | "integration" | "eventTypeId" | "updatedAt" | "googleChannelId" | "id"
-  >[];
-  userLevelSelectedCalendars: Pick<
+  > &
+    Partial<Pick<SelectedCalendar, "credentialId">>)[];
+  userLevelSelectedCalendars: (Pick<
     SelectedCalendar,
     "externalId" | "integration" | "eventTypeId" | "updatedAt" | "googleChannelId" | "id"
-  >[];
+  > &
+    Partial<Pick<SelectedCalendar, "credentialId">>)[];
   destinationCalendar: DestinationCalendar | null;
 };
 

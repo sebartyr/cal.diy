@@ -1100,6 +1100,7 @@ export class UserRepository {
             eventTypeId: true,
             externalId: true,
             integration: true,
+            credentialId: true,
             updatedAt: true,
             googleChannelId: true,
           },
