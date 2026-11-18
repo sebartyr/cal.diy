@@ -1,5 +1,7 @@
 import type { appDataSchemas } from "@calcom/app-store/apps.schemas.generated";
 import { eventTypeAppMetadataOptionalSchema } from "@calcom/app-store/zod-utils";
+import { addMissingTeamMembersAsHosts } from "@calcom/features/eventtypes/lib/addMissingTeamMembersAsHosts";
+import type { HostInput } from "@calcom/features/eventtypes/lib/types";
 import { HashedLinkRepository } from "@calcom/features/hashedLink/lib/repository/HashedLinkRepository";
 import { HashedLinkService } from "@calcom/features/hashedLink/lib/service/HashedLinkService";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
@@ -70,7 +72,7 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     users,
     children,
     assignAllTeamMembers,
-    hosts,
+    hosts: inputHosts,
     id,
     multiplePrivateLinks,
     // Extract this from the input so it doesn't get saved in the db
@@ -106,6 +108,8 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
         },
       },
       isRRWeightsEnabled: true,
+      assignAllTeamMembers: true,
+      schedulingType: true,
       hosts: {
         select: {
           userId: true,
@@ -434,6 +438,24 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
       }
     });
   }
+
+  const finalAssignAllTeamMembers = assignAllTeamMembers ?? eventType.assignAllTeamMembers;
+  const finalSchedulingType = input.schedulingType ?? eventType.schedulingType;
+  // The assignment UI only stores the flag, so the hosts that availability and bookings read
+  // have to be derived here or the event ends up with no host at all.
+  const hosts =
+    teamId && finalAssignAllTeamMembers && finalSchedulingType !== SchedulingType.MANAGED
+      ? addMissingTeamMembersAsHosts<HostInput>({
+          hosts: inputHosts ?? eventType.hosts,
+          teamMemberIds: await membershipRepo.listAcceptedTeamMemberIds({ teamId }),
+          buildHost: (userId) => ({
+            userId,
+            isFixed: finalSchedulingType === SchedulingType.COLLECTIVE,
+            priority: 2,
+            weight: 100,
+          }),
+        })
+      : inputHosts;
 
   let hostLocationDeletions: { userId: number; eventTypeId: number }[] = [];
 

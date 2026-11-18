@@ -1,13 +1,13 @@
 "use client";
 
-import { memo, useCallback, useMemo } from "react";
-import { useFormContext, useFieldArray } from "react-hook-form";
-
+import { addMissingTeamMembersAsHosts } from "@calcom/features/eventtypes/lib/addMissingTeamMembersAsHosts";
 import type { FormValues, Host } from "@calcom/features/eventtypes/lib/types";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { SchedulingType } from "@calcom/prisma/enums";
 import type { RouterOutputs } from "@calcom/trpc/react";
 import { Avatar } from "@calcom/ui/components/avatar";
+import { memo, useCallback, useMemo } from "react";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 type TeamMember = RouterOutputs["viewer"]["eventTypes"]["get"]["teamMembers"][number];
 
@@ -44,7 +44,7 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
   const assignAllTeamMembers = form.watch("assignAllTeamMembers") ?? false;
   const isRRWeightsEnabled = form.watch("isRRWeightsEnabled") ?? false;
 
-  const { fields, append, remove, update } = useFieldArray<FormValues, "hosts">({
+  const { fields, append, remove, update, replace } = useFieldArray<FormValues, "hosts">({
     control: form.control,
     name: "hosts",
   });
@@ -72,6 +72,28 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
     [form, update]
   );
   const removeHost = useCallback((index: number) => remove(index), [remove]);
+
+  const toggleAssignAllTeamMembers = (checked: boolean) => {
+    form.setValue("assignAllTeamMembers", checked, { shouldDirty: true });
+    if (!checked) return;
+    const isCollective =
+      (form.getValues("schedulingType") ?? SchedulingType.COLLECTIVE) !== SchedulingType.ROUND_ROBIN;
+    const currentHosts = form.getValues("hosts") ?? [];
+    replace(
+      addMissingTeamMembersAsHosts<Host>({
+        hosts: currentHosts,
+        teamMemberIds: teamMembers.map((member) => member.id),
+        buildHost: (userId) => ({
+          userId,
+          isFixed: isCollective,
+          priority: 2,
+          weight: 100,
+          scheduleId: null,
+          groupId: null,
+        }),
+      })
+    );
+  };
 
   if (!team) {
     return (
@@ -111,9 +133,7 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
                 type="radio"
                 value={opt.value}
                 checked={schedulingType === opt.value}
-                onChange={() =>
-                  form.setValue("schedulingType", opt.value, { shouldDirty: true })
-                }
+                onChange={() => form.setValue("schedulingType", opt.value, { shouldDirty: true })}
                 className="sr-only"
               />
               <span className="text-emphasis font-medium">{opt.label}</span>
@@ -129,9 +149,7 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
           <input
             type="checkbox"
             checked={assignAllTeamMembers}
-            onChange={(e) =>
-              form.setValue("assignAllTeamMembers", e.target.checked, { shouldDirty: true })
-            }
+            onChange={(e) => toggleAssignAllTeamMembers(e.target.checked)}
           />
           <span className="text-sm">
             <span className="text-emphasis font-medium">
@@ -150,9 +168,7 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
             <input
               type="checkbox"
               checked={isRRWeightsEnabled}
-              onChange={(e) =>
-                form.setValue("isRRWeightsEnabled", e.target.checked, { shouldDirty: true })
-              }
+              onChange={(e) => form.setValue("isRRWeightsEnabled", e.target.checked, { shouldDirty: true })}
             />
             <span className="text-sm">
               <span className="text-emphasis font-medium">
@@ -188,71 +204,68 @@ export default function EventTeamAssignmentTab({ team, teamMembers }: Props) {
         </header>
 
         {assignAllTeamMembers ? (
-          <div className="border-subtle text-subtle rounded-md border p-3 text-sm">
+          <p className="text-subtle text-sm">
             {t("auto_assign_active", {
               defaultValue:
-                "L'assignation automatique de tous les membres est active — la liste manuelle est ignorée.",
+                "Tous les membres de l'équipe sont hôtes. Décochez « Assigner tous les membres » pour choisir les hôtes vous-même.",
             })}
-          </div>
-        ) : (
-          <>
-            <ul className="bg-default border-subtle divide-subtle overflow-hidden rounded-md border divide-y">
-              {fields.length === 0 ? (
-                <li className="text-subtle px-4 py-6 text-center text-sm">
-                  {t("no_hosts_yet", { defaultValue: "Aucun hôte. Ajoutez-en un ci-dessous." })}
-                </li>
-              ) : null}
-              {fields.map((field, index) => (
-                <HostRow
-                  key={field.id}
-                  index={index}
-                  host={field}
-                  member={memberByUserId.get(field.userId)}
-                  isRoundRobin={isRoundRobin}
-                  isRRWeightsEnabled={isRRWeightsEnabled}
-                  showWeights={showWeights}
-                  onChange={updateHost}
-                  onRemove={removeHost}
-                  t={t}
-                />
-              ))}
-            </ul>
+          </p>
+        ) : null}
+        <ul className="bg-default border-subtle divide-subtle overflow-hidden rounded-md border divide-y">
+          {fields.length === 0 ? (
+            <li className="text-subtle px-4 py-6 text-center text-sm">
+              {t("no_hosts_yet", { defaultValue: "Aucun hôte. Ajoutez-en un ci-dessous." })}
+            </li>
+          ) : null}
+          {fields.map((field, index) => (
+            <HostRow
+              key={field.id}
+              index={index}
+              host={field}
+              member={memberByUserId.get(field.userId)}
+              isRoundRobin={isRoundRobin}
+              isRRWeightsEnabled={isRRWeightsEnabled}
+              showWeights={showWeights}
+              onChange={updateHost}
+              onRemove={assignAllTeamMembers ? undefined : removeHost}
+              t={t}
+            />
+          ))}
+        </ul>
 
-            {availableMembers.length > 0 ? (
-              <div className="border-subtle rounded-md border p-3">
-                <p className="text-emphasis mb-2 text-sm font-medium">
-                  {t("add_a_host", { defaultValue: "Ajouter un hôte" })}
-                </p>
-                <select
-                  className="border-subtle bg-default w-full rounded-md border px-3 py-2 text-sm"
-                  defaultValue=""
-                  onChange={(e) => {
-                    const userId = Number(e.target.value);
-                    if (!userId) return;
-                    const host: Host = {
-                      userId,
-                      isFixed: !isRoundRobin,
-                      priority: 2,
-                      weight: 100,
-                      scheduleId: null,
-                      groupId: null,
-                    };
-                    append(host);
-                    e.target.value = "";
-                  }}>
-                  <option value="" disabled>
-                    {t("select_member", { defaultValue: "Choisir un membre…" })}
-                  </option>
-                  {availableMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name ?? m.username ?? m.email} ({m.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-          </>
-        )}
+        {!assignAllTeamMembers && availableMembers.length > 0 ? (
+          <div className="border-subtle rounded-md border p-3">
+            <p className="text-emphasis mb-2 text-sm font-medium">
+              {t("add_a_host", { defaultValue: "Ajouter un hôte" })}
+            </p>
+            <select
+              className="border-subtle bg-default w-full rounded-md border px-3 py-2 text-sm"
+              defaultValue=""
+              onChange={(e) => {
+                const userId = Number(e.target.value);
+                if (!userId) return;
+                const host: Host = {
+                  userId,
+                  isFixed: !isRoundRobin,
+                  priority: 2,
+                  weight: 100,
+                  scheduleId: null,
+                  groupId: null,
+                };
+                append(host);
+                e.target.value = "";
+              }}>
+              <option value="" disabled>
+                {t("select_member", { defaultValue: "Choisir un membre…" })}
+              </option>
+              {availableMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name ?? m.username ?? m.email} ({m.email})
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </section>
     </div>
   );
@@ -266,7 +279,7 @@ type HostRowProps = {
   isRRWeightsEnabled: boolean;
   showWeights: boolean;
   onChange: (index: number, patch: Partial<Host>) => void;
-  onRemove: (index: number) => void;
+  onRemove?: (index: number) => void;
   t: (key: string, opts?: { defaultValue?: string }) => string;
 };
 
@@ -283,11 +296,7 @@ const HostRow = memo(function HostRow({
 }: HostRowProps) {
   return (
     <li className="flex items-center gap-3 px-4 py-3">
-      <Avatar
-        size="sm"
-        alt={member?.name ?? `User ${host.userId}`}
-        imageSrc={member?.avatar ?? null}
-      />
+      <Avatar size="sm" alt={member?.name ?? `User ${host.userId}`} imageSrc={member?.avatar ?? null} />
       <div className="min-w-0 flex-1">
         <p className="text-emphasis truncate text-sm font-medium">
           {member?.name ?? member?.username ?? `User ${host.userId}`}
@@ -330,20 +339,20 @@ const HostRow = memo(function HostRow({
             min={1}
             max={100}
             value={host.weight}
-            onChange={(e) =>
-              onChange(index, { weight: Math.max(1, Number(e.target.value) || 1) })
-            }
+            onChange={(e) => onChange(index, { weight: Math.max(1, Number(e.target.value) || 1) })}
             className="border-subtle bg-default w-16 rounded-md border px-2 py-1 text-xs"
           />
         </label>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => onRemove(index)}
-        className="text-error text-xs underline-offset-2 hover:underline">
-        {t("remove", { defaultValue: "Retirer" })}
-      </button>
+      {onRemove ? (
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="text-error text-xs underline-offset-2 hover:underline">
+          {t("remove", { defaultValue: "Retirer" })}
+        </button>
+      ) : null}
     </li>
   );
 });
