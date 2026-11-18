@@ -111,6 +111,8 @@ export type ConnectedCalendar = Omit<IntegrationCalendar, "primary"> & {
   readOnly: boolean;
   credentialId: number;
   delegationCredentialId: string | null;
+  /** Selected in Cal.diy but no longer returned by the provider. */
+  isUnlisted?: boolean;
 };
 
 function appendUnlistedSelectedCalendars<
@@ -124,9 +126,15 @@ function appendUnlistedSelectedCalendars<
   calendarCredentials: ReturnType<typeof getCalendarCredentials>;
   selectedCalendars: SelectedCalendarReference[];
 }): TConnectedCalendar[] {
-  const listedExternalIds = new Set(
-    connectedCalendars.flatMap((connected) => connected.calendars ?? []).map((cal) => cal.externalId)
-  );
+  const listedExternalIdsByType = new Map<string, Set<string>>();
+  connectedCalendars.forEach((connected, index) => {
+    const { type } = calendarCredentials[index].credential;
+    const listedExternalIds = listedExternalIdsByType.get(type) ?? new Set<string>();
+    for (const cal of connected.calendars ?? []) {
+      listedExternalIds.add(cal.externalId);
+    }
+    listedExternalIdsByType.set(type, listedExternalIds);
+  });
   const integrationTypesSeen = new Set<string>();
 
   return connectedCalendars.map((connected, index) => {
@@ -138,7 +146,7 @@ function appendUnlistedSelectedCalendars<
 
     const unlisted = findUnlistedSelectedCalendars({
       selectedCalendars,
-      listedExternalIds,
+      listedExternalIds: listedExternalIdsByType.get(credential.type) ?? new Set<string>(),
       credentialId: credential.id,
       integrationType: credential.type,
       isFirstCredentialOfType,
@@ -161,6 +169,7 @@ function appendUnlistedSelectedCalendars<
             isSelected: true,
             credentialId: credential.id,
             delegationCredentialId,
+            isUnlisted: true,
           })
         ),
       ],
@@ -231,6 +240,9 @@ export const getConnectedCalendars = async (
           return {
             integration: safeToSendIntegration,
             credentialId,
+            delegationCredentialId,
+            // Kept empty rather than omitted so selections the provider stopped listing can still be shown.
+            calendars,
             error: {
               message: "No primary calendar found",
             },
@@ -285,7 +297,7 @@ export const getConnectedCalendars = async (
         continue;
       }
       const calendar = connectedCalendar.calendars.find(
-        (cal) => cal.externalId === destinationCalendarExternalId
+        (cal) => !cal.isUnlisted && cal.externalId === destinationCalendarExternalId
       );
       if (calendar) {
         destinationCalendar = {

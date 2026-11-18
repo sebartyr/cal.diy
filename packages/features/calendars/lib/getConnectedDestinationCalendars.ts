@@ -203,8 +203,11 @@ function findMatchingCalendar({
 }): Required<ConnectedCalendarsFromGetConnectedCalendars[number]>["calendars"][number] | undefined {
   // Check if destinationCalendar exists in connectedCalendars
   const allCals = connectedCalendars.flatMap((cal) => cal.calendars ?? []);
+  // An unlisted calendar must not count as found, otherwise a destination the provider dropped is
+  // never moved to the primary calendar.
   const matchingCalendar = allCals.find(
-    (cal) => cal.externalId === calendar.externalId && cal.integration === calendar.integration
+    (cal) =>
+      !cal.isUnlisted && cal.externalId === calendar.externalId && cal.integration === calendar.integration
   );
   if (!matchingCalendar) return;
   return matchingCalendar;

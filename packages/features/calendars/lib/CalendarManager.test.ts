@@ -284,16 +284,14 @@ describe("CalendarManager tests", () => {
 
     beforeEach(() => {
       vi.mocked(getCalendar).mockResolvedValue({
-        listCalendars: vi
-          .fn()
-          .mockResolvedValue([
-            {
-              externalId: "me@new.example",
-              integration: "google_calendar",
-              name: "me@new.example",
-              primary: true,
-            },
-          ]),
+        listCalendars: vi.fn().mockResolvedValue([
+          {
+            externalId: "me@new.example",
+            integration: "google_calendar",
+            name: "me@new.example",
+            primary: true,
+          },
+        ]),
       } as unknown as Awaited<ReturnType<typeof getCalendar>>);
     });
 
@@ -325,6 +323,63 @@ describe("CalendarManager tests", () => {
       expect(connectedCalendars[0].calendars).toEqual([
         expect.objectContaining({ externalId: "me@new.example", isSelected: true }),
       ]);
+    });
+
+    it("does not let another provider's calendar hide an unlisted selection", async () => {
+      const outlookCredential = buildCredential({
+        id: 40,
+        type: "office365_calendar",
+        appId: "office365-calendar",
+        delegatedToId: null,
+        user: { email: "me@new.example" },
+      });
+      vi.mocked(getCalendar).mockImplementation(
+        async (credential) =>
+          ({
+            listCalendars: vi
+              .fn()
+              .mockResolvedValue(
+                credential?.type === "office365_calendar"
+                  ? [{ externalId: "me@old.example", integration: "office365_calendar", primary: true }]
+                  : [{ externalId: "me@new.example", integration: "google_calendar", primary: true }]
+              ),
+          }) as unknown as Awaited<ReturnType<typeof getCalendar>>
+      );
+
+      const { connectedCalendars } = await getConnectedCalendars(
+        getCalendarCredentials([googleCredential, outlookCredential]),
+        [{ externalId: "me@old.example", integration: "google_calendar", credentialId: 31 }]
+      );
+
+      const google = connectedCalendars.find((connected) => connected.credentialId === 31);
+      expect(google?.calendars).toContainEqual(
+        expect.objectContaining({ externalId: "me@old.example", isUnlisted: true, isSelected: true })
+      );
+    });
+
+    it("shows unlisted selections when the provider returns no calendar", async () => {
+      vi.mocked(getCalendar).mockResolvedValue({
+        listCalendars: vi.fn().mockResolvedValue([]),
+      } as unknown as Awaited<ReturnType<typeof getCalendar>>);
+
+      const { connectedCalendars } = await getConnectedCalendars(getCalendarCredentials([googleCredential]), [
+        { externalId: "me@old.example", integration: "google_calendar", credentialId: 31 },
+      ]);
+
+      expect(connectedCalendars[0].calendars).toEqual([
+        expect.objectContaining({ externalId: "me@old.example", isUnlisted: true }),
+      ]);
+      expect(connectedCalendars[0].error).toEqual({ message: "No primary calendar found" });
+    });
+
+    it("never resolves the destination calendar to an unlisted selection", async () => {
+      const { destinationCalendar } = await getConnectedCalendars(
+        getCalendarCredentials([googleCredential]),
+        [{ externalId: "me@old.example", integration: "google_calendar", credentialId: 31 }],
+        "me@old.example"
+      );
+
+      expect(destinationCalendar).toBeUndefined();
     });
   });
 
