@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.3.4] — 2026-11-18
+
+Patch release: team event types set to assign all team members get their hosts
+again, so their booking page shows slots.
+
+### Fixed
+
+- **"Assign all team members" left the event with no host.** The Assignment tab
+  only stored the `assignAllTeamMembers` flag and created no host, so a
+  collective or round-robin event saved with it on had zero hosts and its
+  booking page showed no slot at all. Checking the box now fills the hosts list
+  with every team member, and saving an event with the flag on adds any accepted
+  member who is missing as a host. Events already saved with no hosts are
+  repaired the next time they are saved (#152).
+
+### Known limitations
+
+- A member who joins the team later is added as a host only on the event's next
+  save: adding new members automatically is not implemented in this fork.
+
+### Upgrade notes
+
+- No schema change, no migration. No new variable.
+- After deploying, open and save each team event that has "assign all team
+  members" on and shows no host.
+- Not validated by a full build or E2E run before release.
+
 ## [8.3.3] — 2026-11-17
 
 Security release: patches published advisories in Next.js, Hono, its Node.js
