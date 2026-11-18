@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.3.5] — 2026-11-18
+
+Patch release: calendars still selected for conflict checking but no longer
+listed by their provider are shown again, so they can be unchecked.
+
+### Fixed
+
+- **Selected calendar invisible after an email domain change.** When a Google
+  Workspace domain is renamed (here `clever-cloud.com` → `clever.cloud`),
+  Google lists each calendar under its new address while the selection keeps
+  the old one. Google still resolves the old address as an alias, so the
+  calendar kept blocking slots, but the Calendars settings page only showed the
+  calendars Google returns: the selection could not be seen or unchecked. Such
+  selections are now listed, checked, under their account, so they can be
+  unchecked. They are never offered as the calendar bookings are added to, and
+  a destination calendar the provider no longer lists is still moved to the
+  primary calendar as before (#153).
+
+### Upgrade notes
+
+- No schema change, no migration, no data change. No new variable.
+- After an email domain change, a user may see the same mailbox twice, under
+  the old and the new address; unchecking the old address is enough.
+- Not validated by a full build or E2E run, nor against a real Google account,
+  before release.
+
 ## [8.3.4] — 2026-11-18
 
 Patch release: team event types set to assign all team members get their hosts
