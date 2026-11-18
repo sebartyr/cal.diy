@@ -7,6 +7,7 @@ import {
   deleteEvent,
   getBusyCalendarTimes,
   getCalendarCredentials,
+  getConnectedCalendars,
   processEvent,
   updateEvent,
 } from "./CalendarManager";
@@ -269,6 +270,61 @@ describe("CalendarManager tests", () => {
       const calendarCredentials = getCalendarCredentials(credentials);
       expect(calendarCredentials).toHaveLength(1);
       expect(calendarCredentials[0].credential).toEqual(googleCalendarCredentials);
+    });
+  });
+
+  describe("fn: getConnectedCalendars", () => {
+    const googleCredential = buildCredential({
+      id: 31,
+      type: "google_calendar",
+      appId: "google-calendar",
+      delegatedToId: null,
+      user: { email: "me@new.example" },
+    });
+
+    beforeEach(() => {
+      vi.mocked(getCalendar).mockResolvedValue({
+        listCalendars: vi
+          .fn()
+          .mockResolvedValue([
+            {
+              externalId: "me@new.example",
+              integration: "google_calendar",
+              name: "me@new.example",
+              primary: true,
+            },
+          ]),
+      } as unknown as Awaited<ReturnType<typeof getCalendar>>);
+    });
+
+    it("lists a selected calendar the provider no longer returns so it can be unchecked", async () => {
+      const { connectedCalendars } = await getConnectedCalendars(getCalendarCredentials([googleCredential]), [
+        { externalId: "me@old.example", integration: "google_calendar", credentialId: null },
+      ]);
+
+      expect(connectedCalendars[0].calendars).toEqual([
+        expect.objectContaining({ externalId: "me@new.example", isSelected: false }),
+        expect.objectContaining({
+          externalId: "me@old.example",
+          name: "me@old.example",
+          isSelected: true,
+          readOnly: true,
+          credentialId: 31,
+        }),
+      ]);
+      expect(connectedCalendars[0].primary).toEqual(
+        expect.objectContaining({ externalId: "me@new.example" })
+      );
+    });
+
+    it("adds nothing when every selected calendar is listed", async () => {
+      const { connectedCalendars } = await getConnectedCalendars(getCalendarCredentials([googleCredential]), [
+        { externalId: "me@new.example", integration: "google_calendar", credentialId: 31 },
+      ]);
+
+      expect(connectedCalendars[0].calendars).toEqual([
+        expect.objectContaining({ externalId: "me@new.example", isSelected: true }),
+      ]);
     });
   });
 
