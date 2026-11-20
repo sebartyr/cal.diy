@@ -15,6 +15,7 @@ import {
 import { GetDefaultConferencingAppOutputResponseDto } from "@/modules/conferencing/outputs/get-default-conferencing-app.output";
 import { SetDefaultConferencingAppOutputResponseDto } from "@/modules/conferencing/outputs/set-default-conferencing-app.output";
 import {
+  isAllowedReturnUrl,
   type OAuthCallbackState,
   signOAuthCallbackState,
   verifyOAuthCallbackState,
@@ -108,6 +109,18 @@ export class ConferencingController {
       fromApp: false,
       accessToken,
     };
+
+    const allowedDestinations = [
+      new URL(this.config.getOrThrow<string>("app.baseUrl")).origin,
+      ...(await this.conferencingService.getOAuthClientRedirectUris(accessToken)),
+    ];
+    for (const destination of [state.returnTo, state.onErrorReturnTo]) {
+      if (destination !== undefined && !isAllowedReturnUrl(destination, allowedDestinations)) {
+        throw new BadRequestException(
+          "returnTo and onErrorReturnTo must be on the web app or an allowed redirect URI of your OAuth client"
+        );
+      }
+    }
 
     const credential = await this.conferencingService.generateOAuthUrl(
       app,

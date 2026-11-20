@@ -114,6 +114,11 @@ export class ConferencingService {
     return true;
   }
 
+  async getOAuthClientRedirectUris(accessToken: string): Promise<string[]> {
+    const client = await this.tokensRepository.getAccessTokenClient(accessToken);
+    return client?.redirectUris ?? [];
+  }
+
   async generateOAuthUrl(app: string, state: OAuthCallbackState) {
     switch (app) {
       case ZOOM:

@@ -1,9 +1,14 @@
 import { ConferencingController } from "@/modules/conferencing/controllers/conferencing.controller";
-import { signOAuthCallbackState, verifyOAuthCallbackState } from "@/modules/conferencing/oauth-callback-state";
+import {
+  isAllowedReturnUrl,
+  signOAuthCallbackState,
+  verifyOAuthCallbackState,
+} from "@/modules/conferencing/oauth-callback-state";
 import type { ConferencingService } from "@/modules/conferencing/services/conferencing.service";
 import type { HttpService } from "@nestjs/axios";
 import { BadRequestException } from "@nestjs/common";
 import type { ConfigService } from "@nestjs/config";
+import type { Request } from "express";
 
 const SECRET = "test-secret";
 const state = { accessToken: "token", returnTo: "https://app.example.com/ok", onErrorReturnTo: "https://app.example.com/ko" };
@@ -35,11 +40,18 @@ describe("OAuth callback state", () => {
   });
 });
 
-describe("ConferencingController.save", () => {
-  const conferencingService = { connectOauthApps: jest.fn() };
+describe("ConferencingController", () => {
+  const conferencingService = {
+    connectOauthApps: jest.fn(),
+    generateOAuthUrl: jest.fn(async () => ({ url: "https://zoom.example/authorize" })),
+    getOAuthClientRedirectUris: jest.fn(async () => ["https://app.example.com"]),
+  };
+  const config = {
+    getOrThrow: (key: string) => (key === "app.baseUrl" ? "https://cal.example.com/" : SECRET),
+  } as unknown as ConfigService;
   const controller = new ConferencingController(
     conferencingService as unknown as ConferencingService,
-    { getOrThrow: () => SECRET } as unknown as ConfigService,
+    config,
     {} as HttpService
   );
 
@@ -69,5 +81,64 @@ describe("ConferencingController.save", () => {
     await expect(controller.save(raw, "zoom", "code", undefined, undefined)).resolves.toEqual({
       url: state.onErrorReturnTo,
     });
+  });
+});
+
+describe("isAllowedReturnUrl", () => {
+  const allowed = ["https://cal.example.com", "https://*.customer.example", "https://app.example.com/oauth/done"];
+
+  it.each([
+    ["https://cal.example.com/apps/installed", true],
+    ["https://tenant.customer.example/settings", true],
+    ["https://app.example.com/oauth/done", true],
+    ["https://evil.example/", false],
+    ["https://cal.example.com.evil.example/", false],
+    ["javascript:alert(1)", false],
+    ["not a url", false],
+  ])("%s -> %s", (url, expected) => {
+    expect(isAllowedReturnUrl(url, allowed)).toBe(expected);
+  });
+});
+
+describe("ConferencingController.redirect", () => {
+  const conferencingService = {
+    generateOAuthUrl: jest.fn(async () => ({ url: "https://zoom.example/authorize" })),
+    getOAuthClientRedirectUris: jest.fn(async () => ["https://app.example.com"]),
+  };
+  const controller = new ConferencingController(
+    conferencingService as unknown as ConferencingService,
+    { getOrThrow: (key: string) => (key === "app.baseUrl" ? "https://cal.example.com" : SECRET) } as unknown as ConfigService,
+    {} as HttpService
+  );
+  const request = (origin?: string) => ({ headers: { origin } }) as unknown as Request;
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it("signs destinations on the web app or an allowed redirect URI", async () => {
+    await controller.redirect(
+      request(),
+      "Bearer token",
+      "zoom",
+      "https://app.example.com/done",
+      "https://cal.example.com/error"
+    );
+
+    expect(conferencingService.generateOAuthUrl).toHaveBeenCalledWith(
+      "zoom",
+      expect.objectContaining({ returnTo: "https://app.example.com/done", sig: expect.any(String) })
+    );
+  });
+
+  it("refuses a destination outside the allowed list", async () => {
+    await expect(
+      controller.redirect(request(), "Bearer token", "zoom", "https://app.example.com/done", "https://evil.example")
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(conferencingService.generateOAuthUrl).not.toHaveBeenCalled();
+  });
+
+  it("refuses a disallowed Origin header used as the default destination", async () => {
+    await expect(controller.redirect(request("https://evil.example"), "Bearer token", "zoom")).rejects.toBeInstanceOf(
+      BadRequestException
+    );
   });
 });

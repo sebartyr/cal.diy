@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { isOriginAllowed } from "@/lib/is-origin-allowed/is-origin-allowed";
 
 export type OAuthCallbackState = {
   accessToken: string;
@@ -37,4 +38,20 @@ export function verifyOAuthCallbackState(rawState: string, secret: string): OAut
   if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return null;
 
   return state as OAuthCallbackState;
+}
+
+/**
+ * Signing only proves the state came from us, not that its destinations are safe: whoever requests the
+ * auth URL chooses them. They must be http(s) and match the web app or an allowed redirect URI of the
+ * caller's OAuth client (an origin or a full URL, wildcards allowed, as for request origins).
+ */
+export function isAllowedReturnUrl(url: string, allowed: string[]): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+  return isOriginAllowed(parsed.origin, allowed) || isOriginAllowed(url, allowed);
 }
