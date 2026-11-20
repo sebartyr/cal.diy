@@ -14,6 +14,12 @@ import {
 } from "@/modules/conferencing/outputs/get-conferencing-apps.output";
 import { GetDefaultConferencingAppOutputResponseDto } from "@/modules/conferencing/outputs/get-default-conferencing-app.output";
 import { SetDefaultConferencingAppOutputResponseDto } from "@/modules/conferencing/outputs/set-default-conferencing-app.output";
+import {
+  isAllowedReturnUrl,
+  type OAuthCallbackState,
+  signOAuthCallbackState,
+  verifyOAuthCallbackState,
+} from "@/modules/conferencing/oauth-callback-state";
 import { ConferencingService } from "@/modules/conferencing/services/conferencing.service";
 import { UserWithProfile } from "@/modules/users/users.repository";
 import { HttpService } from "@nestjs/axios";
@@ -41,14 +47,7 @@ import { Request } from "express";
 
 import { GOOGLE_MEET, ZOOM, SUCCESS_STATUS, CAL_VIDEO } from "@calcom/platform-constants";
 
-export type OAuthCallbackState = {
-  accessToken: string;
-  teamId?: string;
-  orgId?: string;
-  fromApp?: boolean;
-  returnTo?: string;
-  onErrorReturnTo?: string;
-};
+export type { OAuthCallbackState } from "@/modules/conferencing/oauth-callback-state";
 
 @Controller({
   path: "/v2/conferencing",
@@ -111,7 +110,22 @@ export class ConferencingController {
       accessToken,
     };
 
-    const credential = await this.conferencingService.generateOAuthUrl(app, state);
+    const allowedDestinations = [
+      new URL(this.config.getOrThrow<string>("app.baseUrl")).origin,
+      ...(await this.conferencingService.getOAuthClientRedirectUris(accessToken)),
+    ];
+    for (const destination of [state.returnTo, state.onErrorReturnTo]) {
+      if (destination !== undefined && !isAllowedReturnUrl(destination, allowedDestinations)) {
+        throw new BadRequestException(
+          "returnTo and onErrorReturnTo must be on the web app or an allowed redirect URI of your OAuth client"
+        );
+      }
+    }
+
+    const credential = await this.conferencingService.generateOAuthUrl(
+      app,
+      signOAuthCallbackState(state, this.config.getOrThrow<string>("next.authSecret"))
+    );
 
     return {
       status: SUCCESS_STATUS,
@@ -148,7 +162,13 @@ export class ConferencingController {
       throw new BadRequestException("Missing `state` query param");
     }
 
-    const decodedCallbackState: OAuthCallbackState = JSON.parse(state);
+    const decodedCallbackState = verifyOAuthCallbackState(
+      state,
+      this.config.getOrThrow<string>("next.authSecret")
+    );
+    if (!decodedCallbackState) {
+      throw new BadRequestException("Invalid `state` query param");
+    }
     try {
       if (error) {
         throw new BadRequestException(error_description);
@@ -171,7 +191,7 @@ export class ConferencingController {
         }
       }
 
-      return this.conferencingService.connectOauthApps(app, code, decodedCallbackState);
+      return await this.conferencingService.connectOauthApps(app, code, decodedCallbackState);
     } catch (error) {
       if (error instanceof HttpException || error instanceof Error) {
         this.logger.error(error.message);
