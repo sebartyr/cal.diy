@@ -1,5 +1,6 @@
 import dayjs from "@calcom/dayjs";
 import logger from "@calcom/lib/logger";
+import { logBlockedSSRFAttempt, validateUrlForSSRF } from "@calcom/lib/ssrfProtection";
 import type { PrismaClient } from "@calcom/prisma";
 import { DEFAULT_WEBHOOK_VERSION } from "./interface/IWebhookRepository";
 import { createWebhookSignature, jsonParse } from "./sendPayload";
@@ -16,6 +17,17 @@ type ScheduledJob = {
 };
 
 async function sendScheduledJob(prisma: PrismaClient, job: ScheduledJob): Promise<void> {
+  // The URL was snapshotted at booking time and only checked without DNS when the webhook was saved,
+  // so the hostname may now resolve to an internal address (DNS rebinding).
+  const ssrfCheck = await validateUrlForSSRF(job.subscriberUrl);
+  if (!ssrfCheck.isValid) {
+    logBlockedSSRFAttempt(job.subscriberUrl, ssrfCheck.error ?? "unknown", {
+      where: "webhook.scheduledTrigger",
+      jobId: job.id,
+    });
+    return;
+  }
+
   let webhook = job.webhook;
 
   // only needed to support old jobs that don't have the webhook relationship yet
