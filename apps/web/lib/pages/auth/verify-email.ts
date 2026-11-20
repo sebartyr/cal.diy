@@ -1,8 +1,7 @@
 import dayjs from "@calcom/dayjs";
 import { OnboardingPathService } from "@calcom/features/onboarding/lib/onboarding-path.service";
-import { IS_STRIPE_ENABLED, WEBAPP_URL } from "@calcom/lib/constants";
+import { WEBAPP_URL } from "@calcom/lib/constants";
 import { prisma } from "@calcom/prisma";
-import { CreationSource, MembershipRole } from "@calcom/prisma/enums";
 import { userMetadata } from "@calcom/prisma/zod-utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -12,18 +11,6 @@ const verifySchema = z.object({
 });
 
 const USER_ALREADY_EXISTING_MESSAGE = "A User already exists with this email";
-
-// TODO: To be unit tested
-export async function moveUserToMatchingOrg({ email }: { email: string }) {
-  const organizationRepository = { findUniqueNonPlatformOrgsByMatchingAutoAcceptEmail: async (_args: { email: string }) => null as { id: number } | null };
-  const org = await organizationRepository.findUniqueNonPlatformOrgsByMatchingAutoAcceptEmail({ email });
-
-  if (!org) {
-    return;
-  }
-
-  ({});
-}
 
 export async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { token } = verifySchema.parse(req.query);
@@ -113,14 +100,6 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
     });
 
-    if (IS_STRIPE_ENABLED && userMetadataParsed.stripeCustomerId) {
-        const billingService = { updateCustomer: async (_args: { customerId: string; email: string }) => {} };
-        await billingService.updateCustomer({
-          customerId: userMetadataParsed.stripeCustomerId,
-          email: updatedEmail,
-        });
-    }
-
     // The user is trying to update the email to an already existing unverified secondary email of his
     // so we swap the emails and its verified status
     if (existingSecondaryUser?.userId === user.id) {
@@ -154,7 +133,6 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const hasCompletedOnboarding = user.completedOnboarding;
 
-  await moveUserToMatchingOrg({ email: user.email });
 
   const gettingStartedPath = await OnboardingPathService.getGettingStartedPath();
 
