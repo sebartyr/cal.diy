@@ -69,6 +69,8 @@ export class BookingSeatRepository {
             oneTimePassword: true,
             cancelledBy: true,
             rescheduledBy: true,
+            rescheduleReason: true,
+            rescheduleRequestedAt: true,
             createdAt: true,
             updatedAt: true,
             eventTypeId: true,
