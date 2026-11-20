@@ -762,3 +762,88 @@ describe("getAllCredentialsIncludeServiceAccountKey", () => {
     });
   });
 });
+
+describe("CRM app pointing to a deleted credential", () => {
+  const setup = async () => {
+    vi.mocked(UserRepository).mockImplementation(function () {
+      return {
+        enrichUserWithItsProfile: vi.fn().mockReturnValue({ profile: null }),
+      } as InstanceType<typeof UserRepository>;
+    });
+    return (await import("./getAllCredentials")).getAllCredentialsIncludeServiceAccountKey;
+  };
+
+  const reinstalledCredential = {
+    id: 128,
+    type: "pipedrive-crm_crm",
+    userId: 20,
+    teamId: null,
+    key: {},
+    appId: "pipedrive-crm",
+    invalid: false,
+  };
+
+  const eventTypeBoundTo = (credentialId: number, enabled = true) => ({
+    userId: 20,
+    team: null,
+    parentId: null,
+    metadata: {
+      apps: {
+        "pipedrive-crm": { enabled, credentialId, appCategories: ["crm"] },
+      },
+    },
+  });
+
+  const user = (credentials: (typeof reinstalledCredential)[]) => ({
+    id: 20,
+    username: "test",
+    email: "test@test.com",
+    credentials: credentials.map((credential) => ({ ...credential, user: { email: "test@test.com" } })),
+  });
+
+  test("falls back to the user's current installation of the same app", async () => {
+    const getAllCredentialsIncludeServiceAccountKey = await setup();
+
+    const credentials = await getAllCredentialsIncludeServiceAccountKey(
+      user([reinstalledCredential]),
+      eventTypeBoundTo(126)
+    );
+
+    expect(credentials).toContainEqual(expect.objectContaining({ id: 128, type: "pipedrive-crm_crm" }));
+  });
+
+  test("prefers the OAuth credential over a legacy empty _other_calendar one", async () => {
+    const getAllCredentialsIncludeServiceAccountKey = await setup();
+    const legacy = { ...reinstalledCredential, id: 125, type: "pipedrive-crm_other_calendar" };
+
+    const credentials = await getAllCredentialsIncludeServiceAccountKey(
+      user([legacy, reinstalledCredential]),
+      eventTypeBoundTo(126)
+    );
+
+    expect(credentials.map((credential) => credential.id)).toContain(128);
+  });
+
+  test("does not fall back when the app is disabled on the event type", async () => {
+    const getAllCredentialsIncludeServiceAccountKey = await setup();
+
+    const credentials = await getAllCredentialsIncludeServiceAccountKey(
+      user([reinstalledCredential]),
+      eventTypeBoundTo(126, false)
+    );
+
+    expect(credentials).not.toContainEqual(expect.objectContaining({ type: "pipedrive-crm_crm" }));
+  });
+
+  test("keeps only the selected installation when it still exists", async () => {
+    const getAllCredentialsIncludeServiceAccountKey = await setup();
+    const other = { ...reinstalledCredential, id: 129 };
+
+    const credentials = await getAllCredentialsIncludeServiceAccountKey(
+      user([reinstalledCredential, other]),
+      eventTypeBoundTo(128)
+    );
+
+    expect(credentials.map((credential) => credential.id)).toEqual([128]);
+  });
+});

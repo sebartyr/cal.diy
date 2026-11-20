@@ -1,11 +1,14 @@
 import { enrichUserWithDelegationCredentialsIncludeServiceAccountKey } from "@calcom/app-store/delegationCredential";
 import { eventTypeAppMetadataOptionalSchema } from "@calcom/app-store/zod-utils";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
+import logger from "@calcom/lib/logger";
 import prisma from "@calcom/prisma";
 import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
 import type { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import type { CredentialPayload } from "@calcom/types/Credential";
 import type { z } from "zod";
+
+const log = logger.getSubLogger({ prefix: ["getAllCredentials"] });
 
 export type EventType = {
   userId?: number | null;
@@ -89,6 +92,7 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
 
   // Will be [credentialId]: { enabled: boolean }]
   const eventTypeCrmCredentials: Record<number, { enabled: boolean }> = {};
+  const availableCredentialIds = new Set(allCredentials.map((credential) => credential.id));
 
   for (const appKey in eventTypeAppMetadata) {
     const app = eventTypeAppMetadata[appKey as keyof typeof eventTypeAppMetadata] as
@@ -96,9 +100,23 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
       | undefined;
     if (app?.appCategories && app.appCategories.some((category: string) => category === "crm")) {
       if (app.credentialId !== undefined) {
-        eventTypeCrmCredentials[app.credentialId] = {
-          enabled: app.enabled ?? false,
-        };
+        const enabled = app.enabled ?? false;
+        eventTypeCrmCredentials[app.credentialId] = { enabled };
+
+        if (enabled && !availableCredentialIds.has(app.credentialId)) {
+          // The credential picked on the event type was deleted (e.g. the app was uninstalled and
+          // reinstalled). Without this, the CRM silently stops for the event type until someone
+          // re-selects the installation on its Apps tab.
+          const replacement = findReplacementCrmCredential(allCredentials, appKey);
+          log.warn("Event type CRM app points to a credential that no longer exists", {
+            appSlug: appKey,
+            missingCredentialId: app.credentialId,
+            replacementCredentialId: replacement?.id ?? null,
+          });
+          if (replacement && !eventTypeCrmCredentials[replacement.id]) {
+            eventTypeCrmCredentials[replacement.id] = { enabled: true };
+          }
+        }
       }
     }
   }
@@ -135,3 +153,17 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
 
   return userWithDelegationCredentials.credentials;
 };
+
+/** Prefers a real CRM credential over a legacy `_other_calendar` one, and a valid one over an invalid one. */
+function findReplacementCrmCredential<T extends { appId: string | null; type: string; invalid?: boolean | null }>(
+  credentials: T[],
+  appSlug: string
+): T | undefined {
+  const candidates = credentials.filter(
+    (credential) =>
+      credential.appId === appSlug &&
+      (credential.type.endsWith("_crm") || credential.type.endsWith("_other_calendar"))
+  );
+  const rank = (credential: T) => (credential.type.endsWith("_crm") ? 0 : 2) + (credential.invalid ? 1 : 0);
+  return candidates.sort((a, b) => rank(a) - rank(b))[0];
+}
