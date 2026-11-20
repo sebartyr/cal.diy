@@ -225,6 +225,7 @@ const nextConfig = (phase: string): NextConfig => {
 
   return {
     output: process.env.BUILD_STANDALONE === "true" ? "standalone" : undefined,
+    poweredByHeader: false,
     serverExternalPackages: [
       "http-cookie-agent",
       "rest-facade",
@@ -411,6 +412,11 @@ const nextConfig = (phase: string): NextConfig => {
               key: "Referrer-Policy",
               value: "strict-origin-when-cross-origin",
             },
+            // Headers are baked in at build time, so HSTS follows the configured web app URL. No
+            // includeSubDomains: the app may be served from a subdomain of a domain it does not own.
+            ...(process.env.NEXT_PUBLIC_WEBAPP_URL?.startsWith("https://")
+              ? [{ key: "Strict-Transport-Security", value: "max-age=31536000" }]
+              : []),
           ],
         },
         {
