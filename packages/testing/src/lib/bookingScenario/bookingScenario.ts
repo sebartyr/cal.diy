@@ -506,6 +506,8 @@ export async function addEventTypes(eventTypes: InputEventType[], usersStore: In
     seatsPerTimeSlot: null,
     metadata: {},
     minimumBookingNotice: 0,
+    // Pinned so scenarios don't inherit the schema default (true) and land in PENDING unexpectedly.
+    requiresConfirmation: false,
     offsetStart: 0,
   };
   const foundEvents: Record<number, boolean> = {};

@@ -162,6 +162,12 @@ export class InputEventTypesService_2024_06_14 {
     const disableReschedulingTransformed = this.transformInputDisableRescheduling(disableRescheduling);
     const disableCancellingTransformed = this.transformInputDisableCancelling(disableCancelling);
 
+    const seatOptions = this.transformInputSeatOptions(seats);
+    // Seats and confirmation are mutually exclusive. Without an explicit policy the schema default
+    // (requiresConfirmation = true) would store a combination that every later update rejects.
+    const requiresConfirmation =
+      confirmationPolicyTransformed?.requiresConfirmation ?? (seatOptions.seatsPerTimeSlot ? false : undefined);
+
     const eventType = {
       ...rest,
       slug: slugifiedSlug,
@@ -174,12 +180,12 @@ export class InputEventTypesService_2024_06_14 {
         : undefined,
       ...this.transformInputBookingWindow(bookingWindow),
       metadata,
-      requiresConfirmation: confirmationPolicyTransformed?.requiresConfirmation ?? undefined,
+      requiresConfirmation,
       requiresConfirmationWillBlockSlot:
         confirmationPolicyTransformed?.requiresConfirmationWillBlockSlot ?? undefined,
       eventTypeColor: this.transformInputEventTypeColor(color),
       recurringEvent: recurrence ? this.transformInputRecurrignEvent(recurrence) : undefined,
-      ...this.transformInputSeatOptions(seats),
+      ...seatOptions,
       eventName: customName,
       useEventTypeDestinationCalendarEmail: useDestinationCalendarEmail,
       ...maxActiveBookingsPerBooker,
