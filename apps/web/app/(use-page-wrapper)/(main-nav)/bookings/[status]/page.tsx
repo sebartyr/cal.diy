@@ -11,6 +11,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDefaultBookingsListUrl } from "~/bookings/lib/defaultBookingsListUrl";
+import { isBookingsV3Enabled } from "~/bookings/lib/isBookingsV3Enabled";
 import { validStatuses } from "~/bookings/lib/validStatuses";
 import BookingsList from "~/bookings/views/bookings-view";
 
@@ -56,7 +57,7 @@ const Page = async ({ params, searchParams }: PageProps) => {
   // so the scope selector is only offered when bookings.get will accept it.
   const isSystemAdmin = await isSessionActingSystemAdmin(session, new UserRepository(prisma));
 
-  const bookingsV3Enabled = await featuresRepository.checkIfUserHasFeature(userId, "bookings-v3");
+  const bookingsV3Enabled = await isBookingsV3Enabled(featuresRepository, userId);
 
   return (
     <ShellMainAppDir
