@@ -266,7 +266,7 @@ describe("CachedFeatureRepository", () => {
       vi.mocked(mockRedis.del).mockResolvedValue(1);
 
       const result = await repository.update({
-        featureId: "feature-1" as "calendar-cache",
+        featureId: "feature-1" as "emails",
         enabled: false,
         updatedBy: 1,
       });
