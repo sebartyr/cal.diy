@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.4.3] — 2026-11-20
+
+Patch release: the bookings redesign follows its admin toggle, so the
+reschedule history is reachable; the 2FA code after SSO sign-in becomes
+opt-in; locked accounts can no longer sign in through SSO or a magic link;
+unused feature flags are removed.
+
+### Fixed
+
+- **Bookings redesign ignored its admin toggle.** The bookings page only read
+  per-user and per-team assignments of `bookings-v3`, so turning it on "for
+  all users" in Settings → Admin → Features did nothing: clicking a booking
+  opened its public page instead of the details panel, and the reschedule
+  history added in 8.4.0 could not be reached (#159).
+- **Locked accounts could sign in through SSO or a magic link.** Only
+  email/password sign-in refused locked accounts. A locked Google, Azure AD,
+  OIDC or SAML account without 2FA, and any locked account using a magic
+  link, got a session. They are now refused with an "account locked" message
+  (#158).
+
+### Changed
+
+- **No 2FA code after SSO sign-in by default.** Users who enabled 2FA were
+  asked for their code again after Google, Azure AD, OIDC or SAML sign-in.
+  This is now off by default (the identity provider handles MFA); set
+  `SSO_TWO_FACTOR_ENABLED=true` to turn it back on. Admins are still asked
+  when `REQUIRE_2FA_FOR_ADMIN=true` (#158).
+
+### Removed
+
+- **25 feature flags that no code reads** (`teams`, `webhooks`, `workflows`,
+  `insights`, `calendar-cache`, …) are deleted, with their per-user and
+  per-team assignments. Toggling them had no effect (#160).
+
+### Upgrade notes
+
+- One migration: it deletes the unused `Feature` rows listed in #160. No
+  schema change.
+- New optional variable `SSO_TWO_FACTOR_ENABLED`. When unset, SSO users with
+  2FA stop being asked for their code after this deploy.
+- With `bookings-v3` on, the bookings page switches to the redesign (details
+  panel, calendar view) for every user.
+- Not validated against a real identity provider, in a browser, or by a full
+  build or E2E run before release.
+
 ## [8.4.2] — 2026-11-20
 
 Patch release: fixes the API v2 build, which made the 8.4.0 deploy fail.
