@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.4.0] — 2026-11-20
+
+Minor release: a reschedule history in the booking details, and safer defaults
+for new event types (24-hour notice, host confirmation required).
+
+### Added
+
+- **Reschedule history.** A booking that was rescheduled (on either side of
+  the move) now has a History tab in its details panel. It lists every step of
+  the reschedule chain, oldest first: the old and new slot, who rescheduled or
+  asked for it, the reason and when. Existing bookings are covered; for older
+  data, a reason later overwritten by a cancellation or a new reschedule request
+  is shown as unknown, and old host requests show no date (#155).
+
+### Changed
+
+- **New event types require confirmation and 24 hours of notice.**
+  `requiresConfirmation` now defaults to true and `minimumBookingNotice` to
+  1440 minutes, for every creation path (web, API v2, onboarding). Existing
+  event types keep their settings. Seated event types are created without
+  confirmation through API v2 when no confirmation policy is given, and enabling
+  seats through the `2024-04-15` API turns confirmation off, as the web UI does,
+  since seats and confirmation are mutually exclusive (#156).
+- The unused `booking-audit` feature flag no longer gates anything; the
+  bookings page skips its lookup (#155).
+
+### Upgrade notes
+
+- Two migrations: `Booking` gains the nullable `rescheduleReason` and
+  `rescheduleRequestedAt` columns; `EventType` column defaults change. No data
+  is rewritten. No new variable.
+- Dynamic group links (`/user1+user2`) are not stored event types and keep
+  2 hours of notice without confirmation.
+- Not validated against a real database, in a browser, or by a full build or
+  E2E run before release.
+
 ## [8.3.5] — 2026-11-18
 
 Patch release: calendars still selected for conflict checking but no longer
