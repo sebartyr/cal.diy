@@ -622,6 +622,7 @@ export const getOptions = ({
             role: true,
             locale: true,
             movedToProfileId: true,
+            locked: true,
             teams: {
               include: {
                 team: {
@@ -637,6 +638,15 @@ export const getOptions = ({
 
         if (!existingUser) {
           return token;
+        }
+
+        // Throwing here makes NextAuth drop the session and clear its cookie: a locked account must
+        // not keep refreshing a session that was issued before the lock.
+        if (existingUser.locked) {
+          log.warn("callbacks:jwt - refusing to refresh the session of a locked user", {
+            userId: existingUser.id,
+          });
+          throw new Error(ErrorCode.UserAccountLocked);
         }
 
         // Check if the existingUser has any active teams

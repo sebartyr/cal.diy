@@ -90,6 +90,13 @@ export async function getServerSession(options: {
     return null;
   }
 
+  // Sign-in refuses locked accounts, but a session issued before the lock is a JWT valid for up to
+  // 30 days: without this, locking an account would not cut its existing sessions.
+  if (userFromDb.locked) {
+    log.warn("Refusing session of a locked user", { userId });
+    return null;
+  }
+
   let upId = token.upId;
 
   if (!upId) {
