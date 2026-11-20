@@ -144,8 +144,12 @@ export class EventTypesService_2024_04_15 {
       });
     }
 
+    // Seats and confirmation are mutually exclusive and this API version cannot set requiresConfirmation
+    // (new event types default to true): mirror the web UI, which turns confirmation off with seats.
+    const confirmationForSeats = body.seatsPerTimeSlot ? { requiresConfirmation: false } : {};
+
     await updateEventType({
-      input: { id: eventTypeId, ...body, bookingFields },
+      input: { id: eventTypeId, ...body, ...confirmationForSeats, bookingFields },
       ctx: {
         user: eventTypeUser,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
