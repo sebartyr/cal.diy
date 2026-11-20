@@ -75,7 +75,6 @@ function BookingsPage({
       permissions={{ canReadOthersBookings: false }}
       isSystemAdmin={isSystemAdmin}
       bookingsV3Enabled={false}
-      bookingAuditEnabled={false}
     />
   );
   return (

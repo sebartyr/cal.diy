@@ -56,10 +56,7 @@ const Page = async ({ params, searchParams }: PageProps) => {
   // so the scope selector is only offered when bookings.get will accept it.
   const isSystemAdmin = await isSessionActingSystemAdmin(session, new UserRepository(prisma));
 
-  const [bookingAuditEnabled, bookingsV3Enabled] = await Promise.all([
-    featuresRepository.checkIfUserHasFeature(userId, "booking-audit"),
-    featuresRepository.checkIfUserHasFeature(userId, "bookings-v3"),
-  ]);
+  const bookingsV3Enabled = await featuresRepository.checkIfUserHasFeature(userId, "bookings-v3");
 
   return (
     <ShellMainAppDir
@@ -75,7 +72,6 @@ const Page = async ({ params, searchParams }: PageProps) => {
         permissions={{ canReadOthersBookings }}
         isSystemAdmin={isSystemAdmin}
         bookingsV3Enabled={bookingsV3Enabled}
-        bookingAuditEnabled={bookingAuditEnabled}
       />
     </ShellMainAppDir>
   );

@@ -103,6 +103,7 @@ export const requestRescheduleHandler = async ({ ctx, input, source }: RequestRe
     rescheduled: true,
     cancellationReason,
     cancelledBy: user.email,
+    rescheduleRequestedAt: new Date(),
   });
 
   // delete scheduled jobs of previous booking

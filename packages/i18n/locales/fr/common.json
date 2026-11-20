@@ -4648,6 +4648,15 @@
   "admin_user_role_change_hint": "Utilisez l'action « Promouvoir administrateur » / « Retirer le rôle d'administrateur » dans la liste des utilisateurs pour le modifier.",
   "admin_user_identity_provider_hint": "Géré par le processus de connexion ; il n'est pas modifiable ici.",
   "booking_organizer_name": "Organisateur : {{name}}",
+  "reschedule_history_requested": "Replanification demandée",
+  "reschedule_history_rescheduled": "Replanifiée",
+  "reschedule_history_unknown_actor": "Inconnu",
+  "reschedule_history_unknown_reason": "Inconnu (écrasé par une modification ultérieure)",
+  "reschedule_history_no_reason": "Aucune raison indiquée",
+  "reschedule_history_empty": "Cette réservation n'a jamais été replanifiée.",
+  "reschedule_history_current": "Cette réservation",
+  "reschedule_history_from": "Avant",
+  "reschedule_history_to": "Après",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Ajoutez vos nouvelles chaînes ci-dessus ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
   "auto_assign_active": "Tous les membres de l'équipe sont hôtes. Décochez « Assigner tous les membres » pour choisir les hôtes vous-même."
 }

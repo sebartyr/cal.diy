@@ -102,6 +102,8 @@ describe("buildDryRunBooking", () => {
       recurringEventId: null,
       scheduledJobs: [],
       rescheduledBy: null,
+      rescheduleReason: null,
+      rescheduleRequestedAt: null,
       destinationCalendarId: null,
       reassignReason: null,
       reassignById: null,

@@ -89,7 +89,6 @@ interface BookingListContainerProps {
     canReadOthersBookings: boolean;
   };
   bookingsV3Enabled: boolean;
-  bookingAuditEnabled: boolean;
   isSystemAdmin?: boolean;
 }
 
@@ -107,7 +106,6 @@ function BookingListInner({
   permissions,
   bookings,
   bookingsV3Enabled,
-  bookingAuditEnabled,
   isSystemAdmin = false,
   data,
   isPending,
@@ -251,7 +249,6 @@ function BookingListInner({
           userTimeFormat={user?.timeFormat === null ? undefined : user?.timeFormat}
           userId={user?.id}
           userEmail={user?.email}
-          bookingAuditEnabled={bookingAuditEnabled}
           isSystemAdmin={isSystemAdmin}
         />
       )}

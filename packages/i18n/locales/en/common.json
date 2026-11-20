@@ -4785,6 +4785,15 @@
   "admin_user_role_change_hint": "Use the “Promote to admin” / “Remove admin role” action in the users list to change it.",
   "admin_user_identity_provider_hint": "Managed by the sign-in flow; it cannot be edited here.",
   "booking_organizer_name": "Organizer: {{name}}",
+  "reschedule_history_requested": "Reschedule requested",
+  "reschedule_history_rescheduled": "Rescheduled",
+  "reschedule_history_unknown_actor": "Unknown",
+  "reschedule_history_unknown_reason": "Unknown (overwritten by a later change)",
+  "reschedule_history_no_reason": "No reason given",
+  "reschedule_history_empty": "This booking has no reschedule history.",
+  "reschedule_history_current": "This booking",
+  "reschedule_history_from": "From",
+  "reschedule_history_to": "To",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
   "auto_assign_active": "All team members are hosts. Uncheck “Assign all team members” to pick the hosts yourself."
 }
