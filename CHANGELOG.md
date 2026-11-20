@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.4.4] — 2026-11-20
+
+Security patch from the 2026-11-20 audit, plus a CRM that no longer goes
+silent when its installation is deleted.
+
+### Security
+
+- **Locking an account now ends its sessions.** Sign-in already refused
+  locked accounts, but a session issued before the lock stayed valid for up to
+  30 days on API routes and server-rendered pages, and could be extended
+  through a session refresh or `useSession().update()`. All three now refuse a
+  locked user, and locking an account drops its cached sessions. The session
+  email can no longer be set by the browser (#162).
+- **Booking uids and private links are unguessable.** They were derived from
+  the host username, the slot and the creation time, so anyone could recompute
+  a booking uid offline in about 60 000 guesses per minute and open the public
+  booking page, or cancel it. They now come from a cryptographic random
+  generator; the format is unchanged and existing links keep working (#163).
+
+### Fixed
+
+- **CRM stopped silently after its installation was deleted.** An event type
+  keeps the CRM installation picked on its Apps tab; once that installation
+  was deleted, bookings skipped the CRM without any log. When exactly one valid
+  installation of the same app belongs to the event type's owner (the team for
+  a team event, the user otherwise), it is now used instead; otherwise a
+  warning asks to re-select the installation (#161).
+
+### Changed
+
+- **More logs around integrations** (#161): deleted installations (with the
+  event types the uninstall hid), credentials marked invalid, and bookings for
+  which the CRM created nothing are logged as warnings; created installations
+  and CRM events at info level.
+
+### Upgrade notes
+
+- No migration, no new variable.
+- Users whose account is locked are signed out within a minute of the lock.
+- Not validated in a browser, against a real Pipedrive account, or by a full
+  build or E2E run before release.
+
 ## [8.4.3] — 2026-11-20
 
 Patch release: the bookings redesign follows its admin toggle, so the
