@@ -2,6 +2,7 @@ import SettingsHeader from "@calcom/features/settings/appDir/SettingsHeader";
 import { Icon } from "@calcom/ui/components/icon";
 import { _generateMetadata, getTranslate } from "app/_utils";
 import Link from "next/link";
+import { requireSystemAdmin } from "../../requireSystemAdmin";
 
 const LINKS = [
   {
@@ -22,6 +23,7 @@ export const generateMetadata = async () =>
   );
 
 const Page = async () => {
+  await requireSystemAdmin();
   const t = await getTranslate();
   return (
     <SettingsHeader title={t("playground")} description={t("admin_playground_description")}>

@@ -1,4 +1,5 @@
 import { _generateMetadata } from "app/_utils";
+import { requireSystemAdmin } from "../requireSystemAdmin";
 
 export const generateMetadata = async () =>
   await _generateMetadata(
@@ -9,5 +10,8 @@ export const generateMetadata = async () =>
     "/settings/admin"
   );
 
-const Page = () => <h1>Admin index</h1>;
+const Page = async () => {
+  await requireSystemAdmin();
+  return <h1>Admin index</h1>;
+};
 export default Page;
