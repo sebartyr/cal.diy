@@ -1,9 +1,10 @@
 import short from "short-uuid";
-import { v5 as uuidv5 } from "uuid";
 
-export const generateHashedLink = (id: number | string) => {
-  const translator = short();
-  const seed = `${id}:${new Date().getTime()}`;
-  const uid = translator.fromUUID(uuidv5(seed, uuidv5.URL));
-  return uid;
-};
+const translator = short();
+
+/**
+ * Private links grant booking access to hidden event types, so they must be unguessable: they used
+ * to be uuidv5(id:Date.now()), recomputable offline from the event type id. `_id` is kept so callers
+ * don't change; it no longer feeds the link.
+ */
+export const generateHashedLink = (_id: number | string): string => translator.fromUUID(crypto.randomUUID());
