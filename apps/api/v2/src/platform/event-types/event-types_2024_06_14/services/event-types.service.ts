@@ -178,6 +178,7 @@ export class EventTypesService_2024_06_14 {
       id: user.id,
       locale: user.locale ?? "en",
       role: user.role,
+      twoFactorEnabled: user.twoFactorEnabled,
       username: user.username,
       organizationId: user.organizationId,
       organization: { isOrgAdmin },

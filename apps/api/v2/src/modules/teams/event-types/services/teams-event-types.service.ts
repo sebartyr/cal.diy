@@ -83,6 +83,7 @@ export class TeamsEventTypesService {
     return {
       id: user.id,
       role: user.role,
+      twoFactorEnabled: user.twoFactorEnabled,
       organizationId: null,
       organization: { id: null, isOrgAdmin: false, metadata: {}, requestedSlug: null },
       profile: { id: profileId || null },

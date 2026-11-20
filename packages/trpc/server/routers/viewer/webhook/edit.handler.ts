@@ -1,3 +1,4 @@
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import {
   cancelNoShowTasksForBooking,
   deleteWebhookScheduledTriggers,
@@ -56,7 +57,7 @@ export const editHandler = async ({ input, ctx }: EditOptions) => {
 
   if (webhook.platform) {
     const { user } = ctx;
-    if (user?.role !== "ADMIN") {
+    if (!user || !meetsSystemAdminPolicy(user)) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
   }

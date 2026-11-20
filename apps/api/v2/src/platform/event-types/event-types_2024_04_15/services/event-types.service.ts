@@ -66,6 +66,7 @@ export class EventTypesService_2024_04_15 {
     return {
       id: user.id,
       role: user.role,
+      twoFactorEnabled: user.twoFactorEnabled,
       organizationId: user.organizationId,
       organization: { isOrgAdmin },
       profile: { id: profileId },

@@ -1,10 +1,11 @@
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import type { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import { markdownToSafeHTML } from "@calcom/lib/markdownToSafeHTML";
 import prisma from "@calcom/prisma";
 import type { MembershipRole } from "@calcom/prisma/enums";
-import { PeriodType, UserPermissionRole } from "@calcom/prisma/enums";
+import { PeriodType } from "@calcom/prisma/enums";
 import type { CustomInputSchema } from "@calcom/prisma/zod-utils";
 import { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import { TRPCError } from "@trpc/server";
@@ -146,7 +147,7 @@ export const createEventPbacProcedure = (
 
       // An instance-wide admin administers every user and team of the deployment, the same way
       // create.handler lets them create a team event type without holding a membership.
-      const isSystemAdmin = ctx.user.role === UserPermissionRole.ADMIN;
+      const isSystemAdmin = meetsSystemAdminPolicy(ctx.user);
 
       // Check if user has permission to access/modify this event
       if (!isSystemAdmin && !event.teamId) {
