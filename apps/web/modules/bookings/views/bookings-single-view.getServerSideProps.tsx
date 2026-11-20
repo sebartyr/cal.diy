@@ -76,27 +76,6 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
     } as const;
   }
 
-  let rescheduledToUid: string | null = null;
-  if (bookingInfo.rescheduled) {
-    const bookingRepo = new BookingRepository(prisma);
-    const rescheduledTo = await bookingRepo.findFirstBookingByReschedule({
-      originalBookingUid: bookingInfo.uid,
-    });
-    rescheduledToUid = rescheduledTo?.uid ?? null;
-  }
-
-  let previousBooking: {
-    rescheduledBy: string | null;
-    uid: string;
-  } | null = null;
-
-  if (bookingInfo.fromReschedule) {
-    const bookingRepo = new BookingRepository(prisma);
-    previousBooking = await bookingRepo.findReschedulerByUid({
-      uid: bookingInfo.fromReschedule,
-    });
-  }
-
   const eventTypeRaw = !bookingInfoRaw.eventTypeId
     ? getDefaultEvent(eventTypeSlug || "")
     : await getEventTypesFromDB(bookingInfoRaw.eventTypeId);
@@ -192,6 +171,28 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   const canViewHiddenData = isLoggedInUserHost || isLoggedInUserTeamMember;
 
+  // A booking uid only grants access to that booking: following the reschedule links would hand any
+  // holder the neighbouring bookings (other attendees, the rescheduler's email), so only hosts get them.
+  let rescheduledToUid: string | null = null;
+  let previousBooking: {
+    rescheduledBy: string | null;
+    uid: string;
+  } | null = null;
+  if (canViewHiddenData) {
+    const bookingRepo = new BookingRepository(prisma);
+    if (bookingInfo.rescheduled) {
+      const rescheduledTo = await bookingRepo.findFirstBookingByReschedule({
+        originalBookingUid: bookingInfo.uid,
+      });
+      rescheduledToUid = rescheduledTo?.uid ?? null;
+    }
+    if (bookingInfo.fromReschedule) {
+      previousBooking = await bookingRepo.findReschedulerByUid({
+        uid: bookingInfo.fromReschedule,
+      });
+    }
+  }
+
   if (bookingInfo !== null && eventType.seatsPerTimeSlot) {
     await handleSeatsEventTypeOnBooking(eventType, bookingInfo, seatReferenceUid, isLoggedInUserHost);
   }
@@ -211,6 +212,9 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   });
 
   if (!canViewHiddenData) {
+    // Same reason as the chain links above: the previous booking's uid and the rescheduler's email.
+    bookingInfo.fromReschedule = null;
+    bookingInfo.rescheduledBy = null;
     for (const key in bookingInfo.responses) {
       const field = eventTypeRaw.bookingFields.find((field) => field.name === key);
       if (field && !!field.hidden) {
