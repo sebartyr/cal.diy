@@ -45,8 +45,7 @@ async function getHandler(req: NextApiRequest, res: NextApiResponse) {
       // The body is provider-controlled: log only its status fields and keep it out of the redirect URL.
       log.error("get user_access_token failed with none 0 code", {
         status: response.status,
-        code: responseBody?.code,
-        msg: responseBody?.msg,
+        code: typeof responseBody?.code === "number" ? responseBody.code : "invalid",
       });
       return res.redirect("/apps/installed?error=oauth_token_exchange_failed");
     }
