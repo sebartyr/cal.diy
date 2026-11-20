@@ -1,11 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
 import logger from "@calcom/lib/logger";
 import { defaultHandler } from "@calcom/lib/server/defaultHandler";
 import { defaultResponder } from "@calcom/lib/server/defaultResponder";
 import prisma from "@calcom/prisma";
-
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 import { getAppKeys } from "../common";
 import { sendPostMsg } from "../lib/BotService";
 
@@ -50,14 +48,14 @@ const p2pChatCreateEventsReqSchema = z.object({
 });
 
 async function postHandler(req: NextApiRequest, res: NextApiResponse) {
-  log.debug("receive events", req.body);
+  // The body carries the verification token and app tickets, and arrives before any check.
+  log.debug("receive events", { type: req.body?.type, eventType: req.body?.event?.type });
   const appKeys = await getAppKeys();
   const { open_verification_token } = larkKeysSchema.parse(appKeys);
 
   // used for events handler binding in lark open platform, see
   // https://open.larksuite.com/document/ukTMukTMukTM/uUTNz4SN1MjL1UzM?lang=en-US
   if (req.body.type === "url_verification" && req.body.token === open_verification_token) {
-    log.debug("update token", req.body);
     return res.status(200).json({ challenge: req.body.challenge });
   }
 
