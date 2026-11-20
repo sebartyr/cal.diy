@@ -104,6 +104,58 @@ describe("BookingDetailsService", () => {
     expect(repo.findRescheduleNodeByUid).not.toHaveBeenCalled();
   });
 
+  it("leaves out the bookings of the chain the user cannot access", async () => {
+    repo.findByUidForDetails.mockResolvedValue({
+      uid: "c",
+      rescheduled: null,
+      fromReschedule: "b",
+      tracking: null,
+    });
+    access.doesUserIdHaveAccessToBooking.mockImplementation(
+      async ({ bookingUid }: { bookingUid: string }) => bookingUid !== "a"
+    );
+
+    const result = await service().getBookingDetails({ userId: 1, bookingUid: "c" });
+
+    expect(result.previousBooking).toEqual({ uid: "b", startTime: b.startTime, endTime: b.endTime });
+    expect(result.rescheduleHistory.map((entry) => [entry.from.uid, entry.to?.uid])).toEqual([["b", "c"]]);
+    expect(JSON.stringify(result)).not.toContain("attendee@example.com");
+  });
+
+  it("shows no neighbour when the adjacent booking is not accessible", async () => {
+    repo.findByUidForDetails.mockResolvedValue({
+      uid: "c",
+      rescheduled: null,
+      fromReschedule: "b",
+      tracking: null,
+    });
+    access.doesUserIdHaveAccessToBooking.mockImplementation(
+      async ({ bookingUid }: { bookingUid: string }) => bookingUid === "c"
+    );
+
+    const result = await service().getBookingDetails({ userId: 1, bookingUid: "c" });
+
+    expect(result.previousBooking).toBeNull();
+    expect(result.rescheduleHistory).toEqual([]);
+    expect(repo.findRescheduleNodeByUid).not.toHaveBeenCalledWith({ uid: "a" });
+  });
+
+  it("gives a system admin the whole chain", async () => {
+    repo.findByUidForDetails.mockResolvedValue({
+      uid: "c",
+      rescheduled: null,
+      fromReschedule: "b",
+      tracking: null,
+    });
+    access.doesUserIdHaveAccessToBooking.mockResolvedValue(false);
+    access.doesSystemAdminHaveAccessToBooking.mockResolvedValue(true);
+
+    const result = await service().getBookingDetails({ userId: 1, bookingUid: "c", isSystemAdmin: true });
+
+    expect(result.rescheduleHistory.map((entry) => entry.from.uid)).toEqual(["a", "b"]);
+    expect(access.doesSystemAdminHaveAccessToBooking).toHaveBeenCalledTimes(1);
+  });
+
   it("does not expose the history without access", async () => {
     access.doesUserIdHaveAccessToBooking.mockResolvedValue(false);
 

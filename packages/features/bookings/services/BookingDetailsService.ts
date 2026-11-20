@@ -23,11 +23,12 @@ export class BookingDetailsService {
     bookingUid: string;
     isSystemAdmin?: boolean;
   }) {
-    const hasAccess =
-      (await this.bookingAccessService.doesUserIdHaveAccessToBooking({
-        userId,
-        bookingUid,
-      })) ||
+    const hasUserAccess = await this.bookingAccessService.doesUserIdHaveAccessToBooking({
+      userId,
+      bookingUid,
+    });
+    const hasAdminAccess =
+      !hasUserAccess &&
       (await this.bookingAccessService.doesSystemAdminHaveAccessToBooking({
         userId,
         isSystemAdmin,
@@ -36,7 +37,7 @@ export class BookingDetailsService {
         action: "getBookingDetails",
       }));
 
-    if (!hasAccess) {
+    if (!hasUserAccess && !hasAdminAccess) {
       throw ErrorWithCode.Factory.Forbidden("You do not have permission to view this booking");
     }
 
@@ -46,7 +47,13 @@ export class BookingDetailsService {
       throw ErrorWithCode.Factory.BookingNotFound("Booking not found");
     }
 
-    const rescheduleHistory = await this.getRescheduleHistory(booking);
+    // Reaching one booking must not reveal the others of its chain: each one is checked like the requested
+    // one, except for a system admin, whose access does not depend on the booking.
+    const canViewBooking = async (uid: string) =>
+      hasAdminAccess ||
+      (await this.bookingAccessService.doesUserIdHaveAccessToBooking({ userId, bookingUid: uid }));
+
+    const rescheduleHistory = await this.getRescheduleHistory(booking, canViewBooking);
 
     return {
       ...rescheduleHistory,
@@ -54,11 +61,14 @@ export class BookingDetailsService {
     };
   }
 
-  private async getRescheduleHistory(booking: {
-    uid: string;
-    rescheduled: boolean | null;
-    fromReschedule: string | null;
-  }): Promise<{
+  private async getRescheduleHistory(
+    booking: {
+      uid: string;
+      rescheduled: boolean | null;
+      fromReschedule: string | null;
+    },
+    canViewBooking: (uid: string) => Promise<boolean>
+  ): Promise<{
     rescheduledToBooking: { uid: string } | null;
     previousBooking: { uid: string; startTime: Date; endTime: Date } | null;
     rescheduleHistory: RescheduleHistoryEntry[];
@@ -77,6 +87,7 @@ export class BookingDetailsService {
       findByUid: (uid) => this.bookingRepo.findRescheduleNodeByUid({ uid }),
       findByFromReschedule: (fromReschedule) =>
         this.bookingRepo.findRescheduleNodeByFromReschedule({ fromReschedule }),
+      canInclude: (node) => canViewBooking(node.uid),
     });
 
     const position = chain.findIndex((node) => node.uid === booking.uid);
