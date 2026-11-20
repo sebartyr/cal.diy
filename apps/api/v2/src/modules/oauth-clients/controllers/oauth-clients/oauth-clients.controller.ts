@@ -115,7 +115,7 @@ export class OAuthClientsController {
 
   @Get("/:clientId/managed-users")
   @HttpCode(HttpStatus.OK)
-  @MembershipRoles([MembershipRole.ADMIN, MembershipRole.OWNER, MembershipRole.MEMBER])
+  @MembershipRoles([MembershipRole.ADMIN, MembershipRole.OWNER])
   // note(Lauris): Excluding this endpoint because we have oauth-clients-users.controller to fetch oAuth users and I am leaving this endpoint
   // just in case someone is using it.
   @ApiExcludeEndpoint()

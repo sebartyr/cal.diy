@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { sha256Hash, isApiKey, stripApiKey } from "@/lib/api-key";
 import { AuthMethods } from "@/lib/enums/auth-methods";
 import { isOriginAllowed } from "@/lib/is-origin-allowed/is-origin-allowed";
@@ -185,14 +186,9 @@ export class ApiAuthStrategy extends PassportStrategy(BaseStrategy, "api-auth") 
   async oAuthClientStrategy(oAuthClientId: string, oAuthClientSecret: string, request: ApiAuthGuardRequest) {
     const client = await this.oauthRepository.getOAuthClient(oAuthClientId);
 
-    if (!client) {
-      throw new UnauthorizedException(
-        `ApiAuthStrategy - oAuth client - Client with ID ${oAuthClientId} not found`
-      );
-    }
-
-    if (client.secret !== oAuthClientSecret) {
-      throw new UnauthorizedException("ApiAuthStrategy - oAuth client - Invalid client secret");
+    // Same answer for an unknown client and a wrong secret, so the endpoint cannot list valid client ids.
+    if (!client || !isSameSecret(client.secret, oAuthClientSecret)) {
+      throw new UnauthorizedException("ApiAuthStrategy - oAuth client - Invalid client credentials");
     }
 
     const platformCreatorId =
@@ -365,4 +361,10 @@ export class ApiAuthStrategy extends PassportStrategy(BaseStrategy, "api-auth") 
     request.organizationId = organizationId;
     return { success: true, data: user };
   }
+}
+
+function isSameSecret(expected: string, provided: string): boolean {
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+  return expectedBuffer.length === providedBuffer.length && timingSafeEqual(expectedBuffer, providedBuffer);
 }
