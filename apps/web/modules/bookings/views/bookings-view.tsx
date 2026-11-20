@@ -35,7 +35,6 @@ type BookingsProps = {
     canReadOthersBookings: boolean;
   };
   bookingsV3Enabled: boolean;
-  bookingAuditEnabled: boolean;
   isSystemAdmin?: boolean;
 };
 
@@ -116,13 +115,7 @@ export default function Bookings(props: BookingsProps) {
   );
 }
 
-function BookingsContent({
-  status,
-  permissions,
-  bookingsV3Enabled,
-  bookingAuditEnabled,
-  isSystemAdmin = false,
-}: BookingsProps) {
+function BookingsContent({ status, permissions, bookingsV3Enabled, isSystemAdmin = false }: BookingsProps) {
   const [view] = useBookingsView({ bookingsV3Enabled });
 
   return (
@@ -132,7 +125,6 @@ function BookingsContent({
           status={status}
           permissions={permissions}
           bookingsV3Enabled={bookingsV3Enabled}
-          bookingAuditEnabled={bookingAuditEnabled}
           isSystemAdmin={isSystemAdmin}
         />
       )}

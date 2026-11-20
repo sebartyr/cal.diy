@@ -363,6 +363,19 @@ const selectStatementToGetBookingForCalEventBuilder = {
   },
 };
 
+const rescheduleNodeSelect = {
+  uid: true,
+  startTime: true,
+  endTime: true,
+  createdAt: true,
+  updatedAt: true,
+  rescheduled: true,
+  fromReschedule: true,
+  rescheduledBy: true,
+  cancelledBy: true,
+  cancellationReason: true,
+} satisfies Prisma.BookingSelect;
+
 export class BookingRepository implements IBookingRepository {
   constructor(private prismaClient: PrismaClient) {}
 
@@ -674,27 +687,18 @@ export class BookingRepository implements IBookingRepository {
     });
   }
 
-  async findRescheduledToBooking({ bookingUid }: { bookingUid: string }) {
-    return await this.prismaClient.booking.findFirst({
-      where: {
-        fromReschedule: bookingUid,
-      },
-      select: {
-        uid: true,
-      },
+  async findRescheduleNodeByUid({ uid }: { uid: string }) {
+    return await this.prismaClient.booking.findUnique({
+      where: { uid },
+      select: rescheduleNodeSelect,
     });
   }
 
-  async findPreviousBooking({ fromReschedule }: { fromReschedule: string }) {
-    return await this.prismaClient.booking.findUnique({
-      where: {
-        uid: fromReschedule,
-      },
-      select: {
-        uid: true,
-        startTime: true,
-        endTime: true,
-      },
+  async findRescheduleNodeByFromReschedule({ fromReschedule }: { fromReschedule: string }) {
+    return await this.prismaClient.booking.findFirst({
+      where: { fromReschedule },
+      orderBy: { createdAt: "asc" },
+      select: rescheduleNodeSelect,
     });
   }
 

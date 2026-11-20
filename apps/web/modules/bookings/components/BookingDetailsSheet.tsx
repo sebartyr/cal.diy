@@ -50,6 +50,7 @@ import {
   createBookingSheetKeydownHandler,
 } from "../lib/bookingSheetKeyboardHandler";
 import { JoinMeetingButton } from "./JoinMeetingButton";
+import { RescheduleHistoryTimeline } from "./RescheduleHistoryTimeline";
 
 type BookingMetaData = z.infer<typeof bookingMetadataSchema>;
 
@@ -58,7 +59,6 @@ interface BookingDetailsSheetProps {
   userTimeFormat?: number;
   userId?: number;
   userEmail?: string;
-  bookingAuditEnabled?: boolean;
   isSystemAdmin?: boolean;
 }
 
@@ -67,7 +67,6 @@ export function BookingDetailsSheet({
   userTimeFormat,
   userId,
   userEmail,
-  bookingAuditEnabled = false,
   isSystemAdmin = false,
 }: BookingDetailsSheetProps) {
   const booking = useBookingDetailsSheetStore((state) => state.getSelectedBooking());
@@ -94,7 +93,6 @@ export function BookingDetailsSheet({
         userTimeFormat={userTimeFormat}
         userId={userId}
         userEmail={userEmail}
-        bookingAuditEnabled={bookingAuditEnabled}
         isSystemAdmin={isSystemAdmin}
       />
     </BookingActionsStoreProvider>
@@ -107,23 +105,22 @@ interface BookingDetailsSheetInnerProps {
   userTimeFormat?: number;
   userId?: number;
   userEmail?: string;
-  bookingAuditEnabled?: boolean;
   isSystemAdmin?: boolean;
 }
 
-function useActiveSegment(bookingAuditEnabled: boolean) {
+function useActiveSegment(hasHistory: boolean) {
   const [activeSegment, setActiveSegmentInStore] = useBookingDetailsSheetStore(
     (state) => [state.activeSegment, state.setActiveSegment]
   );
 
   const getDerivedActiveSegment = ({
     activeSegment,
-    bookingAuditEnabled,
+    hasHistory,
   }: {
     activeSegment: "info" | "history" | null;
-    bookingAuditEnabled: boolean;
+    hasHistory: boolean;
   }) => {
-    if (!bookingAuditEnabled && activeSegment === "history") {
+    if (!hasHistory && activeSegment === "history") {
       return "info";
     }
     return activeSegment ?? "info";
@@ -131,12 +128,12 @@ function useActiveSegment(bookingAuditEnabled: boolean) {
 
   const derivedActiveSegment = getDerivedActiveSegment({
     activeSegment,
-    bookingAuditEnabled,
+    hasHistory,
   });
 
   const setDerivedActiveSegment = (segment: "info" | "history") => {
     setActiveSegmentInStore(
-      getDerivedActiveSegment({ activeSegment: segment, bookingAuditEnabled })
+      getDerivedActiveSegment({ activeSegment: segment, hasHistory })
     );
   };
 
@@ -149,15 +146,15 @@ function BookingDetailsSheetInner({
   userTimeFormat,
   userId,
   userEmail,
-  bookingAuditEnabled = false,
   isSystemAdmin = false,
 }: BookingDetailsSheetInnerProps) {
   const { t } = useLocale();
+  const hasRescheduleHistory = !!booking.rescheduled || !!booking.fromReschedule;
   const [activeSegment, setActiveSegment] =
-    useActiveSegment(bookingAuditEnabled);
+    useActiveSegment(hasRescheduleHistory);
 
   // Fetch additional booking details for reschedule information
-  const { data: bookingDetails } =
+  const { data: bookingDetails, isLoading: isLoadingBookingDetails } =
     trpc.viewer.bookings.getBookingDetails.useQuery(
       { uid: booking.uid },
       {
@@ -375,7 +372,7 @@ function BookingDetailsSheetInner({
               </SheetTitle>
             </div>
 
-            {bookingAuditEnabled && (
+            {hasRescheduleHistory && (
               <SegmentedControl
                 data={[
                   { value: "info", label: t("info") },
@@ -433,7 +430,15 @@ function BookingDetailsSheetInner({
               </>
             )}
 
-            {/* Booking history removed (enterprise) */}
+            {activeSegment === "history" && (
+              <RescheduleHistoryTimeline
+                entries={bookingDetails?.rescheduleHistory}
+                isLoading={isLoadingBookingDetails}
+                currentBookingUid={booking.uid}
+                timeZone={userTimeZone}
+                timeFormat={userTimeFormat}
+              />
+            )}
           </div>
         </SheetBody>
 

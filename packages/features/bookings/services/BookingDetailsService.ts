@@ -1,5 +1,7 @@
 import { ErrorWithCode } from "@calcom/lib/errors";
 import type { PrismaClient } from "@calcom/prisma";
+import type { RescheduleHistoryEntry } from "../lib/rescheduleHistory";
+import { buildRescheduleHistory, collectRescheduleChain } from "../lib/rescheduleHistory";
 import { BookingRepository } from "../repositories/BookingRepository";
 import { BookingAccessService } from "./BookingAccessService";
 
@@ -44,21 +46,49 @@ export class BookingDetailsService {
       throw ErrorWithCode.Factory.BookingNotFound("Booking not found");
     }
 
-    const [rescheduledToBooking, previousBooking] = await Promise.all([
-      // For old rescheduled bookings, find the new booking
-      booking.rescheduled
-        ? this.bookingRepo.findRescheduledToBooking({ bookingUid: booking.uid })
-        : Promise.resolve(null),
-      // For new bookings that replaced an old one, fetch the previous booking's schedule
-      booking.fromReschedule
-        ? this.bookingRepo.findPreviousBooking({ fromReschedule: booking.fromReschedule })
-        : Promise.resolve(null),
-    ]);
+    const rescheduleHistory = await this.getRescheduleHistory(booking);
 
     return {
-      rescheduledToBooking,
-      previousBooking,
+      ...rescheduleHistory,
       tracking: booking.tracking,
+    };
+  }
+
+  private async getRescheduleHistory(booking: {
+    uid: string;
+    rescheduled: boolean | null;
+    fromReschedule: string | null;
+  }): Promise<{
+    rescheduledToBooking: { uid: string } | null;
+    previousBooking: { uid: string; startTime: Date; endTime: Date } | null;
+    rescheduleHistory: RescheduleHistoryEntry[];
+  }> {
+    if (!booking.rescheduled && !booking.fromReschedule) {
+      return { rescheduledToBooking: null, previousBooking: null, rescheduleHistory: [] };
+    }
+
+    const start = await this.bookingRepo.findRescheduleNodeByUid({ uid: booking.uid });
+    if (!start) {
+      return { rescheduledToBooking: null, previousBooking: null, rescheduleHistory: [] };
+    }
+
+    const chain = await collectRescheduleChain({
+      start,
+      findByUid: (uid) => this.bookingRepo.findRescheduleNodeByUid({ uid }),
+      findByFromReschedule: (fromReschedule) =>
+        this.bookingRepo.findRescheduleNodeByFromReschedule({ fromReschedule }),
+    });
+
+    const position = chain.findIndex((node) => node.uid === booking.uid);
+    const previous = position > 0 ? chain[position - 1] : null;
+    const next = chain[position + 1] ?? null;
+
+    return {
+      rescheduledToBooking: booking.rescheduled && next ? { uid: next.uid } : null,
+      previousBooking: previous
+        ? { uid: previous.uid, startTime: previous.startTime, endTime: previous.endTime }
+        : null,
+      rescheduleHistory: buildRescheduleHistory(chain),
     };
   }
 }
