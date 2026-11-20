@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.4.1] — 2026-11-20
+
+Patch release: builds no longer print 14 esbuild warnings about the
+`@calcom/platform-libraries` exports.
+
+### Fixed
+
+- **Ignored `types` export condition.** In each of the 14 entry points of
+  `@calcom/platform-libraries`, the `types` condition came after `import` and
+  `require`, so it was never selected and esbuild warned once per entry on
+  every build. It is now listed first. Paths and the other conditions are
+  unchanged, so runtime resolution is identical (#154).
+
+### Upgrade notes
+
+- No schema change, no migration, no data change. No new variable.
+- Merged without a third-party review, at the maintainer's request.
+
 ## [8.4.0] — 2026-11-20
 
 Minor release: a reschedule history in the booking details, and safer defaults
