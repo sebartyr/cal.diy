@@ -16,6 +16,16 @@ describe("generateBookingUid", () => {
     }
   });
 
+  it("works where crypto.randomUUID is missing (browser outside a secure context)", () => {
+    const { getRandomValues } = globalThis.crypto;
+    vi.stubGlobal("crypto", { getRandomValues: getRandomValues.bind(globalThis.crypto) });
+    try {
+      expect(generateBookingUid()).toMatch(/^[1-9A-HJ-NP-Za-km-z]{21,22}$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("does not repeat over many generations", () => {
     const uids = new Set(Array.from({ length: 10_000 }, () => generateBookingUid()));
     expect(uids.size).toBe(10_000);

@@ -1,4 +1,5 @@
 import short from "short-uuid";
+import { randomUuidV4 } from "./randomUuidV4";
 
 const translator = short();
 
@@ -7,4 +8,4 @@ const translator = short();
  * to be uuidv5(id:Date.now()), recomputable offline from the event type id. `_id` is kept so callers
  * don't change; it no longer feeds the link.
  */
-export const generateHashedLink = (_id: number | string): string => translator.fromUUID(crypto.randomUUID());
+export const generateHashedLink = (_id: number | string): string => translator.fromUUID(randomUuidV4());
