@@ -93,6 +93,9 @@ describe("isAllowedReturnUrl", () => {
     ["https://app.example.com/oauth/done", true],
     ["https://evil.example/", false],
     ["https://cal.example.com.evil.example/", false],
+    ["https://evil.example/x.customer.example", false],
+    ["https://evil.example/?next=https://a.customer.example", false],
+    ["https://app.example.com/oauth/done?x=1", false],
     ["javascript:alert(1)", false],
     ["not a url", false],
   ])("%s -> %s", (url, expected) => {

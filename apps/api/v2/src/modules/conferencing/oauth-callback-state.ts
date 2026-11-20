@@ -43,7 +43,7 @@ export function verifyOAuthCallbackState(rawState: string, secret: string): OAut
 /**
  * Signing only proves the state came from us, not that its destinations are safe: whoever requests the
  * auth URL chooses them. They must be http(s) and match the web app or an allowed redirect URI of the
- * caller's OAuth client (an origin or a full URL, wildcards allowed, as for request origins).
+ * caller's OAuth client: an origin (wildcards allowed, as for request origins) or an exact full URL.
  */
 export function isAllowedReturnUrl(url: string, allowed: string[]): boolean {
   let parsed: URL;
@@ -53,5 +53,7 @@ export function isAllowedReturnUrl(url: string, allowed: string[]): boolean {
     return false;
   }
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
-  return isOriginAllowed(parsed.origin, allowed) || isOriginAllowed(url, allowed);
+  // A wildcard pattern would also match text in the path or query of a full URL, so only exact entries
+  // are compared with the full URL.
+  return isOriginAllowed(parsed.origin, allowed) || allowed.some((entry) => !entry.includes("*") && entry === url);
 }
