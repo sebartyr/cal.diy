@@ -1,4 +1,5 @@
 import { getDefaultLocations } from "@calcom/app-store/_utils/getDefaultLocations";
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import { DeploymentRepository } from "@calcom/features/deployment/repositories/DeploymentRepository";
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { getTeamRolePermissionService } from "@calcom/features/membership/di/TeamRolePermissionService.container";
@@ -18,6 +19,7 @@ type SessionUser = NonNullable<TrpcSessionUser>;
 type User = {
   id: SessionUser["id"];
   role: SessionUser["role"];
+  twoFactorEnabled: SessionUser["twoFactorEnabled"];
   organizationId: SessionUser["organizationId"];
   organization: {
     isOrgAdmin: SessionUser["organization"]["isOrgAdmin"];
@@ -38,14 +40,7 @@ type CreateOptions = {
 };
 
 export const createHandler = async ({ ctx, input }: CreateOptions) => {
-  const {
-    schedulingType,
-    teamId,
-    metadata,
-    locations: inputLocations,
-    scheduleId,
-    ...rest
-  } = input;
+  const { schedulingType, teamId, metadata, locations: inputLocations, scheduleId, ...rest } = input;
 
   const userId = ctx.user.id;
 
@@ -97,7 +92,7 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
   };
 
   if (teamId && schedulingType) {
-    const isSystemAdmin = ctx.user.role === "ADMIN";
+    const isSystemAdmin = meetsSystemAdminPolicy(ctx.user);
 
     // Only check for team-level permissions - this will also check for membership
     const hasCreatePermission = await permissionService.checkPermission({

@@ -1,10 +1,9 @@
-import { TRPCError } from "@trpc/server";
-
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import { prisma } from "@calcom/prisma";
-import { MembershipRole, UserPermissionRole } from "@calcom/prisma/enums";
-
-import { requireMember, getMembership } from "./permissions";
+import { MembershipRole } from "@calcom/prisma/enums";
+import { TRPCError } from "@trpc/server";
 import type { TrpcSessionUser } from "../../../types";
+import { getMembership, requireMember } from "./permissions";
 
 type Options = {
   ctx: { user: NonNullable<TrpcSessionUser> };
@@ -20,7 +19,7 @@ export async function removeMemberHandler({ ctx, input }: Options) {
   // ADMIN+ is required to remove a MEMBER. Removing another ADMIN or an
   // OWNER requires OWNER — keeps a co-admin from kicking another admin out
   // unilaterally (matches the original cal.com semantics).
-  const isSystemAdmin = ctx.user.role === UserPermissionRole.ADMIN;
+  const isSystemAdmin = meetsSystemAdminPolicy(ctx.user);
   if (target.role === MembershipRole.OWNER || target.role === MembershipRole.ADMIN) {
     const caller = await getMembership(ctx.user.id, input.teamId);
     if (!isSystemAdmin && caller?.role !== MembershipRole.OWNER) {

@@ -1,3 +1,4 @@
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import { updateTriggerForExistingBookings } from "@calcom/features/webhooks/lib/scheduleTrigger";
 import { validateUrlForSSRFSync } from "@calcom/lib/ssrfProtection";
 import { prisma } from "@calcom/prisma";
@@ -27,7 +28,7 @@ export const createHandler = async ({ ctx, input }: CreateOptions) => {
     });
   }
 
-  if (input.platform && user.role !== "ADMIN") {
+  if (input.platform && !meetsSystemAdminPolicy(user)) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 

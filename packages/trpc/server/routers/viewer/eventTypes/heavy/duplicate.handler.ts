@@ -1,11 +1,9 @@
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import { EventTypeRepository } from "@calcom/features/eventtypes/repositories/eventTypeRepository";
 import { generateHashedLink } from "@calcom/lib/generateHashedLink";
 import { prisma } from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
-import { UserPermissionRole } from "@calcom/prisma/enums";
-
 import { TRPCError } from "@trpc/server";
-
 import type { TrpcSessionUser } from "../../../../types";
 import { setDestinationCalendarHandler } from "../../../viewer/calendars/setDestinationCalendar.handler";
 import type { TDuplicateInputSchema } from "./duplicate.schema";
@@ -59,7 +57,7 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
     }
 
     // Validate user is owner of event type or in the team
-    const isSystemAdmin = ctx.user.role === UserPermissionRole.ADMIN;
+    const isSystemAdmin = meetsSystemAdminPolicy(ctx.user);
     if (eventType.userId !== ctx.user.id && !isSystemAdmin) {
       if (eventType.teamId) {
         const isMember = await prisma.membership.findUnique({
@@ -210,14 +208,13 @@ export const duplicateHandler = async ({ ctx, input }: DuplicateOptions) => {
     }
 
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      
       if (Array.isArray(error.meta?.target) && error.meta?.target.includes("slug")) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "duplicate_event_slug_conflict",
         });
       }
-      
+
       throw new TRPCError({
         code: "CONFLICT",
         message: "Unique constraint violation while creating a duplicate event.",

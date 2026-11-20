@@ -1,7 +1,10 @@
+import {
+  meetsSystemAdminPolicy,
+  type SystemAdminCandidate,
+} from "@calcom/features/auth/lib/systemAdminPolicy";
 import { prisma } from "@calcom/prisma";
-import { MembershipRole, UserPermissionRole } from "@calcom/prisma/enums";
+import { MembershipRole } from "@calcom/prisma/enums";
 import { TRPCError } from "@trpc/server";
-import type { TrpcSessionUser } from "../../../types";
 
 /**
  * Minimal MIT permission helpers for the team router.
@@ -28,8 +31,10 @@ export async function getMembership(userId: number, teamId: number) {
   });
 }
 
-function isSystemAdmin(user: Pick<NonNullable<TrpcSessionUser>, "role"> | undefined): boolean {
-  return user?.role === UserPermissionRole.ADMIN;
+// Same policy as the admin routes (locked accounts, REQUIRE_2FA_FOR_ADMIN), so an admin denied there
+// cannot reach other teams through this bypass.
+function isSystemAdmin(user: SystemAdminCandidate | undefined): boolean {
+  return !!user && meetsSystemAdminPolicy(user);
 }
 
 /**
@@ -49,7 +54,7 @@ export async function requireMember(
   userId: number,
   teamId: number,
   minRole: MembershipRole = MembershipRole.MEMBER,
-  user?: Pick<NonNullable<TrpcSessionUser>, "role">
+  user?: SystemAdminCandidate
 ): Promise<RequireMemberResult> {
   if (user && isSystemAdmin(user)) {
     // System admin — bypass membership/role checks. If the admin has a real

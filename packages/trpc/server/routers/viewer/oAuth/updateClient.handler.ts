@@ -1,3 +1,7 @@
+import {
+  meetsSystemAdminPolicy,
+  type SystemAdminCandidate,
+} from "@calcom/features/auth/lib/systemAdminPolicy";
 import { OAuthClientRepository } from "@calcom/features/oauth/repositories/OAuthClientRepository";
 import type { PrismaClient } from "@calcom/prisma";
 import { OAuthClientStatus } from "@calcom/prisma/enums";
@@ -6,7 +10,7 @@ import type { TUpdateClientInputSchema } from "./updateClient.schema";
 
 type UpdateClientOptions = {
   ctx: {
-    user: { id: number; role: string };
+    user: { id: number } & SystemAdminCandidate;
     prisma: PrismaClient;
   };
   input: TUpdateClientInputSchema;
@@ -23,7 +27,7 @@ export const updateClientHandler = async ({ ctx, input }: UpdateClientOptions) =
   }
 
   const isOwner = existingClient.userId != null && existingClient.userId === ctx.user.id;
-  const isAdmin = ctx.user.role === "ADMIN";
+  const isAdmin = meetsSystemAdminPolicy(ctx.user);
 
   // Status changes (approve/reject) require admin
   if (status !== undefined && !isAdmin) {
