@@ -212,6 +212,9 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   });
 
   if (!canViewHiddenData) {
+    // Same reason as the chain links above: the previous booking's uid and the rescheduler's email.
+    bookingInfo.fromReschedule = null;
+    bookingInfo.rescheduledBy = null;
     for (const key in bookingInfo.responses) {
       const field = eventTypeRaw.bookingFields.find((field) => field.name === key);
       if (field && !!field.hidden) {

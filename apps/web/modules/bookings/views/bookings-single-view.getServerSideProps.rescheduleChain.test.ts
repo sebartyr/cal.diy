@@ -16,6 +16,7 @@ function fakeBookingInfo(uid: string, fromReschedule: string | null, rescheduled
     status: rescheduled ? "CANCELLED" : "ACCEPTED",
     rescheduled,
     fromReschedule,
+    rescheduledBy: fromReschedule ? "rescheduler@example.com" : null,
     recurringEventId: null,
     startTime: new Date("2026-12-01T10:00:00.000Z"),
     endTime: new Date("2026-12-01T10:30:00.000Z"),
@@ -189,6 +190,9 @@ describe("bookings single view getServerSideProps - reschedule chain", () => {
     expect(props.rescheduledToUid).toBeNull();
     expect(mockFindFirstBookingByReschedule).not.toHaveBeenCalled();
     expect(mockFindReschedulerByUid).not.toHaveBeenCalled();
+    expect(props.bookingInfo).toMatchObject({ fromReschedule: null, rescheduledBy: null });
+    expect(JSON.stringify(props)).not.toContain(BOOKING_A_UID);
+    expect(JSON.stringify(props)).not.toContain("rescheduler@example.com");
   });
 
   it("does not show the chain to a signed-in user who is not the host", async () => {
@@ -207,5 +211,9 @@ describe("bookings single view getServerSideProps - reschedule chain", () => {
 
     expect(props.previousBooking).toEqual({ uid: BOOKING_A_UID, rescheduledBy: "host@example.com" });
     expect(props.rescheduledToUid).toBe(BOOKING_C_UID);
+    expect(props.bookingInfo).toMatchObject({
+      fromReschedule: BOOKING_A_UID,
+      rescheduledBy: "rescheduler@example.com",
+    });
   });
 });
