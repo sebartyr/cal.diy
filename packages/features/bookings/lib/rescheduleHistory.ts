@@ -48,10 +48,13 @@ export async function collectRescheduleChain({
   start,
   findByUid,
   findByFromReschedule,
+  canInclude = async () => true,
 }: {
   start: RescheduleNode;
   findByUid: (uid: string) => Promise<RescheduleNode | null>;
   findByFromReschedule: (uid: string) => Promise<RescheduleNode | null>;
+  // The walk stops at the first node this rejects, so nothing past it is reached either.
+  canInclude?: (node: RescheduleNode) => Promise<boolean>;
 }): Promise<RescheduleNode[]> {
   const visited = new Set<string>([start.uid]);
   const previous: RescheduleNode[] = [];
@@ -60,7 +63,7 @@ export async function collectRescheduleChain({
   let cursor: RescheduleNode | null = start;
   while (cursor?.fromReschedule && visited.size < MAX_RESCHEDULE_CHAIN_LENGTH) {
     const found: RescheduleNode | null = await findByUid(cursor.fromReschedule);
-    if (!found || visited.has(found.uid)) break;
+    if (!found || visited.has(found.uid) || !(await canInclude(found))) break;
     visited.add(found.uid);
     previous.push(found);
     cursor = found;
@@ -69,7 +72,7 @@ export async function collectRescheduleChain({
   cursor = start;
   while (cursor?.rescheduled && visited.size < MAX_RESCHEDULE_CHAIN_LENGTH) {
     const found: RescheduleNode | null = await findByFromReschedule(cursor.uid);
-    if (!found || visited.has(found.uid)) break;
+    if (!found || visited.has(found.uid) || !(await canInclude(found))) break;
     visited.add(found.uid);
     next.push(found);
     cursor = found;

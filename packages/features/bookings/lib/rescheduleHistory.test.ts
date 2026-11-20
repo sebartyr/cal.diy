@@ -57,6 +57,19 @@ describe("collectRescheduleChain", () => {
     expect(store.findByUid).not.toHaveBeenCalled();
   });
 
+  it("stops at the first booking it may not include, in both directions", async () => {
+    const d = makeNode({ uid: "d", fromReschedule: "c" });
+    const cRescheduled = { ...c, rescheduled: true };
+    const store = makeStore([a, b, cRescheduled, d]);
+    const chain = await collectRescheduleChain({
+      start: b,
+      ...store,
+      canInclude: async (node) => node.uid !== "a" && node.uid !== "c",
+    });
+    expect(chain.map((node) => node.uid)).toEqual(["b"]);
+    expect(store.findByFromReschedule).toHaveBeenCalledTimes(1);
+  });
+
   it("stops when a linked booking no longer exists", async () => {
     const orphan = makeNode({ uid: "orphan", fromReschedule: "deleted" });
     const store = makeStore([orphan]);
