@@ -1,3 +1,5 @@
+import { BookingReadAccessRepository } from "@/platform/bookings/shared/booking-read-access.repository";
+import { BookingReadAccessGuard } from "@/platform/bookings/shared/guards/booking-read-access.guard";
 import { Module } from "@nestjs/common";
 import { BookingAttendeesController_2024_08_13 } from "@/platform/bookings/2024-08-13/controllers/booking-attendees.controller";
 import { BookingGuestsController_2024_08_13 } from "@/platform/bookings/2024-08-13/controllers/booking-guests.controller";
@@ -70,6 +72,8 @@ import { UsersModule } from "@/modules/users/users.module";
     BookingAttendeesModule,
   ],
   providers: [
+    BookingReadAccessRepository,
+    BookingReadAccessGuard,
     TokensRepository,
     OAuthFlowService,
     OAuthClientRepository,

@@ -46,6 +46,7 @@ import { ApiQuery, ApiExcludeController as DocsExcludeController } from "@nestjs
 import { Request } from "express";
 import { NextApiRequest } from "next/types";
 import { v4 as uuidv4 } from "uuid";
+import { BookingReadAccessGuard } from "@/platform/bookings/shared/guards/booking-read-access.guard";
 import { CreateBookingInput_2024_04_15 } from "@/platform/bookings/2024-04-15/inputs/create-booking.input";
 import { CreateRecurringBookingInput_2024_04_15 } from "@/platform/bookings/2024-04-15/inputs/create-recurring-booking.input";
 import { MarkNoShowInput_2024_04_15 } from "@/platform/bookings/2024-04-15/inputs/mark-no-show.input";
@@ -169,7 +170,7 @@ export class BookingsController_2024_04_15 {
   // Booking links in emails open /booking/<uid> in the web app, which does not use this route; an
   // anonymous read here only exposed the attendees' personal data to anyone holding a uid.
   @Get("/:bookingUid")
-  @UseGuards(ApiAuthGuard)
+  @UseGuards(ApiAuthGuard, BookingReadAccessGuard)
   async getBooking(@Param("bookingUid") bookingUid: string): Promise<GetBookingOutput_2024_04_15> {
     const { bookingInfo } = await getBookingInfo(bookingUid);
 
