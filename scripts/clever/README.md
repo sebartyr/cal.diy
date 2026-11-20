@@ -54,6 +54,10 @@ Sign-in providers, integrations and the other options are described in
 `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and `OIDC_PROVIDER_NAME`. The identity provider
 must send `email_verified: true`, or sign-in is refused.
 
+After Google, Azure AD, OIDC or SAML sign-in, users are not asked for their own 2FA code: the
+identity provider handles MFA. Set `SSO_TWO_FACTOR_ENABLED=true` to ask users who enabled 2FA for
+their code as well. Admins are asked anyway when `REQUIRE_2FA_FOR_ADMIN=true`.
+
 ## Deployment size
 
 `post-build.sh` always removes the build caches: `.turbo`, `.yarn/cache`, `.yarn/install-state.gz`

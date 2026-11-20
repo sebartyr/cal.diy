@@ -3,6 +3,7 @@ import { updateProfilePhotoGoogle } from "@calcom/app-store/_utils/oauth/updateP
 import { updateProfilePhotoMicrosoft } from "@calcom/app-store/_utils/oauth/updateProfilePhotoMicrosoft";
 import { createGoogleCalendarServiceWithGoogleType } from "@calcom/app-store/googlecalendar/lib/CalendarService";
 import { getIdentityProvider } from "@calcom/features/auth/lib/identityProviders";
+import { shouldAskTwoFactorOnSsoLogin } from "@calcom/features/auth/lib/ssoTwoFactor";
 import { MAGIC_LINK_MAX_AGE_SECONDS } from "@calcom/features/auth/lib/magicLinkMaxAge";
 import {
   fetchOidcProfile,
@@ -1116,7 +1117,7 @@ export const getOptions = ({
                 log.error("Error while linking account of already existing user", safeStringify(error));
               }
             }
-            if (existingUser.twoFactorEnabled && existingUser.identityProvider === idP) {
+            if (shouldAskTwoFactorOnSsoLogin(existingUser) && existingUser.identityProvider === idP) {
               return loginWithTotp(existingUser.email);
             } else {
               return true;
@@ -1132,7 +1133,7 @@ export const getOptions = ({
 
           if (!userWithNewEmail) {
             await prisma.user.update({ where: { id: existingUser.id }, data: { email: user.email } });
-            if (existingUser.twoFactorEnabled) {
+            if (shouldAskTwoFactorOnSsoLogin(existingUser)) {
               return loginWithTotp(existingUser.email);
             } else {
               return true;
@@ -1165,7 +1166,7 @@ export const getOptions = ({
         if (existingUserWithEmail) {
           // if self-hosted then we can allow auto-merge of identity providers if email is verified
           if (isVerified && existingUserWithEmail.identityProvider !== IdentityProvider.CAL) {
-            if (existingUserWithEmail.twoFactorEnabled) {
+            if (shouldAskTwoFactorOnSsoLogin(existingUserWithEmail)) {
               return loginWithTotp(existingUserWithEmail.email);
             } else {
               return true;
@@ -1195,7 +1196,7 @@ export const getOptions = ({
               },
             });
 
-            if (existingUserWithEmail.twoFactorEnabled) {
+            if (shouldAskTwoFactorOnSsoLogin(existingUserWithEmail)) {
               return loginWithTotp(existingUserWithEmail.email);
             } else {
               return true;
@@ -1224,7 +1225,7 @@ export const getOptions = ({
               },
             });
 
-            if (existingUserWithEmail.twoFactorEnabled) {
+            if (shouldAskTwoFactorOnSsoLogin(existingUserWithEmail)) {
               return loginWithTotp(existingUserWithEmail.email);
             } else {
               return true;
@@ -1245,7 +1246,7 @@ export const getOptions = ({
               },
             });
 
-            if (existingUserWithEmail.twoFactorEnabled) {
+            if (shouldAskTwoFactorOnSsoLogin(existingUserWithEmail)) {
               return loginWithTotp(existingUserWithEmail.email);
             } else {
               return true;
@@ -1263,7 +1264,7 @@ export const getOptions = ({
               },
             });
 
-            if (existingUserWithEmail.twoFactorEnabled) {
+            if (shouldAskTwoFactorOnSsoLogin(existingUserWithEmail)) {
               return loginWithTotp(existingUserWithEmail.email);
             } else {
               return true;
@@ -1318,7 +1319,7 @@ export const getOptions = ({
             await updateProfilePhotoMicrosoft(account.access_token, newUser.id);
           }
 
-          if (newUser.twoFactorEnabled) {
+          if (shouldAskTwoFactorOnSsoLogin(newUser)) {
             return loginWithTotp(newUser.email);
           } else {
             return true;
