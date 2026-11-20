@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.4.5] — 2026-11-20
+
+Security patch: reading a booking through API v2 now requires a relation to it.
+
+### Security
+
+- **API v2 no longer serves bookings to anonymous or unrelated callers.**
+  `GET /v2/bookings/:bookingUid` (all versions) and
+  `GET /v2/bookings/by-seat/:seatUid` returned a booking, with attendee names
+  and emails, to anyone holding its uid. They now require an API key or access
+  token whose user is the host, an attendee, or has access to the booking
+  through its team; others get 401 (no credentials) or 403. Unknown uids still
+  return 404. Public booking links (`/booking/:uid`) are unchanged (#164).
+
+### Upgrade notes
+
+- API v2 integrations that read single bookings without credentials must now
+  send an API key or access token of a user related to the booking.
+
 ## [8.4.4] — 2026-11-20
 
 Security patch from the 2026-11-20 audit, plus a CRM that no longer goes
