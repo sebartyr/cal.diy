@@ -52,6 +52,7 @@ import { MarkNoShowInput_2024_04_15 } from "@/platform/bookings/2024-04-15/input
 import { GetBookingOutput_2024_04_15 } from "@/platform/bookings/2024-04-15/outputs/get-booking.output";
 import { GetBookingsOutput_2024_04_15 } from "@/platform/bookings/2024-04-15/outputs/get-bookings.output";
 import { MarkNoShowOutput_2024_04_15 } from "@/platform/bookings/2024-04-15/outputs/mark-no-show.output";
+import { toAnonymousBookingInfo_2024_04_15 } from "@/platform/bookings/anonymous-booking-projection";
 import { PlatformBookingsService } from "@/platform/bookings/shared/platform-bookings.service";
 import { isApiKey, sha256Hash, stripApiKey } from "@/lib/api-key";
 import { VERSION_2024_04_15, VERSION_2024_06_11, VERSION_2024_06_14 } from "@/lib/api-versions";
@@ -167,7 +168,11 @@ export class BookingsController_2024_04_15 {
   }
 
   @Get("/:bookingUid")
-  async getBooking(@Param("bookingUid") bookingUid: string): Promise<GetBookingOutput_2024_04_15> {
+  @UseGuards(OptionalApiAuthGuard)
+  async getBooking(
+    @Param("bookingUid") bookingUid: string,
+    @GetOptionalUser() user: AuthOptionalUser
+  ): Promise<GetBookingOutput_2024_04_15> {
     const { bookingInfo } = await getBookingInfo(bookingUid);
 
     if (!bookingInfo) {
@@ -176,7 +181,7 @@ export class BookingsController_2024_04_15 {
 
     return {
       status: SUCCESS_STATUS,
-      data: bookingInfo,
+      data: user ? bookingInfo : toAnonymousBookingInfo_2024_04_15(bookingInfo),
     };
   }
 

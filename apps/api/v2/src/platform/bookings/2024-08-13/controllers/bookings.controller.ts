@@ -43,6 +43,7 @@ import {
   getSchemaPath,
 } from "@nestjs/swagger";
 import { Request } from "express";
+import { toAnonymousBookingOutput_2024_08_13 } from "@/platform/bookings/anonymous-booking-projection";
 import { BookingPbacGuard } from "@/platform/bookings/2024-08-13/guards/booking-pbac.guard";
 import { BookingUidGuard } from "@/platform/bookings/2024-08-13/guards/booking-uid.guard";
 import { BookingReferencesFilterInput_2024_08_13 } from "@/platform/bookings/2024-08-13/inputs/booking-references-filter.input";
@@ -181,7 +182,7 @@ export class BookingsController_2024_08_13 {
 
     return {
       status: SUCCESS_STATUS,
-      data: booking,
+      data: user ? booking : toAnonymousBookingOutput_2024_08_13(booking),
     };
   }
 
@@ -214,7 +215,7 @@ export class BookingsController_2024_08_13 {
 
     return {
       status: SUCCESS_STATUS,
-      data: booking,
+      data: user ? booking : toAnonymousBookingOutput_2024_08_13(booking),
     };
   }
 
