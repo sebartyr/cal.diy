@@ -4794,6 +4794,7 @@
   "reschedule_history_current": "This booking",
   "reschedule_history_from": "From",
   "reschedule_history_to": "To",
+  "sso_account_locked_error": "Your account is locked. Contact your administrator.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
   "auto_assign_active": "All team members are hosts. Uncheck “Assign all team members” to pick the hosts yourself."
 }

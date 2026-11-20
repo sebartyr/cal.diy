@@ -1702,4 +1702,82 @@ describe("OIDC signIn callback", () => {
 
     expect(result).toBe(true);
   });
+
+  describe("locked accounts", () => {
+    const lockedOidcUser = {
+      id: 70,
+      email: "user@example.com",
+      emailVerified: new Date(),
+      identityProvider: "OIDC",
+      identityProviderId: "oidc-123",
+      accounts: [{ id: 1 }],
+      password: null,
+      role: "USER",
+      twoFactorEnabled: true,
+      locked: true,
+    };
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it.each([undefined, "false", "true"])(
+      "refuses a locked user matched by provider id (SSO_TWO_FACTOR_ENABLED=%s)",
+      async (value) => {
+        if (value !== undefined) vi.stubEnv("SSO_TWO_FACTOR_ENABLED", value);
+        mockPrismaUserFindFirst.mockResolvedValueOnce(lockedOidcUser);
+
+        const result = await signInWithProfile({ email_verified: true });
+
+        expect(result).toBe("/auth/error?error=user-account-locked");
+      }
+    );
+
+    it("refuses a locked user without 2FA matched by provider id", async () => {
+      mockPrismaUserFindFirst.mockResolvedValueOnce({ ...lockedOidcUser, twoFactorEnabled: false });
+
+      expect(await signInWithProfile({ email_verified: true })).toBe("/auth/error?error=user-account-locked");
+    });
+
+    it("refuses a locked user matched by email", async () => {
+      mockPrismaUserFindFirst
+        .mockResolvedValueOnce(null) // lookup by identityProvider + providerAccountId
+        .mockResolvedValueOnce(null) // legacy lookup
+        .mockResolvedValueOnce(lockedOidcUser);
+
+      expect(await signInWithProfile({ email_verified: true })).toBe("/auth/error?error=user-account-locked");
+      expect(mockPrismaUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [true, "/auth/error?error=user-account-locked"],
+      [false, true],
+    ])("magic-link sign-in of a user with locked=%s returns %s", async (locked, expected) => {
+      const prismaModule = await import("@calcom/prisma");
+      const prismaDefault = prismaModule.default as unknown as { user: Record<string, unknown> };
+      const findUnique = vi.fn().mockResolvedValue({ locked });
+      prismaDefault.user = { ...prismaDefault.user, findUnique };
+
+      const result = await signInCallback({
+        ...baseParams,
+        account: { provider: "email", providerAccountId: "user@example.com", type: "email" },
+      });
+
+      expect(result).toBe(expected);
+      expect(findUnique).toHaveBeenCalledWith({ where: { email: "user@example.com" }, select: { locked: true } });
+    });
+
+    it("still signs in an unlocked user without asking for the code by default", async () => {
+      mockPrismaUserFindFirst.mockResolvedValueOnce({ ...lockedOidcUser, locked: false });
+
+      expect(await signInWithProfile({ email_verified: true })).toBe(true);
+    });
+
+    it("asks an unlocked user for the code when SSO_TWO_FACTOR_ENABLED=true", async () => {
+      vi.stubEnv("SSO_TWO_FACTOR_ENABLED", "true");
+      mockPrismaUserFindFirst.mockResolvedValueOnce({ ...lockedOidcUser, locked: false });
+
+      expect(await signInWithProfile({ email_verified: true })).toMatch(/^\/auth\/login\?totp=/);
+    });
+  });
 });

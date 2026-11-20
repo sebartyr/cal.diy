@@ -128,6 +128,8 @@ const ORGANIZATIONS_AUTOLINK =
 const usernameSlug = (username: string) => `${slugify(username)}-${randomString(6).toLowerCase()}`;
 const getDomainFromEmail = (email: string): string => email.split("@")[1];
 
+const lockedAccountError = `/auth/error?error=${ErrorCode.UserAccountLocked}`;
+
 const loginWithTotp = async (email: string) =>
   `/auth/login?totp=${encodeURIComponent(await (await import("./signJwt")).default({ email }))}`;
 
@@ -974,6 +976,13 @@ export const getOptions = ({
       log.debug("callbacks:signin", safeStringify(params));
 
       if (account?.provider === "email") {
+        if (user.email) {
+          const emailUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { locked: true },
+          });
+          if (emailUser?.locked) return lockedAccountError;
+        }
         return true;
       }
       // In this case we've already verified the credentials in the authorize
@@ -1099,6 +1108,9 @@ export const getOptions = ({
         }
         /* --- END FIXES LEGACY ISSUE WHERE 'identityProviderId' was accidentally set to userId --- */
         if (existingUser) {
+          // The credentials provider refuses locked accounts, but SSO sign-in doesn't go through it
+          // (only the optional TOTP step does), so it must refuse them itself.
+          if (existingUser.locked) return lockedAccountError;
           // In this case there's an existing user and their email address
           // hasn't changed since they last logged in.
           if (existingUser.email === user.email) {
@@ -1164,6 +1176,7 @@ export const getOptions = ({
         });
 
         if (existingUserWithEmail) {
+          if (existingUserWithEmail.locked) return lockedAccountError;
           // if self-hosted then we can allow auto-merge of identity providers if email is verified
           if (isVerified && existingUserWithEmail.identityProvider !== IdentityProvider.CAL) {
             if (shouldAskTwoFactorOnSsoLogin(existingUserWithEmail)) {
