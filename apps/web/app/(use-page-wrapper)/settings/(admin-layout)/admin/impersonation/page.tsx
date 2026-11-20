@@ -6,6 +6,7 @@ import { _generateMetadata, getTranslate } from "app/_utils";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import ImpersonationView from "~/settings/admin/impersonation-view";
+import { requireSystemAdmin } from "../../requireSystemAdmin";
 
 export const generateMetadata = async () =>
   await _generateMetadata(
@@ -17,6 +18,7 @@ export const generateMetadata = async () =>
   );
 
 const Page = async () => {
+  await requireSystemAdmin();
   const session = await getServerSession({ req: buildLegacyRequest(await headers(), await cookies()) });
 
   if (!session) {

@@ -1,6 +1,7 @@
 import SettingsHeader from "@calcom/features/settings/appDir/SettingsHeader";
 import { _generateMetadata, getTranslate } from "app/_utils";
 import UsersAddView from "~/users/views/users-add-view";
+import { requireSystemAdmin } from "../../../requireSystemAdmin";
 
 export const generateMetadata = async () =>
   await _generateMetadata(
@@ -12,6 +13,7 @@ export const generateMetadata = async () =>
   );
 
 const Page = async () => {
+  await requireSystemAdmin();
   const t = await getTranslate();
 
   return (
