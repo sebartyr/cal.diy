@@ -1,5 +1,7 @@
+import process from "node:process";
 import { uploadAvatar } from "@calcom/lib/server/avatar";
 import { resizeBase64Image } from "@calcom/lib/server/resizeBase64Image";
+import { assertUrlIsSafeForSSRF } from "@calcom/lib/ssrfProtection";
 import prisma from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 
@@ -9,7 +11,9 @@ interface IPrefillAvatar {
 
 async function downloadImageDataFromUrl(url: string) {
   try {
-    const response = await fetch(url);
+    // The URL comes from the third-party avatar API response, not from us.
+    await assertUrlIsSafeForSSRF(url, { where: "signup.prefillAvatar" });
+    const response = await fetch(url, { redirect: "error" });
 
     if (!response.ok) {
       console.log("Error fetching image from: ", url);
