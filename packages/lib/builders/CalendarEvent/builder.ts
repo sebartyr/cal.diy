@@ -1,8 +1,5 @@
-import short from "short-uuid";
-import { v5 as uuidv5 } from "uuid";
-
-import dayjs from "@calcom/dayjs";
 import { getRescheduleLink } from "@calcom/lib/CalEventParser";
+import { generateBookingUid } from "@calcom/lib/generateBookingUid";
 import { getTranslation } from "@calcom/i18n/server";
 import prisma from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
@@ -10,7 +7,6 @@ import type { CalendarEvent } from "@calcom/types/Calendar";
 
 import { CalendarEventClass } from "./class";
 
-const translator = short();
 const userSelect = {
   id: true,
   email: true,
@@ -205,11 +201,7 @@ export class CalendarEventBuilder implements ICalendarEventBuilder {
     if (!mainOrganizer?.username) {
       throw new Error("Organizer username is required");
     }
-    const seed = `${mainOrganizer.username}:${dayjs(this.calendarEvent.startTime)
-      .utc()
-      .format()}:${new Date().getTime()}`;
-    const uid = translator.fromUUID(uuidv5(seed, uuidv5.URL));
-    this.calendarEvent.uid = uid;
+    this.calendarEvent.uid = generateBookingUid();
   }
 
   public setLocation(location: CalendarEventClass["location"]) {
