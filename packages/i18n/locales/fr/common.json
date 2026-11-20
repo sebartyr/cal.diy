@@ -4657,6 +4657,7 @@
   "reschedule_history_current": "Cette réservation",
   "reschedule_history_from": "Avant",
   "reschedule_history_to": "Après",
+  "sso_account_locked_error": "Votre compte est verrouillé. Contactez votre administrateur.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Ajoutez vos nouvelles chaînes ci-dessus ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
   "auto_assign_active": "Tous les membres de l'équipe sont hôtes. Décochez « Assigner tous les membres » pour choisir les hôtes vous-même."
 }

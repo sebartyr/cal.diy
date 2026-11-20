@@ -51,6 +51,8 @@ const ServerPage = async ({ searchParams }: PageProps) => {
       return t("saml_idp_not_authoritative_error");
     } else if (error === "unverified-email") {
       return t("unverified_email_oauth_error");
+    } else if (error === "user-account-locked") {
+      return t("sso_account_locked_error");
     }
     return t("error_during_login") + (error ? ` Error code: ${error}` : "");
   };
