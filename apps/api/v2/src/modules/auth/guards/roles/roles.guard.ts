@@ -7,6 +7,10 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger }
 import { Reflector } from "@nestjs/core";
 import { Request } from "express";
 
+// Nothing invalidates this cache when a membership changes, so its TTL is how long a removed or demoted
+// member keeps access.
+export const ROLE_ACCESS_CACHE_TTL_SECONDS = 30;
+
 @Injectable()
 export class RolesGuard implements CanActivate {
   private readonly logger = new Logger("RolesGuard Logger");
@@ -165,7 +169,7 @@ export class RolesGuard implements CanActivate {
     }
 
     if (canAccess) {
-      await this.redisService.redis.set(REDIS_CACHE_KEY, String(canAccess), "EX", 300);
+      await this.redisService.redis.set(REDIS_CACHE_KEY, String(canAccess), "EX", ROLE_ACCESS_CACHE_TTL_SECONDS);
     }
 
     return { canAccess };
