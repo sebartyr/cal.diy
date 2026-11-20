@@ -600,6 +600,17 @@ export const getOptions = ({
       }
       // The data available in 'session' depends on what data was supplied in update method call of session
       if (trigger === "update") {
+        // useSession().update() re-issues the session cookie, so it must not let a locked (or
+        // deleted) user extend a session issued before the lock.
+        const userId = Number(token.sub);
+        const sessionUser =
+          Number.isInteger(userId) && userId > 0
+            ? await prisma.user.findUnique({ where: { id: userId }, select: { locked: true, email: true } })
+            : null;
+        if (!sessionUser || sessionUser.locked) {
+          log.warn("callbacks:jwt - refusing to update the session of a locked or missing user", { userId });
+          throw new Error(ErrorCode.UserAccountLocked);
+        }
         return {
           ...token,
           profileId: session?.profileId ?? token.profileId ?? null,
@@ -607,7 +618,10 @@ export const getOptions = ({
           locale: session?.locale ?? token.locale ?? "en",
           name: session?.name ?? token.name,
           username: session?.username ?? token.username,
-          email: session?.email ?? token.email,
+          // Taken from the database, not from the client: the refresh path looks users up by this
+          // email, so a client-supplied value must never reach the token. A verified email change
+          // is already saved when the client calls update().
+          email: sessionUser.email,
         } as JWT;
       }
       const autoMergeIdentities = async ({ isTokenRefresh }: { isTokenRefresh: boolean }) => {
@@ -622,6 +636,7 @@ export const getOptions = ({
             role: true,
             locale: true,
             movedToProfileId: true,
+            locked: true,
             teams: {
               include: {
                 team: {
@@ -637,6 +652,15 @@ export const getOptions = ({
 
         if (!existingUser) {
           return token;
+        }
+
+        // Throwing here makes NextAuth drop the session and clear its cookie: a locked account must
+        // not keep refreshing a session that was issued before the lock.
+        if (existingUser.locked) {
+          log.warn("callbacks:jwt - refusing to refresh the session of a locked user", {
+            userId: existingUser.id,
+          });
+          throw new Error(ErrorCode.UserAccountLocked);
         }
 
         // Check if the existingUser has any active teams

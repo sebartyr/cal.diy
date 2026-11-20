@@ -1,4 +1,5 @@
 import { recordAdminAction } from "@calcom/features/audit-log/adminAuditLog";
+import { invalidateServerSessionCacheForUser } from "@calcom/features/auth/lib/getServerSession";
 import { sendEmailVerification } from "@calcom/features/auth/lib/verifyEmail";
 import { GlobalWatchlistRepository } from "@calcom/features/watchlist/lib/repository/GlobalWatchlistRepository";
 import { normalizeEmail } from "@calcom/features/watchlist/lib/utils/normalization";
@@ -41,6 +42,9 @@ const lockUserAccountHandler = async ({ ctx, input }: GetOptions) => {
   if (!user) {
     throw new Error("User not found");
   }
+
+  // Other instances drop their cached copy within the cache TTL (60 s).
+  invalidateServerSessionCacheForUser(userId);
 
   if (!locked) {
     const globalWatchlistRepo = new GlobalWatchlistRepository(prisma);
