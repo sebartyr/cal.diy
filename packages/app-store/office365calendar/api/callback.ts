@@ -1,6 +1,3 @@
-import type { Calendar as OfficeCalendar } from "@microsoft/microsoft-graph-types-beta";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 import { renewSelectedCalendarCredentialId } from "@calcom/lib/connectedCalendar";
 import { WEBAPP_URL, WEBAPP_URL_FOR_OAUTH } from "@calcom/lib/constants";
 import { handleErrorsJson } from "@calcom/lib/errors";
@@ -8,7 +5,8 @@ import { getSafeRedirectUrl } from "@calcom/lib/getSafeRedirectUrl";
 import logger from "@calcom/lib/logger";
 import prisma from "@calcom/prisma";
 import { Prisma } from "@calcom/prisma/client";
-
+import type { Calendar as OfficeCalendar } from "@microsoft/microsoft-graph-types-beta";
+import type { NextApiRequest, NextApiResponse } from "next";
 import getAppKeysFromSlug from "../../_utils/getAppKeysFromSlug";
 import getInstalledAppPath from "../../_utils/getInstalledAppPath";
 import { assertOAuthState } from "../../_utils/oauth/assertOAuthState";
@@ -68,7 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const responseBody = await response.json();
 
   if (!response.ok) {
-    return res.redirect(`/apps/installed?error=${JSON.stringify(responseBody)}`);
+    // The body is provider-controlled: keep it out of the redirect URL.
+    return res.redirect("/apps/installed?error=oauth_token_exchange_failed");
   }
 
   const whoami = await fetch("https://graph.microsoft.com/v1.0/me", {
@@ -83,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Set the isDefaultCalendar as selectedCalendar
   // If a user has multiple calendars, keep on making calls until we find the default calendar
-  let defaultCalendar: OfficeCalendar | undefined = undefined;
+  let defaultCalendar: OfficeCalendar | undefined;
   let requestUrl = "https://graph.microsoft.com/v1.0/me/calendars?$select=id,isDefaultCalendar";
   let finishedParsingCalendars = false;
 

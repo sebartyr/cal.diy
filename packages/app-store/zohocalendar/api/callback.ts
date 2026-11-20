@@ -77,8 +77,13 @@ async function getHandler(req: NextApiRequest, res: NextApiResponse) {
   const responseBody = await JSON.parse(await response.text());
 
   if (!response.ok || responseBody.error) {
-    log.error("get access_token failed", responseBody);
-    return res.redirect(`/apps/installed?error=${JSON.stringify(responseBody)}`);
+    // The body is provider-controlled: log only its status fields and keep it out of the redirect URL.
+    const errorCode =
+      typeof responseBody?.error === "string" && /^[a-z_]{1,64}$/.test(responseBody.error)
+        ? responseBody.error
+        : "invalid";
+    log.error("get access_token failed", { status: response.status, error: errorCode });
+    return res.redirect("/apps/installed?error=oauth_token_exchange_failed");
   }
 
   const key: ZohoAuthCredentials = {
