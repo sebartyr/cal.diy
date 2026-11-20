@@ -773,7 +773,15 @@ describe("CRM app pointing to a deleted credential", () => {
     return (await import("./getAllCredentials")).getAllCredentialsIncludeServiceAccountKey;
   };
 
-  const reinstalledCredential = {
+  const reinstalledCredential: {
+    id: number;
+    type: string;
+    userId: number | null;
+    teamId: number | null;
+    key: Record<string, never>;
+    appId: string;
+    invalid: boolean;
+  } = {
     id: 128,
     type: "pipedrive-crm_crm",
     userId: 20,
@@ -821,7 +829,47 @@ describe("CRM app pointing to a deleted credential", () => {
       eventTypeBoundTo(126)
     );
 
-    expect(credentials.map((credential) => credential.id)).toContain(128);
+    // The legacy installation must not run alongside the replacement, or activities are duplicated.
+    expect(credentials.map((credential) => credential.id)).toEqual([128]);
+  });
+
+  test("sends a team event to the team installation, not the host's personal one", async () => {
+    const getAllCredentialsIncludeServiceAccountKey = await setup();
+    const teamCredential = { ...reinstalledCredential, id: 129, userId: null, teamId: 10 };
+    await createCredentials([teamCredential]);
+
+    const credentials = await getAllCredentialsIncludeServiceAccountKey(user([reinstalledCredential]), {
+      ...eventTypeBoundTo(126),
+      userId: null,
+      team: { id: 10, parentId: null },
+    });
+
+    expect(credentials.filter((credential) => credential.appId === "pipedrive-crm").map((c) => c.id)).toEqual([
+      129,
+    ]);
+  });
+
+  test("does not pick between several installations of the owner", async () => {
+    const getAllCredentialsIncludeServiceAccountKey = await setup();
+    const secondAccount = { ...reinstalledCredential, id: 129 };
+
+    const credentials = await getAllCredentialsIncludeServiceAccountKey(
+      user([reinstalledCredential, secondAccount]),
+      eventTypeBoundTo(126)
+    );
+
+    expect(credentials.filter((credential) => credential.appId === "pipedrive-crm")).toEqual([]);
+  });
+
+  test("does not fall back to an invalid installation", async () => {
+    const getAllCredentialsIncludeServiceAccountKey = await setup();
+
+    const credentials = await getAllCredentialsIncludeServiceAccountKey(
+      user([{ ...reinstalledCredential, invalid: true }]),
+      eventTypeBoundTo(126)
+    );
+
+    expect(credentials.filter((credential) => credential.appId === "pipedrive-crm")).toEqual([]);
   });
 
   test("does not fall back when the app is disabled on the event type", async () => {

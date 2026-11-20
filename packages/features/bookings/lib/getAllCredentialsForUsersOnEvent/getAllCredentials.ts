@@ -107,13 +107,26 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
           // The credential picked on the event type was deleted (e.g. the app was uninstalled and
           // reinstalled). Without this, the CRM silently stops for the event type until someone
           // re-selects the installation on its Apps tab.
-          const replacement = findReplacementCrmCredential(allCredentials, appKey);
+          const { replacement, candidateCount } = findReplacementCrmCredential(
+            allCredentials,
+            appKey,
+            eventType
+          );
           log.warn("Event type CRM app points to a credential that no longer exists", {
             appSlug: appKey,
             missingCredentialId: app.credentialId,
             replacementCredentialId: replacement?.id ?? null,
+            candidateCount,
+            ...(!replacement && { action: "re-select the installation on the event type's Apps tab" }),
           });
-          if (replacement && !eventTypeCrmCredentials[replacement.id]) {
+          if (replacement) {
+            // Only the replacement may run for this app: a leftover legacy installation would
+            // otherwise also pass the backwards-compatibility branch below and duplicate activities.
+            for (const credential of allCredentials) {
+              if (credential.appId === appKey && credential.id !== replacement.id) {
+                eventTypeCrmCredentials[credential.id] = { enabled: false };
+              }
+            }
             eventTypeCrmCredentials[replacement.id] = { enabled: true };
           }
         }
@@ -154,16 +167,31 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
   return userWithDelegationCredentials.credentials;
 };
 
-/** Prefers a real CRM credential over a legacy `_other_calendar` one, and a valid one over an invalid one. */
-function findReplacementCrmCredential<T extends { appId: string | null; type: string; invalid?: boolean | null }>(
-  credentials: T[],
-  appSlug: string
-): T | undefined {
+/**
+ * The deleted credential's account can't be known any more, so a replacement is only picked when it
+ * is unambiguous: a valid OAuth installation of the same app, owned by the event type's owner (its
+ * team for a team event, the user for a personal one), and the only such installation. Otherwise
+ * the CRM stays off for the event type rather than sending bookings to an arbitrary account.
+ */
+function findReplacementCrmCredential<
+  T extends {
+    appId: string | null;
+    type: string;
+    invalid?: boolean | null;
+    userId: number | null;
+    teamId: number | null;
+  },
+>(credentials: T[], appSlug: string, eventType: EventType): { replacement: T | undefined; candidateCount: number } {
+  const teamId = eventType?.team?.id;
+  const isOwnedByEventTypeOwner = (credential: T) =>
+    teamId ? credential.teamId === teamId : !credential.teamId && credential.userId === eventType?.userId;
+
   const candidates = credentials.filter(
     (credential) =>
       credential.appId === appSlug &&
-      (credential.type.endsWith("_crm") || credential.type.endsWith("_other_calendar"))
+      credential.type.endsWith("_crm") &&
+      !credential.invalid &&
+      isOwnedByEventTypeOwner(credential)
   );
-  const rank = (credential: T) => (credential.type.endsWith("_crm") ? 0 : 2) + (credential.invalid ? 1 : 0);
-  return candidates.sort((a, b) => rank(a) - rank(b))[0];
+  return { replacement: candidates.length === 1 ? candidates[0] : undefined, candidateCount: candidates.length };
 }
