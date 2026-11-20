@@ -4651,6 +4651,7 @@
   "reschedule_history_requested": "Replanification demandée",
   "reschedule_history_rescheduled": "Replanifiée",
   "reschedule_history_unknown_actor": "Inconnu",
+  "reschedule_history_unknown_reason": "Inconnu (écrasé par une modification ultérieure)",
   "reschedule_history_no_reason": "Aucune raison indiquée",
   "reschedule_history_empty": "Cette réservation n'a jamais été replanifiée.",
   "reschedule_history_current": "Cette réservation",

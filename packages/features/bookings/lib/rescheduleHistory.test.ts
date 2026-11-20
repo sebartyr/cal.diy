@@ -10,9 +10,11 @@ const makeNode = (overrides: Partial<RescheduleNode> & { uid: string }): Resched
   startTime: new Date("2026-11-01T10:00:00Z"),
   endTime: new Date("2026-11-01T10:30:00Z"),
   createdAt: new Date("2026-10-01T09:00:00Z"),
-  updatedAt: null,
+  status: "ACCEPTED",
   rescheduled: null,
   fromReschedule: null,
+  rescheduleReason: null,
+  rescheduleRequestedAt: null,
   rescheduledBy: null,
   cancelledBy: null,
   cancellationReason: null,
@@ -92,7 +94,7 @@ describe("buildRescheduleHistory", () => {
     expect(buildRescheduleHistory([makeNode({ uid: "a" })])).toEqual([]);
   });
 
-  it("takes the actor from the old booking and the reason from the new one", () => {
+  it("takes the actor from the old booking and the reason from the new one (legacy field)", () => {
     const old = makeNode({ uid: "old", rescheduled: true, rescheduledBy: "attendee@example.com" });
     const created = new Date("2026-10-15T08:00:00Z");
     const replacement = makeNode({
@@ -110,6 +112,7 @@ describe("buildRescheduleHistory", () => {
         timestamp: created,
         actor: "attendee@example.com",
         reason: "Conflit d'agenda",
+        isReasonUnknown: false,
         from: { uid: "old", startTime: old.startTime, endTime: old.endTime },
         to: { uid: "new", startTime: replacement.startTime, endTime: replacement.endTime },
       },
@@ -117,16 +120,21 @@ describe("buildRescheduleHistory", () => {
   });
 
   it("records a host request, then the attendee's reschedule", () => {
-    const requestedAt = new Date("2026-10-10T08:00:00Z");
+    const requestedAt = new Date("2026-11-05T08:00:00Z");
     const old = makeNode({
       uid: "old",
+      status: "CANCELLED",
       rescheduled: true,
       cancelledBy: "host@example.com",
       cancellationReason: "Je suis malade",
       rescheduledBy: "attendee@example.com",
-      updatedAt: requestedAt,
+      rescheduleRequestedAt: requestedAt,
     });
-    const replacement = makeNode({ uid: "new", fromReschedule: "old" });
+    const replacement = makeNode({
+      uid: "new",
+      fromReschedule: "old",
+      createdAt: new Date("2026-11-07T08:00:00Z"),
+    });
 
     const history = buildRescheduleHistory([old, replacement]);
 
@@ -137,7 +145,102 @@ describe("buildRescheduleHistory", () => {
       timestamp: requestedAt,
       to: null,
     });
-    expect(history[1]).toMatchObject({ actor: "attendee@example.com", reason: null });
+    expect(history[1]).toMatchObject({
+      actor: "attendee@example.com",
+      reason: null,
+      isReasonUnknown: false,
+      timestamp: replacement.createdAt,
+    });
+  });
+
+  it("leaves the request date unknown for requests made before it was recorded", () => {
+    const old = makeNode({
+      uid: "old",
+      status: "CANCELLED",
+      rescheduled: true,
+      cancelledBy: "host@example.com",
+    });
+    expect(buildRescheduleHistory([old])[0].timestamp).toBeNull();
+  });
+
+  describe("reason of a reschedule whose new booking was changed afterwards", () => {
+    const old = makeNode({
+      uid: "a",
+      status: "CANCELLED",
+      rescheduled: true,
+      rescheduledBy: "attendee@example.com",
+    });
+
+    it("keeps the recorded reason even after the new booking is cancelled", () => {
+      const cancelled = makeNode({
+        uid: "b",
+        fromReschedule: "a",
+        status: "CANCELLED",
+        rescheduleReason: "Conflit",
+        cancellationReason: "Plus besoin",
+        cancelledBy: "host@example.com",
+      });
+      expect(buildRescheduleHistory([old, cancelled])[0]).toMatchObject({
+        reason: "Conflit",
+        isReasonUnknown: false,
+      });
+    });
+
+    it("marks a legacy reason as unknown once the new booking is cancelled", () => {
+      const cancelled = makeNode({
+        uid: "b",
+        fromReschedule: "a",
+        status: "CANCELLED",
+        cancellationReason: "Plus besoin",
+        cancelledBy: "host@example.com",
+      });
+      expect(buildRescheduleHistory([old, cancelled])[0]).toMatchObject({
+        reason: null,
+        isReasonUnknown: true,
+      });
+    });
+
+    it("marks a legacy reason as unknown once a reschedule of the new booking is requested", () => {
+      const requested = makeNode({
+        uid: "b",
+        fromReschedule: "a",
+        status: "CANCELLED",
+        rescheduled: true,
+        cancellationReason: "Salle indisponible",
+        cancelledBy: "host@example.com",
+      });
+      const history = buildRescheduleHistory([old, requested]);
+      expect(history[0]).toMatchObject({ type: "rescheduled", reason: null, isReasonUnknown: true });
+      expect(history[1]).toMatchObject({ type: "reschedule_requested", reason: "Salle indisponible" });
+    });
+
+    it("trusts a legacy reason when the new booking was itself simply rescheduled", () => {
+      const movedAgain = makeNode({
+        uid: "b",
+        fromReschedule: "a",
+        status: "CANCELLED",
+        rescheduled: true,
+        rescheduledBy: "attendee@example.com",
+        cancellationReason: "Conflit",
+      });
+      expect(buildRescheduleHistory([old, movedAgain])[0]).toMatchObject({
+        reason: "Conflit",
+        isReasonUnknown: false,
+      });
+    });
+
+    it("trusts a legacy reason when the new booking was only rejected", () => {
+      const rejected = makeNode({
+        uid: "b",
+        fromReschedule: "a",
+        status: "REJECTED",
+        cancellationReason: "Conflit",
+      });
+      expect(buildRescheduleHistory([old, rejected])[0]).toMatchObject({
+        reason: "Conflit",
+        isReasonUnknown: false,
+      });
+    });
   });
 
   it("keeps a pending host request with no new booking yet", () => {

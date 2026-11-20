@@ -856,6 +856,10 @@ model Booking {
   dynamicGroupSlugRef    String?
   rescheduled            Boolean?
   fromReschedule         String?
+  // Set once when this booking is created by a reschedule; cancellationReason gets overwritten by later actions.
+  rescheduleReason       String?
+  // When the host asked the attendee to pick another slot; updatedAt moves on every later write.
+  rescheduleRequestedAt  DateTime?
   recurringEventId       String?
   smsReminderNumber      String?
   scheduledJobs          String[] // scheduledJobs is deprecated, please use scheduledTriggers instead

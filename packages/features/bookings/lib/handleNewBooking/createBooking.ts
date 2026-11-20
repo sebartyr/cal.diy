@@ -319,6 +319,7 @@ function buildNewBookingData(params: CreateBookingParams) {
     newBookingData.fromReschedule = originalRescheduledBooking.uid;
     if (originalRescheduledBooking.uid) {
       newBookingData.cancellationReason = input.rescheduleReason;
+      newBookingData.rescheduleReason = input.rescheduleReason;
     }
     // Reschedule logic with booking with seats
     if (

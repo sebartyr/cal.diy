@@ -77,16 +77,24 @@ export function RescheduleHistoryTimeline({
 
           <Field label={t("by")}>{entry.actor ?? t("reschedule_history_unknown_actor")}</Field>
           <Field label={t("reason")}>
-            {entry.reason ? (
-              <span className="whitespace-pre-wrap">{entry.reason}</span>
-            ) : (
-              <span className="text-subtle">{t("reschedule_history_no_reason")}</span>
-            )}
+            <ReasonText entry={entry} />
           </Field>
         </li>
       ))}
     </ol>
   );
+}
+
+function ReasonText({ entry }: { entry: RescheduleHistoryEntry }) {
+  const { t } = useLocale();
+
+  if (entry.isReasonUnknown) {
+    return <span className="text-subtle">{t("reschedule_history_unknown_reason")}</span>;
+  }
+  if (!entry.reason) {
+    return <span className="text-subtle">{t("reschedule_history_no_reason")}</span>;
+  }
+  return <span className="whitespace-pre-wrap">{entry.reason}</span>;
 }
 
 function SlotLine({

@@ -368,9 +368,11 @@ const rescheduleNodeSelect = {
   startTime: true,
   endTime: true,
   createdAt: true,
-  updatedAt: true,
+  status: true,
   rescheduled: true,
   fromReschedule: true,
+  rescheduleReason: true,
+  rescheduleRequestedAt: true,
   rescheduledBy: true,
   cancelledBy: true,
   cancellationReason: true,
@@ -1585,6 +1587,7 @@ export class BookingRepository implements IBookingRepository {
     cancelledBy,
     rescheduledBy,
     rescheduled,
+    rescheduleRequestedAt,
   }: {
     bookingId: number;
     status?: BookingStatus;
@@ -1592,6 +1595,7 @@ export class BookingRepository implements IBookingRepository {
     cancelledBy?: string;
     rescheduledBy?: string;
     rescheduled?: boolean;
+    rescheduleRequestedAt?: Date;
   }) {
     return await this.prismaClient.booking.update({
       where: {
@@ -1603,6 +1607,7 @@ export class BookingRepository implements IBookingRepository {
         ...(cancellationReason !== undefined && { cancellationReason }),
         ...(cancelledBy !== undefined && { cancelledBy }),
         ...(rescheduledBy !== undefined && { rescheduledBy }),
+        ...(rescheduleRequestedAt !== undefined && { rescheduleRequestedAt }),
         updatedAt: new Date().toISOString(),
       },
     });

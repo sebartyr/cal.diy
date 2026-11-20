@@ -4788,6 +4788,7 @@
   "reschedule_history_requested": "Reschedule requested",
   "reschedule_history_rescheduled": "Rescheduled",
   "reschedule_history_unknown_actor": "Unknown",
+  "reschedule_history_unknown_reason": "Unknown (overwritten by a later change)",
   "reschedule_history_no_reason": "No reason given",
   "reschedule_history_empty": "This booking has no reschedule history.",
   "reschedule_history_current": "This booking",
