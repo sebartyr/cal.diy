@@ -132,6 +132,8 @@ vi.mock("next-auth/providers/google", () => ({ default: vi.fn() }));
 
 const mockPrismaUserFindFirst = vi.fn();
 
+const mockPrismaUserFindUnique = vi.fn();
+
 describe("jwt callback refresh and locked accounts", () => {
   let jwtCallback: any;
 
@@ -140,7 +142,11 @@ describe("jwt callback refresh and locked accounts", () => {
 
     const prismaModule = await import("@calcom/prisma");
     const prismaDefault = (prismaModule as any).default;
-    prismaDefault.user = { ...prismaDefault.user, findFirst: mockPrismaUserFindFirst };
+    prismaDefault.user = {
+      ...prismaDefault.user,
+      findFirst: mockPrismaUserFindFirst,
+      findUnique: mockPrismaUserFindUnique,
+    };
     prismaDefault.membership = { findUnique: vi.fn().mockResolvedValue(null) };
 
     mockFindAllProfiles.mockResolvedValue([{ id: 1, upId: "usr_1" }]);
@@ -177,5 +183,40 @@ describe("jwt callback refresh and locked accounts", () => {
     });
 
     await expect(call).rejects.toThrow();
+  });
+
+  describe("useSession().update()", () => {
+    const updateCall = (session: Record<string, unknown>) =>
+      jwtCallback({
+        token: { sub: "42", email: "user@example.com", upId: "usr_1", role: "USER", name: "Old" },
+        user: undefined,
+        account: undefined,
+        trigger: "update",
+        session,
+      });
+
+    it("refuses to update the session of a locked user", async () => {
+      mockPrismaUserFindUnique.mockResolvedValue({ locked: true, email: "user@example.com" });
+
+      await expect(updateCall({ name: "New" })).rejects.toThrow();
+      expect(mockPrismaUserFindUnique).toHaveBeenCalledWith({
+        where: { id: 42 },
+        select: { locked: true, email: true },
+      });
+    });
+
+    it("refuses to update the session of a deleted user", async () => {
+      mockPrismaUserFindUnique.mockResolvedValue(null);
+
+      await expect(updateCall({ name: "New" })).rejects.toThrow();
+    });
+
+    it("updates an unlocked user's session but never takes the email from the client", async () => {
+      mockPrismaUserFindUnique.mockResolvedValue({ locked: false, email: "user@example.com" });
+
+      const token = await updateCall({ name: "New", email: "someone-else@example.com" });
+
+      expect(token).toMatchObject({ sub: "42", name: "New", email: "user@example.com" });
+    });
   });
 });
