@@ -1280,8 +1280,29 @@ export default class EventManager {
         success = false;
         // We don't know the type of the error here, so for an Error instance we can read message but otherwise we stringify the error
         const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-        log.warn(`Error creating crm event for ${credential.type} for booking ${event?.uid}`, errorMsg);
+        log.warn(
+          `Error creating crm event for ${credential.type} for booking ${event?.uid}`,
+          { credentialId: credential.id },
+          errorMsg
+        );
       });
+
+      if (createdEvent) {
+        log.info("CRM event created", {
+          bookingUid: event.uid,
+          credentialId: credential.id,
+          type: credential.type,
+          crmEventId: createdEvent.id,
+        });
+      } else if (success) {
+        // No error but nothing created: the CRM service failed to initialise or the app options skip
+        // contact creation for unknown attendees. Without this, such bookings leave no trace.
+        log.warn("CRM returned no event for booking", {
+          bookingUid: event.uid,
+          credentialId: credential.id,
+          type: credential.type,
+        });
+      }
 
       if (createdEvent) {
         createdEvents.push({

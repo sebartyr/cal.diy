@@ -13,6 +13,7 @@ import { getCalEventResponses } from "@calcom/features/bookings/lib/getCalEventR
 import { deletePayment } from "@calcom/features/bookings/lib/payment/deletePayment";
 import { buildNonDelegationCredential } from "@calcom/lib/delegationCredential";
 import { isPrismaObjOrUndefined } from "@calcom/lib/isPrismaObj";
+import logger from "@calcom/lib/logger";
 import { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
 import { getTranslation } from "@calcom/i18n/server";
 import { bookingMinimalSelect, prisma } from "@calcom/prisma";
@@ -37,6 +38,8 @@ const getRemovedIntegrationNameFromAppSlug = (slug: string) =>
 
 const locationsSchema = z.array(z.object({ type: z.string() }));
 type TlocationsSchema = z.infer<typeof locationsSchema>;
+
+const log = logger.getSubLogger({ prefix: ["handleDeleteCredential"] });
 
 const handleDeleteCredential = async ({
   userId,
@@ -99,6 +102,7 @@ const handleDeleteCredential = async ({
   });
 
   // TODO: Improve this uninstallation cleanup per event by keeping a relation of EventType to App which has the data.
+  const eventTypesHidden: number[] = [];
   for (const eventType of eventTypes) {
     // If it's a video, replace the location with Jitsi, the fallback conferencing app
     if (eventType.locations && isVideoOrConferencingApp(credential.app)) {
@@ -162,6 +166,7 @@ const handleDeleteCredential = async ({
         const appMetadata = removeAppFromEventTypeMetadata(appSlugToDelete, {
           apps,
         });
+        eventTypesHidden.push(eventType.id);
 
         await prisma.$transaction(async () => {
           await prisma.eventType.update({
@@ -191,6 +196,7 @@ const handleDeleteCredential = async ({
         const appMetadata = removeAppFromEventTypeMetadata(appSlug, {
           apps,
         });
+        eventTypesHidden.push(eventType.id);
 
         await prisma.$transaction(async () => {
           await prisma.eventType.update({
@@ -391,6 +397,7 @@ const handleDeleteCredential = async ({
       const metadata = eventTypeMetaDataSchemaWithTypedApps.parse(eventType.metadata);
       const appSlug = credential.app?.slug;
       if (appSlug) {
+        eventTypesHidden.push(eventType.id);
         await prisma.eventType.update({
           where: {
             id: eventType.id,
@@ -459,6 +466,17 @@ const handleDeleteCredential = async ({
     where: {
       id: credentialId,
     },
+  });
+
+  // Warn level so it shows in production logs: uninstalling an app silently changes event types
+  // (CRM/payment apps are removed from them and they get hidden), which is otherwise untraceable.
+  log.warn("Credential deleted", {
+    credentialId,
+    type: credential.type,
+    appId: credential.appId,
+    userId,
+    teamId: teamId ?? null,
+    eventTypesHidden,
   });
 };
 

@@ -1,4 +1,5 @@
 import { HttpError } from "@calcom/lib/http-error";
+import logger from "@calcom/lib/logger";
 import prisma from "@calcom/prisma";
 import type { NextApiRequest } from "next";
 import { decodeOAuthState } from "../oauth/decodeOAuthState";
@@ -33,23 +34,42 @@ const createOAuthAppCredential = async (
     // Check that the user belongs to the team
     await throwIfNotHaveAdminAccessToTeam({ teamId: state.teamId, userId });
 
-    return await prisma.credential.create({
+    const teamCredential = await prisma.credential.create({
       data: {
         type: appData.type,
         key: key || {},
         teamId: state.teamId,
         appId: appData.appId,
       },
+      select: { id: true },
     });
+    logCredentialCreated(teamCredential.id, appData, { userId, teamId: state.teamId });
+    return teamCredential;
   }
 
-  return await prisma.credential.create({
+  const userCredential = await prisma.credential.create({
     data: {
       type: appData.type,
       key: key || {},
       userId,
       appId: appData.appId,
     },
+    select: { id: true },
+  });
+  logCredentialCreated(userCredential.id, appData, { userId, teamId: null });
+  return userCredential;
+};
+
+const logCredentialCreated = (
+  credentialId: number,
+  appData: { type: string; appId: string },
+  owner: { userId: number; teamId: number | null }
+) => {
+  logger.getSubLogger({ prefix: ["createOAuthAppCredential"] }).info("OAuth credential created", {
+    credentialId,
+    type: appData.type,
+    appId: appData.appId,
+    ...owner,
   });
 };
 

@@ -1,11 +1,14 @@
 import { enrichUserWithDelegationCredentialsIncludeServiceAccountKey } from "@calcom/app-store/delegationCredential";
 import { eventTypeAppMetadataOptionalSchema } from "@calcom/app-store/zod-utils";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
+import logger from "@calcom/lib/logger";
 import prisma from "@calcom/prisma";
 import { credentialForCalendarServiceSelect } from "@calcom/prisma/selects/credential";
 import type { EventTypeMetaDataSchema } from "@calcom/prisma/zod-utils";
 import type { CredentialPayload } from "@calcom/types/Credential";
 import type { z } from "zod";
+
+const log = logger.getSubLogger({ prefix: ["getAllCredentials"] });
 
 export type EventType = {
   userId?: number | null;
@@ -89,6 +92,7 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
 
   // Will be [credentialId]: { enabled: boolean }]
   const eventTypeCrmCredentials: Record<number, { enabled: boolean }> = {};
+  const availableCredentialIds = new Set(allCredentials.map((credential) => credential.id));
 
   for (const appKey in eventTypeAppMetadata) {
     const app = eventTypeAppMetadata[appKey as keyof typeof eventTypeAppMetadata] as
@@ -96,9 +100,36 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
       | undefined;
     if (app?.appCategories && app.appCategories.some((category: string) => category === "crm")) {
       if (app.credentialId !== undefined) {
-        eventTypeCrmCredentials[app.credentialId] = {
-          enabled: app.enabled ?? false,
-        };
+        const enabled = app.enabled ?? false;
+        eventTypeCrmCredentials[app.credentialId] = { enabled };
+
+        if (enabled && !availableCredentialIds.has(app.credentialId)) {
+          // The credential picked on the event type was deleted (e.g. the app was uninstalled and
+          // reinstalled). Without this, the CRM silently stops for the event type until someone
+          // re-selects the installation on its Apps tab.
+          const { replacement, candidateCount } = findReplacementCrmCredential(
+            allCredentials,
+            appKey,
+            eventType
+          );
+          log.warn("Event type CRM app points to a credential that no longer exists", {
+            appSlug: appKey,
+            missingCredentialId: app.credentialId,
+            replacementCredentialId: replacement?.id ?? null,
+            candidateCount,
+            ...(!replacement && { action: "re-select the installation on the event type's Apps tab" }),
+          });
+          if (replacement) {
+            // Only the replacement may run for this app: a leftover legacy installation would
+            // otherwise also pass the backwards-compatibility branch below and duplicate activities.
+            for (const credential of allCredentials) {
+              if (credential.appId === appKey && credential.id !== replacement.id) {
+                eventTypeCrmCredentials[credential.id] = { enabled: false };
+              }
+            }
+            eventTypeCrmCredentials[replacement.id] = { enabled: true };
+          }
+        }
       }
     }
   }
@@ -135,3 +166,32 @@ export const getAllCredentialsIncludeServiceAccountKey = async (
 
   return userWithDelegationCredentials.credentials;
 };
+
+/**
+ * The deleted credential's account can't be known any more, so a replacement is only picked when it
+ * is unambiguous: a valid OAuth installation of the same app, owned by the event type's owner (its
+ * team for a team event, the user for a personal one), and the only such installation. Otherwise
+ * the CRM stays off for the event type rather than sending bookings to an arbitrary account.
+ */
+function findReplacementCrmCredential<
+  T extends {
+    appId: string | null;
+    type: string;
+    invalid?: boolean | null;
+    userId: number | null;
+    teamId: number | null;
+  },
+>(credentials: T[], appSlug: string, eventType: EventType): { replacement: T | undefined; candidateCount: number } {
+  const teamId = eventType?.team?.id;
+  const isOwnedByEventTypeOwner = (credential: T) =>
+    teamId ? credential.teamId === teamId : !credential.teamId && credential.userId === eventType?.userId;
+
+  const candidates = credentials.filter(
+    (credential) =>
+      credential.appId === appSlug &&
+      credential.type.endsWith("_crm") &&
+      !credential.invalid &&
+      isOwnedByEventTypeOwner(credential)
+  );
+  return { replacement: candidates.length === 1 ? candidates[0] : undefined, candidateCount: candidates.length };
+}
