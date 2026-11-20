@@ -1,4 +1,5 @@
 import { recordAdminAction, recordAdminDenial } from "@calcom/features/audit-log/adminAuditLog";
+import { meetsSystemAdminPolicy } from "@calcom/features/auth/lib/systemAdminPolicy";
 import type {
   UserPermissionRoleDto,
   UserRoleRepository,
@@ -30,11 +31,12 @@ export class UserRoleService {
 
   /**
    * Reads the role straight from the database so that server-side admin gates do not depend on the
-   * session (cached in memory per process) or the JWT (which keeps the role it was issued with).
+   * session (cached in memory per process) or the JWT (which keeps the role it was issued with), and
+   * applies the same admin policy as the admin tRPC routes (lock, REQUIRE_2FA_FOR_ADMIN).
    */
   async isActiveSystemAdmin(userId: number): Promise<boolean> {
     const user = await this.deps.userRoleRepository.findById({ id: userId });
-    return user?.role === "ADMIN" && !user.locked;
+    return !!user && meetsSystemAdminPolicy(user);
   }
 
   async setUserRole({ actor, targetUserId, role }: SetUserRoleInput): Promise<SetUserRoleResult> {
