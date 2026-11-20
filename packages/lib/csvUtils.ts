@@ -46,15 +46,17 @@ export const objectsToCsv = (data: Record<string, any>[]): string => {
   return csvRows.join("\n");
 };
 
-export const sanitizeValue = (value: string) => {
-  // handling three cases:
-  // 1. quotes - we need to double quotes for CSV
-  // 2. commas
-  // 3. newlines
+// Spreadsheet apps run a cell starting with one of these as a formula (OWASP CSV injection), and some
+// exported fields (attendee name, title, location) are typed by anonymous bookers.
+const FORMULA_LEADERS = ["=", "+", "-", "@", "\t", "\r"];
+
+export const sanitizeValue = (rawValue: string) => {
+  const value = FORMULA_LEADERS.some((leader) => rawValue.startsWith(leader)) ? `'${rawValue}` : rawValue;
+
   if (value.includes('"')) {
     return `"${value.replace(/"/g, '""')}"`;
   }
-  if (value.includes(",") || value.includes("\n")) {
+  if (value.includes(",") || value.includes("\n") || value.includes("\r")) {
     return `"${value}"`;
   }
   return value;
