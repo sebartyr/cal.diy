@@ -6,7 +6,7 @@ import {
   CREDENTIAL_SYNC_SECRET_HEADER_NAME,
 } from "@calcom/lib/constants";
 import { safeCompareSecret } from "@calcom/lib/cron-auth";
-import { symmetricDecrypt } from "@calcom/lib/crypto";
+import { symmetricDecryptStrictV2 } from "@calcom/lib/crypto-clever";
 import prisma from "@calcom/prisma";
 import { defaultResponderForAppDir } from "app/api/defaultResponderForAppDir";
 import type { NextRequest } from "next/server";
@@ -65,8 +65,9 @@ async function postHandler(request: NextRequest) {
       );
     }
 
+    // The keys come from outside: the legacy CBC format has no MAC and would act as a padding oracle.
     const keys = JSON.parse(
-      symmetricDecrypt(reqBody.keys, process.env.CALCOM_APP_CREDENTIAL_ENCRYPTION_KEY || "")
+      symmetricDecryptStrictV2(reqBody.keys, process.env.CALCOM_APP_CREDENTIAL_ENCRYPTION_KEY || "")
     );
 
     // INFO: Can't use prisma upsert as we don't know the id of the credential
