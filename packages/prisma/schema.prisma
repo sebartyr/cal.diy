@@ -172,7 +172,7 @@ model EventType {
   periodCountCalendarDays           Boolean?
   lockTimeZoneToggleOnBookingPage   Boolean                @default(false)
   lockedTimeZone                    String?
-  requiresConfirmation              Boolean                @default(false)
+  requiresConfirmation              Boolean                @default(true)
   requiresConfirmationWillBlockSlot Boolean                @default(false)
   requiresConfirmationForFreeEmail  Boolean                @default(false)
   requiresBookerEmailVerification   Boolean                @default(false)
@@ -185,7 +185,7 @@ model EventType {
   hideCalendarNotes                        Boolean                @default(false)
   hideCalendarEventDetails                 Boolean                @default(false)
   /// @zod.number.min(0)
-  minimumBookingNotice                     Int                    @default(120)
+  minimumBookingNotice                     Int                    @default(1440)
   beforeEventBuffer                        Int                    @default(0)
   afterEventBuffer                         Int                    @default(0)
   seatsPerTimeSlot                         Int?
