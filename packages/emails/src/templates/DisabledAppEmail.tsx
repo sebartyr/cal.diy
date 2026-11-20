@@ -36,7 +36,7 @@ export const DisabledAppEmail = (
       ) : title && eventTypeId ? (
         <>
           <p>
-            <>{(t("app_disabled_with_event_type"), { appName: appName, title: title })}</>
+            <>{t("app_disabled_with_event_type", { appName: appName, title: title })}</>
           </p>
 
           <hr style={{ marginBottom: "24px" }} />
