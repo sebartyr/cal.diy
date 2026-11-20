@@ -319,6 +319,7 @@ describe("Bookings Endpoints 2024-08-13", () => {
       return request(app.getHttpServer())
         .get(`/v2/bookings/${createdSeatedBooking.uid}`)
         .set(CAL_API_VERSION_HEADER, VERSION_2024_08_13)
+        .set("Authorization", `Bearer ${apiKeyString}`)
         .expect(200)
         .then(async (response) => {
           const responseBody: GetBookingOutput_2024_08_13 = response.body;
@@ -368,6 +369,7 @@ describe("Bookings Endpoints 2024-08-13", () => {
       return request(app.getHttpServer())
         .get(`/v2/bookings/by-seat/${createdSeatedBooking.seatUid}`)
         .set(CAL_API_VERSION_HEADER, VERSION_2024_08_13)
+        .set("Authorization", `Bearer ${apiKeyString}`)
         .expect(200)
         .then(async (response) => {
           const responseBody: GetBookingOutput_2024_08_13 = response.body;
@@ -491,30 +493,11 @@ describe("Bookings Endpoints 2024-08-13", () => {
           });
       });
 
-      it("should return only the attendee for the specific seatUid when seatsShowAttendees is false and no auth", async () => {
+      it("should refuse to read a booking by seatUid without auth", async () => {
         return request(app.getHttpServer())
           .get(`/v2/bookings/by-seat/${secondAttendeeSeatUid}`)
           .set(CAL_API_VERSION_HEADER, VERSION_2024_08_13)
-          .expect(200)
-          .then(async (response) => {
-            const responseBody: GetBookingOutput_2024_08_13 = response.body;
-            expect(responseBody.status).toEqual(SUCCESS_STATUS);
-            expect(responseBody.data).toBeDefined();
-            expect(responseDataIsGetSeatedBooking(responseBody.data)).toBe(true);
-
-            if (responseDataIsGetSeatedBooking(responseBody.data)) {
-              const data: GetSeatedBookingOutput_2024_08_13 = responseBody.data;
-              expect(data.id).toEqual(bookingWithAttendeesDisabled.id);
-              expect(data.uid).toEqual(bookingWithAttendeesDisabled.uid);
-              expect(data.eventTypeId).toEqual(seatedEventTypeIdAttendeesDisabledId);
-              expect(data.attendees.length).toEqual(1);
-              expect(data.attendees[0].email).toEqual(emailAttendeeThree);
-              expect(data.attendees[0].name).toEqual(nameAttendeeThree);
-              expect(data.attendees[0].seatUid).toEqual(secondAttendeeSeatUid);
-            } else {
-              throw new Error("Invalid response data - expected seated booking");
-            }
-          });
+          .expect(401);
       });
 
       it("should return all attendees when admin auth is provided", async () => {
@@ -784,40 +767,11 @@ describe("Bookings Endpoints 2024-08-13", () => {
           });
       });
 
-      it("should fetch booking and not have attendees because no auth provided", async () => {
+      it("should refuse to read a booking without auth", async () => {
         return request(app.getHttpServer())
           .get(`/v2/bookings/${booking.uid}`)
           .set(CAL_API_VERSION_HEADER, VERSION_2024_08_13)
-          .expect(200)
-          .then(async (response) => {
-            const responseBody: GetBookingOutput_2024_08_13 = response.body;
-            expect(responseBody.status).toEqual(SUCCESS_STATUS);
-            expect(responseBody.data).toBeDefined();
-            expect(responseDataIsGetSeatedBooking(responseBody.data)).toBe(true);
-
-            if (responseDataIsGetSeatedBooking(responseBody.data)) {
-              const data: GetSeatedBookingOutput_2024_08_13 = responseBody.data;
-              expect(data.id).toBeDefined();
-              expect(data.uid).toBeDefined();
-              expect(data.hosts.length).toEqual(1);
-              expect(data.hosts[0].id).toEqual(user.id);
-              expect(data.status).toEqual("accepted");
-              expect(data.start).toEqual(booking.start);
-              expect(data.end).toEqual(booking.end);
-              expect(data.duration).toEqual(60);
-              expect(data.eventTypeId).toEqual(seatedEventTypeIdAttendeesDisabledId);
-              expect(data.eventType).toEqual({
-                id: seatedEventTypeIdAttendeesDisabledId,
-                slug: seatedEventSlugAttendeesDisabled,
-              });
-              expect(data.attendees.length).toEqual(0);
-              expect(data.location).toBeDefined();
-              expect(data.absentHost).toEqual(false);
-              await bookingsRepositoryFixture.deleteById(data.id);
-            } else {
-              throw new Error("Invalid response data - expected booking but received array response");
-            }
-          });
+          .expect(401);
       });
     });
 

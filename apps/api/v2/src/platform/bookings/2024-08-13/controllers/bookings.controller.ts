@@ -43,6 +43,7 @@ import {
   getSchemaPath,
 } from "@nestjs/swagger";
 import { Request } from "express";
+import { BookingReadAccessGuard } from "@/platform/bookings/shared/guards/booking-read-access.guard";
 import { BookingPbacGuard } from "@/platform/bookings/2024-08-13/guards/booking-pbac.guard";
 import { BookingUidGuard } from "@/platform/bookings/2024-08-13/guards/booking-uid.guard";
 import { BookingReferencesFilterInput_2024_08_13 } from "@/platform/bookings/2024-08-13/inputs/booking-references-filter.input";
@@ -159,10 +160,10 @@ export class BookingsController_2024_08_13 {
   }
 
   @Get("/by-seat/:seatUid")
-  @UseGuards(OptionalApiAuthGuard)
+  @UseGuards(ApiAuthGuard, BookingReadAccessGuard)
   @ApiHeader(OPTIONAL_X_CAL_CLIENT_ID_HEADER)
   @ApiHeader(OPTIONAL_X_CAL_SECRET_KEY_HEADER)
-  @ApiHeader(OPTIONAL_API_KEY_OR_ACCESS_TOKEN_HEADER)
+  @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @ApiOperation({
     summary: "Get a booking by seat UID",
     description: `Get a seated booking by its seat reference UID. This is useful when you have a seatUid from a seated booking and want to retrieve the full booking details.
@@ -186,10 +187,10 @@ export class BookingsController_2024_08_13 {
   }
 
   @Get("/:bookingUid")
-  @UseGuards(BookingUidGuard, OptionalApiAuthGuard)
+  @UseGuards(BookingUidGuard, ApiAuthGuard, BookingReadAccessGuard)
   @ApiHeader(OPTIONAL_X_CAL_CLIENT_ID_HEADER)
   @ApiHeader(OPTIONAL_X_CAL_SECRET_KEY_HEADER)
-  @ApiHeader(OPTIONAL_API_KEY_OR_ACCESS_TOKEN_HEADER)
+  @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @ApiOperation({
     summary: "Get a booking",
     description: `\`:bookingUid\` can be
