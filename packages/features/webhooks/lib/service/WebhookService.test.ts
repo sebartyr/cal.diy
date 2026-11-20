@@ -1,12 +1,14 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-
+import process from "node:process";
 import { WebhookTriggerEvents } from "@calcom/prisma/enums";
-
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WebhookSubscriber } from "../dto/types";
-import { IWebhookRepository, WebhookVersion } from "../interface/IWebhookRepository";
+import type { WebhookPayload } from "../factory/types";
+import { type IWebhookRepository, WebhookVersion } from "../interface/IWebhookRepository";
+import type { ILogger, ITasker } from "../interface/infrastructure";
 import { WebhookService } from "./WebhookService";
-import { ILogger, ITasker } from "../interface/infrastructure";
-import { WebhookPayload } from "../factory/types";
+
+const { dnsLookup } = vi.hoisted(() => ({ dnsLookup: vi.fn() }));
+vi.mock("node:dns/promises", () => ({ default: { lookup: dnsLookup } }));
 
 describe("WebhookService", () => {
   let mockFetch: ReturnType<typeof vi.fn>;
@@ -51,6 +53,7 @@ describe("WebhookService", () => {
   }
 
   beforeEach(() => {
+    dnsLookup.mockResolvedValue([{ address: "93.184.215.14", family: 4 }]);
     mockFetch = vi.fn();
     mockLogger = createMockLogger();
     mockRepository = createMockRepository();
@@ -68,6 +71,34 @@ describe("WebhookService", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  describe("SSRF protection", () => {
+    it("rejects a subscriber whose hostname resolves to a private address without sending", async () => {
+      dnsLookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
+      const service = new WebhookService(
+        mockRepository as unknown as IWebhookRepository,
+        mockTasker as unknown as ITasker,
+        mockLogger as unknown as ILogger
+      );
+      const subscriber: WebhookSubscriber = {
+        id: "webhook-1",
+        subscriberUrl: "https://internal.example.com/webhook",
+        payloadTemplate: null,
+        appId: null,
+        secret: "test-secret",
+        eventTriggers: [WebhookTriggerEvents.BOOKING_CREATED],
+        version: WebhookVersion.V_2021_10_20,
+      };
+      const payload = {
+        createdAt: new Date().toISOString(),
+        payload: { triggerEvent: WebhookTriggerEvents.BOOKING_CREATED },
+      } as unknown as WebhookPayload;
+
+      await service.processWebhooks(WebhookTriggerEvents.BOOKING_CREATED, payload, [subscriber]);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
   });
 
   describe("X-Cal-Webhook-Version header", () => {

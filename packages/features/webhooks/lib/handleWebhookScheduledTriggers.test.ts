@@ -3,11 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleWebhookScheduledTriggers } from "./handleWebhookScheduledTriggers";
 import { DEFAULT_WEBHOOK_VERSION } from "./interface/IWebhookRepository";
 
+const { dnsLookup } = vi.hoisted(() => ({ dnsLookup: vi.fn() }));
+vi.mock("node:dns/promises", () => ({ default: { lookup: dnsLookup } }));
+
 describe("handleWebhookScheduledTriggers - X-Cal-Webhook-Version header", () => {
   const mockFetch = vi.fn();
   const now = new Date();
 
   beforeEach(() => {
+    dnsLookup.mockResolvedValue([{ address: "93.184.215.14", family: 4 }]);
     vi.stubGlobal("fetch", mockFetch);
     mockFetch.mockResolvedValue({
       ok: true,
@@ -179,6 +183,7 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
   });
 
   beforeEach(() => {
+    dnsLookup.mockResolvedValue([{ address: "93.184.215.14", family: 4 }]);
     vi.stubGlobal("fetch", mockFetch);
   });
 
@@ -289,5 +294,73 @@ describe("handleWebhookScheduledTriggers - batching and delivery", () => {
 
     expect(completed).toBe(50);
     expect(maxInFlight).toBe(50);
+  });
+});
+
+describe("handleWebhookScheduledTriggers - SSRF protection", () => {
+  const mockFetch = vi.fn();
+
+  const buildPrisma = (subscriberUrl: string) => ({
+    $queryRaw: vi.fn().mockResolvedValue([{ id: 1 }]),
+    webhookScheduledTriggers: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          jobName: null,
+          subscriberUrl,
+          payload: JSON.stringify({ triggerEvent: "MEETING_STARTED", id: 1 }),
+          webhook: { secret: "test-secret", version: "2021-10-20" },
+        },
+      ]),
+    },
+    webhook: { findUniqueOrThrow: vi.fn() },
+  });
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", mockFetch);
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetAllMocks();
+  });
+
+  it("does not send to a hostname that now resolves to a private address", async () => {
+    dnsLookup.mockResolvedValue([{ address: "169.254.169.254", family: 4 }]);
+    const prisma = buildPrisma("http://rebound.example.com/hook");
+
+    await handleWebhookScheduledTriggers(prisma as unknown as PrismaClient);
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).toHaveBeenCalled();
+  });
+
+  it("does not send to a literal internal IP stored before validation existed", async () => {
+    await handleWebhookScheduledTriggers(
+      buildPrisma("http://169.254.169.254/latest/meta-data/") as unknown as PrismaClient
+    );
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(dnsLookup).not.toHaveBeenCalled();
+  });
+
+  it("does not send when the hostname no longer resolves", async () => {
+    dnsLookup.mockRejectedValue(new Error("ENOTFOUND"));
+
+    await handleWebhookScheduledTriggers(
+      buildPrisma("https://gone.example.com/hook") as unknown as PrismaClient
+    );
+
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("still sends to a hostname resolving to a public address", async () => {
+    dnsLookup.mockResolvedValue([{ address: "93.184.215.14", family: 4 }]);
+
+    await handleWebhookScheduledTriggers(buildPrisma("https://example.com/hook") as unknown as PrismaClient);
+
+    expect(mockFetch).toHaveBeenCalledWith("https://example.com/hook", expect.anything());
   });
 });
