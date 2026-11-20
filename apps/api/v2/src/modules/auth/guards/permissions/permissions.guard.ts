@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { isApiKey } from "@/lib/api-key";
 import { Permissions } from "@/modules/auth/decorators/permissions/permissions.decorator";
 import { OAuthClientRepository } from "@/modules/oauth-clients/oauth-client.repository";
@@ -9,7 +10,7 @@ import { ConfigService } from "@nestjs/config";
 import { Reflector } from "@nestjs/core";
 import { getToken } from "next-auth/jwt";
 
-import { X_CAL_CLIENT_ID } from "@calcom/platform-constants";
+import { X_CAL_CLIENT_ID, X_CAL_SECRET_KEY } from "@calcom/platform-constants";
 import { hasPermissions } from "@calcom/platform-utils";
 import type { PlatformOAuthClient } from "@calcom/prisma/client";
 
@@ -50,9 +51,11 @@ export class PermissionsGuard implements CanActivate {
       );
     }
 
+    // A client id is public (atoms send it from the browser), so it only selects the client's permissions
+    // together with its secret. This guard often runs before ApiAuthGuard, which checks the secret too.
     const oAuthClient = bearerToken
       ? await this.getOAuthClientByAccessToken(bearerToken)
-      : await this.getOAuthClientById(oAuthClientId);
+      : await this.getOAuthClientById(oAuthClientId, request.get(X_CAL_SECRET_KEY));
 
     const hasRequiredPermissions = hasPermissions(oAuthClient.permissions, [...requiredPermissions]);
 
@@ -76,22 +79,34 @@ export class PermissionsGuard implements CanActivate {
   ): Promise<Pick<PlatformOAuthClient, "id" | "permissions">> {
     const oAuthClient = await this.tokensRepository.getAccessTokenClient(accessToken);
     if (!oAuthClient) {
-      throw new ForbiddenException(
-        `PermissionsGuard - no oAuth client found for access token=${accessToken}`
-      );
+      throw new ForbiddenException("PermissionsGuard - no oAuth client found for the access token");
     }
     return oAuthClient;
   }
 
-  async getOAuthClientById(id: string): Promise<Pick<PlatformOAuthClient, "id" | "permissions">> {
-    const oAuthClient = await this.oAuthClientRepository.getOAuthClient(id);
-    if (!oAuthClient) {
-      throw new ForbiddenException(`PermissionsGuard - no oAuth client found for client id=${id}`);
+  async getOAuthClientById(
+    id: string,
+    secret: string | undefined
+  ): Promise<Pick<PlatformOAuthClient, "id" | "permissions">> {
+    if (!secret) {
+      throw new ForbiddenException(
+        `PermissionsGuard - '${X_CAL_CLIENT_ID}' must come with the client secret in '${X_CAL_SECRET_KEY}'`
+      );
     }
-    return oAuthClient;
+    const oAuthClient = await this.oAuthClientRepository.getOAuthClient(id);
+    if (!oAuthClient || !isSameSecret(oAuthClient.secret, secret)) {
+      throw new ForbiddenException("PermissionsGuard - invalid oAuth client credentials");
+    }
+    return { id: oAuthClient.id, permissions: oAuthClient.permissions };
   }
 
   getDecodedThirdPartyAccessToken(bearerToken: string) {
     return this.tokensService.getDecodedThirdPartyAccessToken(bearerToken);
   }
+}
+
+function isSameSecret(expected: string, provided: string): boolean {
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+  return expectedBuffer.length === providedBuffer.length && timingSafeEqual(expectedBuffer, providedBuffer);
 }
