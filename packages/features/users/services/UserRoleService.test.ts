@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { recordAdminActionMock, recordAdminDenialMock } = vi.hoisted(() => ({
   recordAdminActionMock: vi.fn(),
@@ -60,8 +60,8 @@ describe("UserRoleService.setUserRole", () => {
 
   it("refuses to change the actor's own role and records a denial", async () => {
     const { service, fake } = buildService([
-      { id: ACTOR.id, role: "ADMIN", locked: false },
-      { id: 2, role: "ADMIN", locked: false },
+      { id: ACTOR.id, role: "ADMIN", locked: false, twoFactorEnabled: false },
+      { id: 2, role: "ADMIN", locked: false, twoFactorEnabled: false },
     ]);
 
     await expectErrorCode(
@@ -80,8 +80,8 @@ describe("UserRoleService.setUserRole", () => {
   it("refuses to demote the last remaining admin", async () => {
     // The actor is a USER here only to isolate the last-admin rule from the self-change rule.
     const { service, fake, store } = buildService([
-      { id: ACTOR.id, role: "USER", locked: false },
-      { id: 2, role: "ADMIN", locked: false },
+      { id: ACTOR.id, role: "USER", locked: false, twoFactorEnabled: false },
+      { id: 2, role: "ADMIN", locked: false, twoFactorEnabled: false },
     ]);
 
     await expectErrorCode(
@@ -101,8 +101,8 @@ describe("UserRoleService.setUserRole", () => {
 
   it("refuses to change the role of a locked user", async () => {
     const { service, fake } = buildService([
-      { id: ACTOR.id, role: "ADMIN", locked: false },
-      { id: 2, role: "USER", locked: true },
+      { id: ACTOR.id, role: "ADMIN", locked: false, twoFactorEnabled: false },
+      { id: 2, role: "USER", locked: true, twoFactorEnabled: false },
     ]);
 
     await expectErrorCode(
@@ -118,7 +118,9 @@ describe("UserRoleService.setUserRole", () => {
   });
 
   it("throws NotFound for an unknown user", async () => {
-    const { service } = buildService([{ id: ACTOR.id, role: "ADMIN", locked: false }]);
+    const { service } = buildService([
+      { id: ACTOR.id, role: "ADMIN", locked: false, twoFactorEnabled: false },
+    ]);
 
     await expectErrorCode(
       service.setUserRole({ actor: ACTOR, targetUserId: 999, role: "ADMIN" }),
@@ -128,8 +130,8 @@ describe("UserRoleService.setUserRole", () => {
 
   it("is a no-op when the role is unchanged", async () => {
     const { service, fake } = buildService([
-      { id: ACTOR.id, role: "ADMIN", locked: false },
-      { id: 2, role: "ADMIN", locked: false },
+      { id: ACTOR.id, role: "ADMIN", locked: false, twoFactorEnabled: false },
+      { id: 2, role: "ADMIN", locked: false, twoFactorEnabled: false },
     ]);
 
     const result = await service.setUserRole({ actor: ACTOR, targetUserId: 2, role: "ADMIN" });
@@ -141,8 +143,8 @@ describe("UserRoleService.setUserRole", () => {
 
   it("promotes a user inside a serializable transaction and audits from/to", async () => {
     const { service, fake, store } = buildService([
-      { id: ACTOR.id, role: "ADMIN", locked: false },
-      { id: 2, role: "USER", locked: false },
+      { id: ACTOR.id, role: "ADMIN", locked: false, twoFactorEnabled: false },
+      { id: 2, role: "USER", locked: false, twoFactorEnabled: false },
     ]);
 
     const result = await service.setUserRole({ actor: ACTOR, targetUserId: 2, role: "ADMIN" });
@@ -163,8 +165,8 @@ describe("UserRoleService.setUserRole", () => {
 
   it("demotes an admin when another admin remains", async () => {
     const { service, store } = buildService([
-      { id: ACTOR.id, role: "ADMIN", locked: false },
-      { id: 2, role: "ADMIN", locked: false },
+      { id: ACTOR.id, role: "ADMIN", locked: false, twoFactorEnabled: false },
+      { id: 2, role: "ADMIN", locked: false, twoFactorEnabled: false },
     ]);
 
     const result = await service.setUserRole({ actor: ACTOR, targetUserId: 2, role: "USER" });
@@ -178,8 +180,8 @@ describe("UserRoleService.setUserRole", () => {
 
   it("does not audit a success when the transaction fails", async () => {
     const { service, fake } = buildService([
-      { id: ACTOR.id, role: "ADMIN", locked: false },
-      { id: 2, role: "USER", locked: false },
+      { id: ACTOR.id, role: "ADMIN", locked: false, twoFactorEnabled: false },
+      { id: 2, role: "USER", locked: false, twoFactorEnabled: false },
     ]);
     fake.updateRole.mockRejectedValueOnce(new Error("could not serialize access"));
 
@@ -192,12 +194,32 @@ describe("UserRoleService.setUserRole", () => {
 
 describe("UserRoleService.isActiveSystemAdmin", () => {
   it.each([
-    [{ id: 2, role: "ADMIN", locked: false } as UserRoleDto, true],
-    [{ id: 2, role: "ADMIN", locked: true } as UserRoleDto, false],
-    [{ id: 2, role: "USER", locked: false } as UserRoleDto, false],
+    [{ id: 2, role: "ADMIN", locked: false, twoFactorEnabled: false } as UserRoleDto, true],
+    [{ id: 2, role: "ADMIN", locked: true, twoFactorEnabled: true } as UserRoleDto, false],
+    [{ id: 2, role: "USER", locked: false, twoFactorEnabled: true } as UserRoleDto, false],
   ])("reads the role from the repository (%o -> %s)", async (user, expected) => {
     const { service } = buildService([user]);
     await expect(service.isActiveSystemAdmin(2)).resolves.toBe(expected);
+  });
+
+  describe("with REQUIRE_2FA_FOR_ADMIN on", () => {
+    beforeEach(() => {
+      vi.stubEnv("REQUIRE_2FA_FOR_ADMIN", "true");
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("refuses an admin without 2FA", async () => {
+      const { service } = buildService([{ id: 2, role: "ADMIN", locked: false, twoFactorEnabled: false }]);
+      await expect(service.isActiveSystemAdmin(2)).resolves.toBe(false);
+    });
+
+    it("accepts an admin with 2FA", async () => {
+      const { service } = buildService([{ id: 2, role: "ADMIN", locked: false, twoFactorEnabled: true }]);
+      await expect(service.isActiveSystemAdmin(2)).resolves.toBe(true);
+    });
   });
 
   it("returns false for an unknown user", async () => {

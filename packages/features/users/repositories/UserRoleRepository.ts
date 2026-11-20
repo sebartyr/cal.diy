@@ -7,6 +7,7 @@ export type UserRoleDto = {
   id: number;
   role: UserPermissionRoleDto;
   locked: boolean;
+  twoFactorEnabled: boolean;
 };
 
 type PrismaClientOrTransaction = PrismaClient | Prisma.TransactionClient;
@@ -19,7 +20,7 @@ export class UserRoleRepository {
   async findById({ id }: { id: number }): Promise<UserRoleDto | null> {
     return this.prismaClient.user.findUnique({
       where: { id },
-      select: { id: true, role: true, locked: true },
+      select: { id: true, role: true, locked: true, twoFactorEnabled: true },
     });
   }
 
@@ -31,7 +32,7 @@ export class UserRoleRepository {
     return this.prismaClient.user.update({
       where: { id },
       data: { role },
-      select: { id: true, role: true, locked: true },
+      select: { id: true, role: true, locked: true, twoFactorEnabled: true },
     });
   }
 
