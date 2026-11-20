@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.4.2] — 2026-11-20
+
+Patch release: fixes the API v2 build, which made the 8.4.0 deploy fail.
+
+### Fixed
+
+- **API v2 build.** The seated-booking query of API v2 lists every booking
+  field by hand and is checked against the full booking model; it was missing
+  the two columns added in 8.4.0, so `nest build` failed. Production stayed on
+  8.3.5. 8.4.0 and 8.4.1 cannot be built: deploy 8.4.2 instead (#157).
+
+### Upgrade notes
+
+- No new migration. The 8.4.0 migrations most likely already ran during the
+  failed deploy (they run before the build); they are additive and the
+  database stays compatible with 8.3.5.
+
 ## [8.4.1] — 2026-11-20
 
 Patch release: builds no longer print 14 esbuild warnings about the
