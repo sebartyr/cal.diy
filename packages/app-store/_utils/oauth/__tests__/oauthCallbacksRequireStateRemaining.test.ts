@@ -194,15 +194,19 @@ describe("createOAuthAppCredential (SEC-102)", () => {
 
   it("creates a user credential when the state is bound to the session", async () => {
     const createOAuthAppCredential = await loadActual();
+    mocks.prisma.credential.create.mockResolvedValueOnce({ id: 42 });
 
-    await createOAuthAppCredential(
+    const created = await createOAuthAppCredential(
       { type: "zoom_video", appId: "zoom" },
       { access_token: "t" },
       makeReq({ state: signedState(USER_ID) })
     );
 
+    // Only the id is read back: the token object must not travel further than the insert.
     expect(mocks.prisma.credential.create).toHaveBeenCalledWith({
       data: { type: "zoom_video", key: { access_token: "t" }, userId: USER_ID, appId: "zoom" },
+      select: { id: true },
     });
+    expect(created).toEqual({ id: 42 });
   });
 });
