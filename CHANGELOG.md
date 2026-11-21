@@ -6,6 +6,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.4.6] — 2026-11-21
+
+Security hardening from the rest of the 2026-11-20 audit, plus a fix for the
+"app disabled" email.
+
+### Security
+
+- **Scheduled webhooks no longer reach internal addresses.** Meeting started
+  and ended webhooks were sent to the stored URL without the DNS check the
+  other webhooks use, so a hostname re-pointed to an internal address was
+  reached by the cron. Every send now re-resolves and checks the hostname
+  (#165).
+- **A booking uid no longer reveals the rest of its reschedule chain.** The
+  public booking page gave any holder the previous and next bookings and the
+  email of who rescheduled; only hosts get them now (#166). The booking
+  details history only lists bookings the user can access (#167).
+- **CSV exports neutralize spreadsheet formulas.** Values starting with `=`,
+  `+`, `-`, `@`, tab or carriage return are prefixed with an apostrophe
+  (#168).
+- **`REQUIRE_2FA_FOR_ADMIN` now applies everywhere.** Ten tRPC handlers and
+  the server-rendered admin pages checked the admin role only (#170, #171).
+  Every admin page checks access itself instead of relying on the layout
+  (#175).
+- **API v2 OAuth clients.** `PermissionsGuard` requires the client secret
+  with a client id (#169). The conferencing OAuth state is signed and its
+  return URLs must be on the web app or an allowed redirect URI of the
+  client; client authentication gives one answer for an unknown client and a
+  wrong secret and compares secrets in constant time; `managed-users` is
+  limited to admins and owners (#173). Role checks are cached 30 seconds
+  instead of 5 minutes (#176).
+- **Smaller fixes.** Lark and Feishu no longer log webhook secrets, and OAuth
+  provider errors stay out of logs and redirect URLs (#172). Team feature
+  checks need a session and access to the team, the flag list needs an admin,
+  avatar prefill URLs pass the SSRF check, HSTS is sent on https and
+  `X-Powered-By` is dropped (#174). The credential sync webhook only accepts
+  AES-256-GCM keys (#176).
+
+### Fixed
+
+- **The "app disabled" email crashed** when a non-payment app used by an
+  event type was disabled or uninstalled, so it was never sent (#178).
+
+### Removed
+
+- No-op organization and billing stubs in email verification (#177).
+
+### Upgrade notes
+
+- Zoom connections started before the upgrade fail on return; start them again.
+- API v2 `GET /v2/conferencing/:app/oauth/auth-url` rejects `returnTo` /
+  `onErrorReturnTo` outside the web app and the OAuth client's redirect URIs.
+- The credential sync webhook rejects keys encrypted with the legacy CBC format.
+
 ## [8.4.5] — 2026-11-20
 
 Security patch: reading a booking through API v2 now requires a relation to it.
