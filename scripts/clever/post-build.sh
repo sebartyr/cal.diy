@@ -45,12 +45,24 @@ if [ "${PRUNE_DEV_DEPENDENCIES:-false}" = "true" ]; then
   # loaded at runtime. `--all` would also keep the production dependencies of
   # docs and examples, and of API v2 unless it is embedded, ~0.8 GB that the
   # web server never reads.
+  # packages/features/* and packages/emails are bundled into the web app but
+  # are workspaces of their own that @calcom/web does not list either. Left out,
+  # their dependencies vanish and the hoisted copy of a shared package can
+  # change version: v8.6.0 shipped lru-cache 6 at the root instead of the 9.0.3
+  # @calcom/feature-auth needs, and every session lookup failed with
+  # "LRUCache is not a constructor".
   runtime_workspaces=$(yarn workspaces list --json | node -e '
     let input = "";
     process.stdin.on("data", (chunk) => (input += chunk)).on("end", () => {
       for (const line of input.trim().split("\n")) {
         const { location, name } = JSON.parse(line);
-        if (location === "apps/web" || location.startsWith("packages/app-store/")) console.log(name);
+        if (
+          location === "apps/web" ||
+          location === "packages/emails" ||
+          location.startsWith("packages/features/") ||
+          location.startsWith("packages/app-store/")
+        )
+          console.log(name);
         if (location === "apps/api/v2" && process.env.ENABLE_API_V2 === "true") console.log(name);
       }
     });
