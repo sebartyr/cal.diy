@@ -16,6 +16,9 @@ export type EventAvailabilityTabWebWrapperProps = {
 export type GetAllSchedulesByUserIdQueryType =
   typeof trpc.viewer.availability.schedule.getAllSchedulesByUserId.useQuery;
 
+const useHostScheduleDetails = ({ scheduleId }: { scheduleId: number }) =>
+  trpc.viewer.availability.schedule.get.useQuery({ scheduleId });
+
 const EventAvailabilityTabWebWrapper = (props: EventAvailabilityTabWebWrapperProps) => {
   const { t } = useLocale();
   const formMethods = useFormContext<FormValues>();
@@ -24,7 +27,11 @@ const EventAvailabilityTabWebWrapper = (props: EventAvailabilityTabWebWrapperPro
 
   const isManagedEventType = false;
   const isChildrenManagedEventType = false;
-  const shouldLockDisableProps = (_field: string) => ({ disabled: false, LockedIcon: false as const, isLocked: false });
+  const shouldLockDisableProps = (_field: string) => ({
+    disabled: false,
+    LockedIcon: false as const,
+    isLocked: false,
+  });
   const shouldLockIndicator = (_field: string) => false;
 
   // Check if team has restriction schedule feature enabled
@@ -75,6 +82,7 @@ const EventAvailabilityTabWebWrapper = (props: EventAvailabilityTabWebWrapperPro
       editAvailabilityRedirectUrl={`/availability/${scheduleQueryData?.id}`}
       restrictionScheduleRedirectUrl={`/availability/${restrictionScheduleQueryData?.id}`}
       hostSchedulesQuery={hostSchedulesQuery}
+      useHostScheduleDetails={useHostScheduleDetails}
       isRestrictionScheduleEnabled={isRestrictionScheduleEnabled}
     />
   );

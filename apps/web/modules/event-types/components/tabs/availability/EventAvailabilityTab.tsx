@@ -95,8 +95,15 @@ type HostSchedulesQueryType =
       Error
     >);
 
+// Optional: the platform atoms don't provide it, so the per-host hours preview only shows in the web app.
+type UseHostScheduleDetails = (args: { scheduleId: number }) => {
+  data?: ScheduleQueryData;
+  isPending: boolean;
+};
+
 type EventTypeTeamScheduleProps = {
   hostSchedulesQuery: HostSchedulesQueryType;
+  useHostScheduleDetails?: UseHostScheduleDetails;
   hosts?: Host[];
   customClassNames?: TeamAvailabilityCustomClassNames;
 };
@@ -445,7 +452,11 @@ const EventTypeSchedule = ({
   const formMethods = useFormContext<FormValues>();
   const isManagedEventType = false;
   const isChildrenManagedEventType = false;
-  const shouldLockDisableProps = (_field: string) => ({ disabled: false, LockedIcon: false as const, isLocked: false });
+  const shouldLockDisableProps = (_field: string) => ({
+    disabled: false,
+    LockedIcon: false as const,
+    isLocked: false,
+  });
   const shouldLockIndicator = (_field: string) => false;
   const { watch, setValue } = formMethods;
 
@@ -643,19 +654,24 @@ const TeamMemberSchedule = ({
   index,
   teamMembers,
   hostScheduleQuery,
+  useHostScheduleDetails,
+  user,
   customClassNames,
 }: {
   host: Host;
   index: number;
   teamMembers: TeamMember[];
   hostScheduleQuery: HostSchedulesQueryType;
+  useHostScheduleDetails?: UseHostScheduleDetails;
+  user?: EventTypeScheduleDetailsProps["user"];
   customClassNames?: TeamMemmberScheduelCustomClassNames;
 }) => {
   const { t } = useLocale();
   const isPlatform = useIsPlatform();
+  const [showScheduleDetails, setShowScheduleDetails] = useState(false);
 
   const formMethods = useFormContext<FormValues>();
-  const { getValues } = formMethods;
+  const { watch } = formMethods;
 
   const { data, isPending } = hostScheduleQuery({
     userId: host.userId,
@@ -670,7 +686,7 @@ const TeamMemberSchedule = ({
   }));
 
   //Set to defaultSchedule if Host Schedule is not previously selected
-  const scheduleId = getValues(`hosts.${index}.scheduleId`);
+  const scheduleId = watch(`hosts.${index}.scheduleId`);
   const value = options?.find((option) =>
     scheduleId
       ? option.value === scheduleId
@@ -717,17 +733,56 @@ const TeamMemberSchedule = ({
             }}
           />
         )}
+        {useHostScheduleDetails && value && (
+          <>
+            <Button
+              color="minimal"
+              size="sm"
+              className="mt-1 self-start"
+              EndIcon={showScheduleDetails ? "chevron-up" : "chevron-down"}
+              onClick={() => setShowScheduleDetails((shown) => !shown)}>
+              {showScheduleDetails ? t("hide_host_schedule_hours") : t("show_host_schedule_hours")}
+            </Button>
+            {showScheduleDetails && (
+              <HostScheduleDetails
+                scheduleId={value.value}
+                useHostScheduleDetails={useHostScheduleDetails}
+                user={user}
+              />
+            )}
+          </>
+        )}
       </div>
     </>
+  );
+};
+
+const HostScheduleDetails = ({
+  scheduleId,
+  useHostScheduleDetails,
+  user,
+}: {
+  scheduleId: number;
+  useHostScheduleDetails: UseHostScheduleDetails;
+  user?: EventTypeScheduleDetailsProps["user"];
+}) => {
+  const { data, isPending } = useHostScheduleDetails({ scheduleId });
+  return (
+    <div className="mt-2 overflow-hidden rounded-md border-subtle border-t">
+      <EventTypeScheduleDetails scheduleQueryData={data} isSchedulePending={isPending} user={user} />
+    </div>
   );
 };
 
 const TeamAvailability = ({
   teamMembers,
   hostSchedulesQuery,
+  useHostScheduleDetails,
+  user,
   customClassNames,
 }: EventTypeTeamScheduleProps & {
   teamMembers: TeamMember[];
+  user?: EventTypeScheduleDetailsProps["user"];
   customClassNames?: TeamAvailabilityCustomClassNames;
 }) => {
   const { t } = useLocale();
@@ -774,6 +829,8 @@ const TeamAvailability = ({
                   index={index}
                   teamMembers={teamMembers}
                   hostScheduleQuery={hostSchedulesQuery}
+                  useHostScheduleDetails={useHostScheduleDetails}
+                  user={user}
                   customClassNames={customClassNames?.teamMemberSchedule}
                 />
               </li>
@@ -860,6 +917,8 @@ const UseTeamEventScheduleSettingsToggle = ({
             <TeamAvailability
               teamMembers={rest.teamMembers}
               hostSchedulesQuery={rest.hostSchedulesQuery}
+              useHostScheduleDetails={rest.useHostScheduleDetails}
+              user={rest.user}
               customClassNames={customClassNames?.teamAvailability}
             />
           </div>
