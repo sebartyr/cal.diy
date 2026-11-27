@@ -9,6 +9,8 @@ its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independen
 ## [8.6.1] — 2026-11-27
 
 Fixes the v8.6.0 deploy on Clever Cloud, where every signed-in page failed.
+The 8.6.0 GitHub release is withdrawn, tag included, and this one is the
+reference for everything since 8.5.1.
 
 ### Fixed
 
