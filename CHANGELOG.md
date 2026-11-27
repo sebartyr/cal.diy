@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.5.1] — 2026-11-27
+
+Dependency patches from a `yarn npm audit` pass. The web app itself was not
+affected: it already runs `next` 16.4.6.
+
+### Security
+
+- **`next` 15.5.29** for `apps/docs` and `example-apps/credential-sync`
+  (SVG image optimization bypass, Edge HttpOnly cookie exposure, cross-client
+  response injection) (#180).
+- **`glob` 14.0.6** for `@nestjs/cli`, `@sentry/bundler-plugins` and
+  `lingo.dev` (AbortSignal cancellation bypass) (#180).
+- **`minimatch` 11.0.9** for API Extractor, Vue language core, ts-morph and
+  `lingo.dev` (globparts denial of service) (#180).
+
+### Known issues
+
+- `trigger.dev` 4.7.4 keeps `minimatch` 10.2.x: its CLI uses `makeRe`, which
+  minimatch 11 removed. `trigger.dev` 4.8.6 drops the dependency; that upgrade
+  comes in its own release.
+- `i18next` 23.2.3 (`deepExtend` denial of service) needs a migration to
+  i18next 26+ and is planned separately.
+
 ## [8.5.0] — 2026-11-27
 
 Pending team invites are now visible from every page, and the invite email
