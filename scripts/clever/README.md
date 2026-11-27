@@ -65,7 +65,7 @@ and `apps/web/.next/cache`. These variables, read by the hook, reduce the deploy
 
 | Variable | Default | Effect |
 |---|---|---|
-| `PRUNE_DEV_DEPENDENCIES` | `false` | Runs `yarn workspaces focus --production` on `@calcom/web` and the `packages/app-store/*` workspaces: drops the devDependencies and the dependencies of the workspaces the server never loads (API v2 unless embedded, docs, examples). |
+| `PRUNE_DEV_DEPENDENCIES` | `false` | Runs `yarn workspaces focus --production` on `@calcom/web`, `@calcom/emails` and the `packages/features/*` and `packages/app-store/*` workspaces (plus `@calcom/api-v2` when `ENABLE_API_V2=true`): drops the devDependencies and the dependencies of the workspaces the server never loads (API v2 unless embedded, docs, examples). |
 | `DELETE_SOURCE_MAPS` | `false` | Deletes the `.map` files (~270 MB). Stack traces then point to minified code. |
 | `SENTRY_AUTH_TOKEN` | — | `yarn build` uploads the source maps to Sentry, and the hook then deletes them locally. |
 
