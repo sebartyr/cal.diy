@@ -147,6 +147,17 @@ export class MembershipRepository {
     return memberships.map((membership) => membership.teamId);
   }
 
+  async countPendingByUserId({ userId }: { userId: number }): Promise<number> {
+    return this.prismaClient.membership.count({
+      where: {
+        userId,
+        accepted: false,
+        // Organization invites aren't listed in /settings/teams, where this count links to.
+        team: { isOrganization: false },
+      },
+    });
+  }
+
   async listAcceptedTeamMemberIds({ teamId }: { teamId: number }): Promise<number[]> {
     const memberships =
       (await this.prismaClient.membership.findMany({

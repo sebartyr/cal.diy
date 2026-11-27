@@ -2,12 +2,19 @@ import type { TrpcSessionUser } from "@calcom/trpc/server/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getUserTopBannersHandler } from "./getUserTopBanners.handler";
 
-const { mockCheckInvalidAppCredentials } = vi.hoisted(() => ({
+const { mockCheckInvalidAppCredentials, mockCountPendingByUserId } = vi.hoisted(() => ({
   mockCheckInvalidAppCredentials: vi.fn(),
+  mockCountPendingByUserId: vi.fn(),
 }));
 
 vi.mock("./checkForInvalidAppCredentials", () => ({
   checkInvalidAppCredentials: mockCheckInvalidAppCredentials,
+}));
+
+vi.mock("@calcom/features/membership/repositories/MembershipRepository", () => ({
+  MembershipRepository: class {
+    countPendingByUserId = mockCountPendingByUserId;
+  },
 }));
 
 const buildUser = (overrides: Partial<NonNullable<TrpcSessionUser>>) =>
@@ -22,6 +29,7 @@ const buildUser = (overrides: Partial<NonNullable<TrpcSessionUser>>) =>
 describe("getUserTopBannersHandler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCountPendingByUserId.mockResolvedValue(0);
   });
 
   it("returns the full banner payload with the upgrade banners disabled", async () => {
@@ -36,6 +44,7 @@ describe("getUserTopBannersHandler", () => {
       verifyEmailBanner: true,
       calendarCredentialBanner: false,
       invalidAppCredentialBanners: invalidApps,
+      pendingTeamInvitesBanner: 0,
       dueInvoiceBanner: null,
     });
     expect(mockCheckInvalidAppCredentials).toHaveBeenCalledTimes(1);
@@ -57,5 +66,24 @@ describe("getUserTopBannersHandler", () => {
     const result = await getUserTopBannersHandler({ ctx: { user: buildUser({}) } });
 
     expect(result.invalidAppCredentialBanners).toEqual([]);
+  });
+
+  it("exposes the number of pending team invites", async () => {
+    mockCheckInvalidAppCredentials.mockResolvedValue([]);
+    mockCountPendingByUserId.mockResolvedValue(2);
+
+    const result = await getUserTopBannersHandler({ ctx: { user: buildUser({ id: 42 }) } });
+
+    expect(result.pendingTeamInvitesBanner).toBe(2);
+    expect(mockCountPendingByUserId).toHaveBeenCalledWith({ userId: 42 });
+  });
+
+  it("hides the pending invites banner when the count fails", async () => {
+    mockCheckInvalidAppCredentials.mockResolvedValue([]);
+    mockCountPendingByUserId.mockRejectedValue(new Error("db down"));
+
+    const result = await getUserTopBannersHandler({ ctx: { user: buildUser({}) } });
+
+    expect(result.pendingTeamInvitesBanner).toBe(0);
   });
 });

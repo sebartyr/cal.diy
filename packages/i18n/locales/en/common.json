@@ -4795,6 +4795,9 @@
   "reschedule_history_from": "From",
   "reschedule_history_to": "To",
   "sso_account_locked_error": "Your account is locked. Contact your administrator.",
+  "pending_team_invites_banner": "Pending team invitations ({{count}})",
+  "view_team_invites": "View invitations",
+  "email_team_invite_link_fallback": "If the button doesn't work, copy and paste this link into your browser:",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
   "auto_assign_active": "All team members are hosts. Uncheck “Assign all team members” to pick the hosts yourself."
 }

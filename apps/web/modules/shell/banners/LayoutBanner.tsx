@@ -11,6 +11,9 @@ import {
   InvalidAppCredentialBanners,
   type InvalidAppCredentialBannersProps,
 } from "@calcom/web/modules/users/components/InvalidAppCredentialsBanner";
+import PendingTeamInvitesBanner, {
+  type PendingTeamInvitesBannerProps,
+} from "@calcom/web/modules/users/components/PendingTeamInvitesBanner";
 import VerifyEmailBanner, {
   type VerifyEmailBannerProps,
 } from "@calcom/web/modules/users/components/VerifyEmailBanner";
@@ -21,6 +24,7 @@ type BannerTypeProps = {
   impersonationBanner: ImpersonatingBannerProps;
   calendarCredentialBanner: CalendarCredentialBannerProps;
   invalidAppCredentialBanners: InvalidAppCredentialBannersProps;
+  pendingTeamInvitesBanner: PendingTeamInvitesBannerProps;
 };
 
 type BannerType = keyof BannerTypeProps;
@@ -39,6 +43,7 @@ export const BannerComponent: BannerComponent = {
   invalidAppCredentialBanners: (props: InvalidAppCredentialBannersProps) => (
     <InvalidAppCredentialBanners {...props} />
   ),
+  pendingTeamInvitesBanner: (props: PendingTeamInvitesBannerProps) => <PendingTeamInvitesBanner {...props} />,
 };
 
 interface BannerContainerProps {
@@ -62,6 +67,9 @@ export const BannerContainer: React.FC<BannerContainerProps> = ({ banners }) => 
           const Banner = BannerComponent[key];
           return <Banner data={banners[key]} key={key} />;
         } else if (key === "invalidAppCredentialBanners") {
+          const Banner = BannerComponent[key];
+          return <Banner data={banners[key]} key={key} />;
+        } else if (key === "pendingTeamInvitesBanner") {
           const Banner = BannerComponent[key];
           return <Banner data={banners[key]} key={key} />;
         }

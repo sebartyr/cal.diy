@@ -1,5 +1,4 @@
 import { EMAIL_FROM_NAME } from "@calcom/lib/constants";
-
 import { getSubject, type TeamInvite } from "../lib/utils/team-invite-utils";
 import renderEmail from "../src/renderEmail";
 import BaseEmail from "./_base-email";
@@ -20,7 +19,9 @@ export default class TeamInviteEmail extends BaseEmail {
       from: `${EMAIL_FROM_NAME} <${this.getMailerOptions().from}>`,
       subject: getSubject(this.teamInviteEvent),
       html: await renderEmail("TeamInviteEmail", this.teamInviteEvent),
-      text: "",
+      text: `${getSubject(this.teamInviteEvent)}\n\n${this.teamInviteEvent.language(
+        "email_team_invite_link_fallback"
+      )}\n${this.teamInviteEvent.joinLink}`,
     };
   }
 }
