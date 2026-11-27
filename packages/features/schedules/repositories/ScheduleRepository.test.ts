@@ -6,6 +6,7 @@ import { ScheduleRepository } from "./ScheduleRepository";
 vi.mock("@calcom/lib/hasEditPermissionForUser", () => ({
   hasReadPermissionsForUserId: vi.fn(),
 }));
+
 import { hasReadPermissionsForUserId } from "@calcom/lib/hasEditPermissionForUser";
 
 const mockHasReadPermissions = vi.mocked(hasReadPermissionsForUserId);
@@ -130,14 +131,20 @@ describe("ScheduleRepository", () => {
   });
 
   describe("findDetailedScheduleById", () => {
-    const createMockSchedule = (overrides: Partial<Schedule> = {}): Partial<Schedule> => ({
+    const createMockSchedule = (
+      overrides: Partial<Schedule> = {}
+    ): Partial<Schedule> & { user: { timeZone: string } } => ({
       id: 100,
       userId: 2,
       name: "Working Hours",
       availability: [],
       timeZone: "America/New_York",
+      user: { timeZone: "America/New_York" },
       ...overrides,
     });
+
+    const mockScheduleWithOwner = (overrides: Partial<Schedule>, ownerTimeZone: string) =>
+      ({ ...createMockSchedule(overrides), user: { timeZone: ownerTimeZone } }) as unknown as Schedule;
 
     beforeEach(() => {
       prismaMock.schedule.count.mockResolvedValue(1);
@@ -211,6 +218,55 @@ describe("ScheduleRepository", () => {
         memberId: scheduleOwnerId,
         userId: unauthorizedUserId,
       });
+    });
+
+    it("falls back to the owner's time zone when a teammate reads a schedule without one", async () => {
+      prismaMock.schedule.findUnique.mockResolvedValue(
+        mockScheduleWithOwner({ userId: 2, timeZone: null }, "America/New_York")
+      );
+      mockHasReadPermissions.mockResolvedValue(true);
+
+      const result = await scheduleRepository.findDetailedScheduleById({
+        scheduleId: 100,
+        userId: 3,
+        timeZone: "Europe/Paris",
+        defaultScheduleId: null,
+      });
+
+      expect(result.timeZone).toBe("America/New_York");
+      expect(result.isTimeZoneSet).toBe(false);
+    });
+
+    it("keeps the viewer's time zone for their own schedule without one", async () => {
+      prismaMock.schedule.findUnique.mockResolvedValue(
+        mockScheduleWithOwner({ userId: 2, timeZone: null }, "America/New_York")
+      );
+
+      const result = await scheduleRepository.findDetailedScheduleById({
+        scheduleId: 100,
+        userId: 2,
+        timeZone: "Europe/Paris",
+        defaultScheduleId: 100,
+      });
+
+      expect(result.timeZone).toBe("Europe/Paris");
+    });
+
+    it("uses the schedule's own time zone when set", async () => {
+      prismaMock.schedule.findUnique.mockResolvedValue(
+        mockScheduleWithOwner({ userId: 2, timeZone: "Asia/Tokyo" }, "America/New_York")
+      );
+      mockHasReadPermissions.mockResolvedValue(true);
+
+      const result = await scheduleRepository.findDetailedScheduleById({
+        scheduleId: 100,
+        userId: 3,
+        timeZone: "Europe/Paris",
+        defaultScheduleId: null,
+      });
+
+      expect(result.timeZone).toBe("Asia/Tokyo");
+      expect(result.isTimeZoneSet).toBe(true);
     });
 
     it("should throw error when schedule is not found", async () => {

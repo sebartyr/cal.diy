@@ -106,6 +106,7 @@ export class ScheduleRepository {
         name: true,
         availability: true,
         timeZone: true,
+        user: { select: { timeZone: true } },
       },
     });
 
@@ -120,7 +121,10 @@ export class ScheduleRepository {
       throw new Error("UNAUTHORIZED");
     }
 
-    const timeZone = schedule.timeZone || userTimeZone;
+    // A schedule without its own time zone follows its owner's, which is not the viewer's when a
+    // teammate reads it.
+    const ownerTimeZone = schedule.userId === userId ? userTimeZone : schedule.user.timeZone;
+    const timeZone = schedule.timeZone || ownerTimeZone;
 
     const schedulesCount = await this.prismaClient.schedule.count({
       where: {
@@ -136,6 +140,7 @@ export class ScheduleRepository {
       schedule: schedule.availability,
       availability: transformAvailabilityForAtom(schedule),
       timeZone,
+      isTimeZoneSet: schedule.timeZone !== null,
       dateOverrides: transformDateOverridesForAtom(schedule, timeZone),
       isDefault: !scheduleId || defaultScheduleId === schedule.id,
       isLastSchedule: schedulesCount <= 1,

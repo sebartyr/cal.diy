@@ -26,7 +26,7 @@ import type { TeamMembers } from "@calcom/web/modules/event-types/components/Eve
 import { GlobeIcon, UserIcon } from "@coss/ui/icons";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useId, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import type { OptionProps, SingleValueProps } from "react-select";
 import { components } from "react-select";
@@ -95,8 +95,16 @@ type HostSchedulesQueryType =
       Error
     >);
 
+// Optional: the platform atoms don't provide it, so the per-host hours preview only shows in the web app.
+type UseHostScheduleDetails = (args: { scheduleId: number }) => {
+  data?: ScheduleQueryData;
+  isPending: boolean;
+  isError: boolean;
+};
+
 type EventTypeTeamScheduleProps = {
   hostSchedulesQuery: HostSchedulesQueryType;
+  useHostScheduleDetails?: UseHostScheduleDetails;
   hosts?: Host[];
   customClassNames?: TeamAvailabilityCustomClassNames;
 };
@@ -445,7 +453,11 @@ const EventTypeSchedule = ({
   const formMethods = useFormContext<FormValues>();
   const isManagedEventType = false;
   const isChildrenManagedEventType = false;
-  const shouldLockDisableProps = (_field: string) => ({ disabled: false, LockedIcon: false as const, isLocked: false });
+  const shouldLockDisableProps = (_field: string) => ({
+    disabled: false,
+    LockedIcon: false as const,
+    isLocked: false,
+  });
   const shouldLockIndicator = (_field: string) => false;
   const { watch, setValue } = formMethods;
 
@@ -643,19 +655,27 @@ const TeamMemberSchedule = ({
   index,
   teamMembers,
   hostScheduleQuery,
+  useHostScheduleDetails,
+  user,
+  eventTimeZone,
   customClassNames,
 }: {
   host: Host;
   index: number;
   teamMembers: TeamMember[];
   hostScheduleQuery: HostSchedulesQueryType;
+  useHostScheduleDetails?: UseHostScheduleDetails;
+  user?: EventTypeScheduleDetailsProps["user"];
+  eventTimeZone?: string | null;
   customClassNames?: TeamMemmberScheduelCustomClassNames;
 }) => {
   const { t } = useLocale();
   const isPlatform = useIsPlatform();
+  const [showScheduleDetails, setShowScheduleDetails] = useState(false);
+  const scheduleDetailsId = useId();
 
   const formMethods = useFormContext<FormValues>();
-  const { getValues } = formMethods;
+  const { watch } = formMethods;
 
   const { data, isPending } = hostScheduleQuery({
     userId: host.userId,
@@ -670,7 +690,7 @@ const TeamMemberSchedule = ({
   }));
 
   //Set to defaultSchedule if Host Schedule is not previously selected
-  const scheduleId = getValues(`hosts.${index}.scheduleId`);
+  const scheduleId = watch(`hosts.${index}.scheduleId`);
   const value = options?.find((option) =>
     scheduleId
       ? option.value === scheduleId
@@ -717,17 +737,88 @@ const TeamMemberSchedule = ({
             }}
           />
         )}
+        {useHostScheduleDetails && value && (
+          <>
+            <Button
+              color="minimal"
+              size="sm"
+              className="mt-1 self-start"
+              EndIcon={showScheduleDetails ? "chevron-up" : "chevron-down"}
+              aria-expanded={showScheduleDetails}
+              aria-controls={scheduleDetailsId}
+              aria-label={t(
+                showScheduleDetails ? "hide_host_schedule_hours_for" : "show_host_schedule_hours_for",
+                // React already escapes attribute values; i18next escaping would leave "&#39;" in the label.
+                { name: label ?? "", interpolation: { escapeValue: false } }
+              )}
+              onClick={() => setShowScheduleDetails((shown) => !shown)}>
+              {showScheduleDetails ? t("hide_host_schedule_hours") : t("show_host_schedule_hours")}
+            </Button>
+            {showScheduleDetails && (
+              <div id={scheduleDetailsId}>
+                <HostScheduleDetails
+                  scheduleId={value.value}
+                  useHostScheduleDetails={useHostScheduleDetails}
+                  user={user}
+                  eventTimeZone={eventTimeZone}
+                />
+              </div>
+            )}
+          </>
+        )}
       </div>
     </>
+  );
+};
+
+const HostScheduleDetails = ({
+  scheduleId,
+  useHostScheduleDetails,
+  user,
+  eventTimeZone,
+}: {
+  scheduleId: number;
+  useHostScheduleDetails: UseHostScheduleDetails;
+  user?: EventTypeScheduleDetailsProps["user"];
+  eventTimeZone?: string | null;
+}) => {
+  const { t } = useLocale();
+  const { data, isPending, isError } = useHostScheduleDetails({ scheduleId });
+
+  if (isError) {
+    return (
+      <p role="alert" className="mt-2 text-error text-sm">
+        {t("host_schedule_hours_load_error")}
+      </p>
+    );
+  }
+
+  // Same precedence as availability for bookings: schedule, then event type, then the host's own zone.
+  const scheduleQueryData =
+    data && !data.isTimeZoneSet && eventTimeZone ? { ...data, timeZone: eventTimeZone } : data;
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-md border-subtle border-t">
+      <EventTypeScheduleDetails
+        scheduleQueryData={scheduleQueryData}
+        isSchedulePending={isPending}
+        user={user}
+      />
+    </div>
   );
 };
 
 const TeamAvailability = ({
   teamMembers,
   hostSchedulesQuery,
+  useHostScheduleDetails,
+  user,
+  eventTimeZone,
   customClassNames,
 }: EventTypeTeamScheduleProps & {
   teamMembers: TeamMember[];
+  user?: EventTypeScheduleDetailsProps["user"];
+  eventTimeZone?: string | null;
   customClassNames?: TeamAvailabilityCustomClassNames;
 }) => {
   const { t } = useLocale();
@@ -774,6 +865,9 @@ const TeamAvailability = ({
                   index={index}
                   teamMembers={teamMembers}
                   hostScheduleQuery={hostSchedulesQuery}
+                  useHostScheduleDetails={useHostScheduleDetails}
+                  user={user}
+                  eventTimeZone={eventTimeZone}
                   customClassNames={customClassNames?.teamMemberSchedule}
                 />
               </li>
@@ -860,6 +954,9 @@ const UseTeamEventScheduleSettingsToggle = ({
             <TeamAvailability
               teamMembers={rest.teamMembers}
               hostSchedulesQuery={rest.hostSchedulesQuery}
+              useHostScheduleDetails={rest.useHostScheduleDetails}
+              user={rest.user}
+              eventTimeZone={eventType.timeZone}
               customClassNames={customClassNames?.teamAvailability}
             />
           </div>
