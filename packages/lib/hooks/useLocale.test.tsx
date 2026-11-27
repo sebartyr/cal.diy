@@ -2,15 +2,21 @@ import { AppRouterI18nProvider } from "@calcom/web/app/AppRouterI18nProvider";
 import { CustomI18nProvider } from "@calcom/web/app/CustomI18nProvider";
 import { renderHook } from "@testing-library/react-hooks";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useLocale } from "./useLocale";
 
+// react-i18next warns about a missing instance only once per module, so a
+// silent console proves nothing; spy on the call it receives instead.
+vi.mock("react-i18next", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-i18next")>();
+  return { ...actual, useTranslation: vi.fn(actual.useTranslation) };
+});
+
 vi.mock("@calcom/atoms/hooks/useAtomsContext", () => ({
   useAtomsContext: () => null,
 }));
-
-const MISSING_INSTANCE_WARNING = "You will need to pass in an i18next instance by using initReactI18next";
 
 const warnedWith = (spy: MockInstance<typeof console.warn>, text: string) =>
   spy.mock.calls.some((args) => args.some((arg: unknown) => typeof arg === "string" && arg.includes(text)));
@@ -19,6 +25,7 @@ describe("useLocale", () => {
   let warnSpy: MockInstance<typeof console.warn>;
 
   beforeEach(() => {
+    vi.mocked(useTranslation).mockClear();
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
 
@@ -26,7 +33,7 @@ describe("useLocale", () => {
     warnSpy.mockRestore();
   });
 
-  it("translates from the App Router context without asking react-i18next for a global instance", () => {
+  it("hands the App Router instance to useTranslation instead of the global one", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <AppRouterI18nProvider translations={{ hello: "Bonjour" }} locale="fr-test-1" ns="common">
         {children}
@@ -37,7 +44,10 @@ describe("useLocale", () => {
 
     expect(result.current.t("hello")).toBe("Bonjour");
     expect(result.current.isLocaleReady).toBe(true);
-    expect(warnedWith(warnSpy, MISSING_INSTANCE_WARNING)).toBe(false);
+    expect(useTranslation).toHaveBeenCalledWith(
+      "common",
+      expect.objectContaining({ i18n: result.current.i18n, useSuspense: false })
+    );
   });
 
   it("does not suspend when the App Router namespace is not common", () => {
@@ -50,6 +60,7 @@ describe("useLocale", () => {
     const { result } = renderHook(() => useLocale(), { wrapper });
 
     expect(result.current.t("title")).toBe("Réservations");
+    expect(useTranslation).toHaveBeenCalledWith("bookings", expect.objectContaining({ useSuspense: false }));
   });
 
   it("prefers the custom i18n context over the App Router one", () => {
