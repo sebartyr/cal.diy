@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.6.1] — 2026-11-27
+
+Fixes the v8.6.0 deploy on Clever Cloud, where every signed-in page failed.
+
+### Fixed
+
+- **Every tRPC call returned 500 after deploying v8.6.0** (`LRUCache is not a
+  constructor`). With `PRUNE_DEV_DEPENDENCIES=true`, the post-build prune left
+  out `@calcom/feature-auth`, so the root `lru-cache` dropped from 9.0.3 to 6.0.0
+  and session lookups broke. The prune now keeps `packages/features/*` and
+  `@calcom/emails` too (#184).
+
 ## [8.6.0] — 2026-11-27
 
 Team event types now show each host's hours, and the last i18next advisory
