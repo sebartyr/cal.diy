@@ -748,7 +748,8 @@ const TeamMemberSchedule = ({
               aria-controls={scheduleDetailsId}
               aria-label={t(
                 showScheduleDetails ? "hide_host_schedule_hours_for" : "show_host_schedule_hours_for",
-                { name: label ?? "" }
+                // React already escapes attribute values; i18next escaping would leave "&#39;" in the label.
+                { name: label ?? "", interpolation: { escapeValue: false } }
               )}
               onClick={() => setShowScheduleDetails((shown) => !shown)}>
               {showScheduleDetails ? t("hide_host_schedule_hours") : t("show_host_schedule_hours")}
