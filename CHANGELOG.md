@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.6.2] — 2026-11-27
+
+Silences a react-i18next warning logged on every App Router page.
+
+### Fixed
+
+- **"You will need to pass in an i18next instance by using initReactI18next"
+  in the browser console.** `useLocale` called `useTranslation` without an
+  instance on App Router pages; it now hands over the App Router's own
+  instance and namespace, without suspending. Translations were never
+  affected (#185).
+
 ## [8.6.1] — 2026-11-27
 
 Fixes the v8.6.0 deploy on Clever Cloud, where every signed-in page failed.
