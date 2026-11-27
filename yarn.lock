@@ -1454,7 +1454,7 @@ __metadata:
     "@tanstack/react-table": "npm:8.20.6"
     "@tanstack/react-virtual": "npm:3.10.9"
     "@testing-library/react-hooks": "npm:8.0.1"
-    "@trigger.dev/sdk": "npm:4.7.4"
+    "@trigger.dev/sdk": "npm:4.8.10"
     "@types/web-push": "npm:3.6.3"
     "@vercel/functions": "npm:1.4.0"
     city-timezones: "npm:1.2.1"
@@ -1465,7 +1465,7 @@ __metadata:
     jsonwebtoken: "npm:9.0.0"
     react-select: "npm:5.8.0"
     react-sticky-box: "npm:2.0.4"
-    trigger.dev: "npm:4.7.4"
+    trigger.dev: "npm:4.8.10"
     web-push: "npm:3.6.7"
     zustand: "npm:4.5.2"
   peerDependencies:
@@ -2670,16 +2670,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@electric-sql/client@npm:1.0.14":
-  version: 1.0.14
-  resolution: "@electric-sql/client@npm:1.0.14"
+"@electric-sql/client@npm:1.3.0":
+  version: 1.3.0
+  resolution: "@electric-sql/client@npm:1.3.0"
   dependencies:
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     "@rollup/rollup-darwin-arm64": "npm:^4.18.1"
   dependenciesMeta:
     "@rollup/rollup-darwin-arm64":
       optional: true
-  checksum: 10/5e96f42fd78b4a878df3b3d57403efa615717a268c7143e3b808189eb41f41b9eaef5d834ef48f7c2dc718af760082fd3e6f3bf2ae9dfd53549fe51a0700f1f2
+  checksum: 10/d3bc79260f4d63b73411fa5c02307494bdecebe1f434cf13841f1de9b7f0d70852385181e650c365629481db5b097d22aa57248004e20a88408c682f9306fd8d
   languageName: node
   linkType: hard
 
@@ -2856,9 +2856,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/aix-ppc64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/aix-ppc64@npm:0.28.2"
+  conditions: os=aix & cpu=ppc64
+  languageName: node
+  linkType: hard
+
 "@esbuild/android-arm64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/android-arm64@npm:0.25.12"
+  conditions: os=android & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@esbuild/android-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/android-arm64@npm:0.28.2"
   conditions: os=android & cpu=arm64
   languageName: node
   linkType: hard
@@ -2870,9 +2884,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/android-arm@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/android-arm@npm:0.28.2"
+  conditions: os=android & cpu=arm
+  languageName: node
+  linkType: hard
+
 "@esbuild/android-x64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/android-x64@npm:0.25.12"
+  conditions: os=android & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@esbuild/android-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/android-x64@npm:0.28.2"
   conditions: os=android & cpu=x64
   languageName: node
   linkType: hard
@@ -2884,9 +2912,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/darwin-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/darwin-arm64@npm:0.28.2"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
 "@esbuild/darwin-x64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/darwin-x64@npm:0.25.12"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@esbuild/darwin-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/darwin-x64@npm:0.28.2"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
@@ -2898,9 +2940,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/freebsd-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/freebsd-arm64@npm:0.28.2"
+  conditions: os=freebsd & cpu=arm64
+  languageName: node
+  linkType: hard
+
 "@esbuild/freebsd-x64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/freebsd-x64@npm:0.25.12"
+  conditions: os=freebsd & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@esbuild/freebsd-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/freebsd-x64@npm:0.28.2"
   conditions: os=freebsd & cpu=x64
   languageName: node
   linkType: hard
@@ -2912,9 +2968,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/linux-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-arm64@npm:0.28.2"
+  conditions: os=linux & cpu=arm64
+  languageName: node
+  linkType: hard
+
 "@esbuild/linux-arm@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/linux-arm@npm:0.25.12"
+  conditions: os=linux & cpu=arm
+  languageName: node
+  linkType: hard
+
+"@esbuild/linux-arm@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-arm@npm:0.28.2"
   conditions: os=linux & cpu=arm
   languageName: node
   linkType: hard
@@ -2926,9 +2996,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/linux-ia32@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-ia32@npm:0.28.2"
+  conditions: os=linux & cpu=ia32
+  languageName: node
+  linkType: hard
+
 "@esbuild/linux-loong64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/linux-loong64@npm:0.25.12"
+  conditions: os=linux & cpu=loong64
+  languageName: node
+  linkType: hard
+
+"@esbuild/linux-loong64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-loong64@npm:0.28.2"
   conditions: os=linux & cpu=loong64
   languageName: node
   linkType: hard
@@ -2940,9 +3024,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/linux-mips64el@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-mips64el@npm:0.28.2"
+  conditions: os=linux & cpu=mips64el
+  languageName: node
+  linkType: hard
+
 "@esbuild/linux-ppc64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/linux-ppc64@npm:0.25.12"
+  conditions: os=linux & cpu=ppc64
+  languageName: node
+  linkType: hard
+
+"@esbuild/linux-ppc64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-ppc64@npm:0.28.2"
   conditions: os=linux & cpu=ppc64
   languageName: node
   linkType: hard
@@ -2954,9 +3052,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/linux-riscv64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-riscv64@npm:0.28.2"
+  conditions: os=linux & cpu=riscv64
+  languageName: node
+  linkType: hard
+
 "@esbuild/linux-s390x@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/linux-s390x@npm:0.25.12"
+  conditions: os=linux & cpu=s390x
+  languageName: node
+  linkType: hard
+
+"@esbuild/linux-s390x@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-s390x@npm:0.28.2"
   conditions: os=linux & cpu=s390x
   languageName: node
   linkType: hard
@@ -2968,9 +3080,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/linux-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/linux-x64@npm:0.28.2"
+  conditions: os=linux & cpu=x64
+  languageName: node
+  linkType: hard
+
 "@esbuild/netbsd-arm64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/netbsd-arm64@npm:0.25.12"
+  conditions: os=netbsd & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@esbuild/netbsd-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/netbsd-arm64@npm:0.28.2"
   conditions: os=netbsd & cpu=arm64
   languageName: node
   linkType: hard
@@ -2982,9 +3108,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/netbsd-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/netbsd-x64@npm:0.28.2"
+  conditions: os=netbsd & cpu=x64
+  languageName: node
+  linkType: hard
+
 "@esbuild/openbsd-arm64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/openbsd-arm64@npm:0.25.12"
+  conditions: os=openbsd & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@esbuild/openbsd-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/openbsd-arm64@npm:0.28.2"
   conditions: os=openbsd & cpu=arm64
   languageName: node
   linkType: hard
@@ -2996,9 +3136,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/openbsd-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/openbsd-x64@npm:0.28.2"
+  conditions: os=openbsd & cpu=x64
+  languageName: node
+  linkType: hard
+
 "@esbuild/openharmony-arm64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/openharmony-arm64@npm:0.25.12"
+  conditions: os=openharmony & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@esbuild/openharmony-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/openharmony-arm64@npm:0.28.2"
   conditions: os=openharmony & cpu=arm64
   languageName: node
   linkType: hard
@@ -3010,9 +3164,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/sunos-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/sunos-x64@npm:0.28.2"
+  conditions: os=sunos & cpu=x64
+  languageName: node
+  linkType: hard
+
 "@esbuild/win32-arm64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/win32-arm64@npm:0.25.12"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@esbuild/win32-arm64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/win32-arm64@npm:0.28.2"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
@@ -3024,9 +3192,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild/win32-ia32@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/win32-ia32@npm:0.28.2"
+  conditions: os=win32 & cpu=ia32
+  languageName: node
+  linkType: hard
+
 "@esbuild/win32-x64@npm:0.25.12":
   version: 0.25.12
   resolution: "@esbuild/win32-x64@npm:0.25.12"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@esbuild/win32-x64@npm:0.28.2":
+  version: 0.28.2
+  resolution: "@esbuild/win32-x64@npm:0.28.2"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -10927,12 +11109,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@trigger.dev/build@npm:4.7.4":
-  version: 4.7.4
-  resolution: "@trigger.dev/build@npm:4.7.4"
+"@trigger.dev/build@npm:4.8.10":
+  version: 4.8.10
+  resolution: "@trigger.dev/build@npm:4.8.10"
   dependencies:
     "@prisma/config": "npm:^6.10.0"
-    "@trigger.dev/core": "npm:4.7.4"
+    "@trigger.dev/core": "npm:4.8.10"
     mlly: "npm:^1.7.1"
     pkg-types: "npm:^1.1.3"
     tinyglobby: "npm:^0.2.2"
@@ -10945,16 +11127,16 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10/f2b358464a2fbd39de9394ebbc72a96e23d4216e1febdddc676c8e98b02fb3f292103debdd41477a839b438b0f02d3ea1b89c904d349e7aaebef61943ec80c88
+  checksum: 10/368f883cb3cf5b2f2c28dd0f892d005ca51702fda4915e4b619145921559fa371ee2f7a3ee921aabc6b6ab1ffe7b1a2e7eea45a5144bf7885629bd958d844913
   languageName: node
   linkType: hard
 
-"@trigger.dev/core@npm:4.7.4":
-  version: 4.7.4
-  resolution: "@trigger.dev/core@npm:4.7.4"
+"@trigger.dev/core@npm:4.8.10":
+  version: 4.8.10
+  resolution: "@trigger.dev/core@npm:4.8.10"
   dependencies:
     "@bugsnag/cuid": "npm:^3.1.1"
-    "@electric-sql/client": "npm:1.0.14"
+    "@electric-sql/client": "npm:1.3.0"
     "@google-cloud/precise-date": "npm:^4.0.0"
     "@jsonhero/path": "npm:^1.0.21"
     "@opentelemetry/api": "npm:1.9.1"
@@ -10978,7 +11160,7 @@ __metadata:
     jose: "npm:^5.4.0"
     nanoid: "npm:3.3.18"
     prom-client: "npm:^15.1.0"
-    socket.io-client: "npm:4.7.5"
+    socket.io-client: "npm:4.8.4"
     std-env: "npm:^3.8.1"
     tinyexec: "npm:^0.3.2"
     uncrypto: "npm:^0.1.3"
@@ -10986,16 +11168,16 @@ __metadata:
     zod-validation-error: "npm:^5.0.0"
   peerDependencies:
     zod: ^3.25.56 || ^4.0.0
-  checksum: 10/75ff49d1e6ea0d7f0870061e82a26e1f506c2b0db2da224b45f6292f1e57c51301bee3090542ee3f94aa26a12c69eb3017608f11290dd07ac213f6ba12c781db
+  checksum: 10/272cd77aeacd3706395d211d387bc55447de9ccd7a13aa6a6dcc3f0255b717c140695eb439d1ba7e492a603fbf53f19d602f03a7d4113c990656187b9523ed02
   languageName: node
   linkType: hard
 
-"@trigger.dev/schema-to-json@npm:4.7.4":
-  version: 4.7.4
-  resolution: "@trigger.dev/schema-to-json@npm:4.7.4"
+"@trigger.dev/schema-to-json@npm:4.8.10":
+  version: 4.8.10
+  resolution: "@trigger.dev/schema-to-json@npm:4.8.10"
   dependencies:
     "@sodaru/yup-to-json-schema": "npm:^2"
-    "@trigger.dev/core": "npm:4.7.4"
+    "@trigger.dev/core": "npm:4.8.10"
     effect: "npm:^3"
     zod: "npm:^3.25.56 || ^4.0.0"
     zod-to-json-schema: "npm:^3.25.0"
@@ -11017,31 +11199,34 @@ __metadata:
       optional: true
     valibot:
       optional: true
-  checksum: 10/0378ba18706d678f24df03f8a1f591879ce0a380ca71f88869bda27eece58927935df729ae6e4991ba5785f92dc968ad234e1f99920a251d3c5cea16a10e48ba
+  checksum: 10/85f1e819e1006bbf484cdf9d6fa9436c7bdfd74c74dd7db151b7bc879ea5b8718cf152fcc91f7114bc56e62741015aa3b76a841ca7b6e6b7067749a7f1e47126
   languageName: node
   linkType: hard
 
-"@trigger.dev/sdk@npm:4.7.4":
-  version: 4.7.4
-  resolution: "@trigger.dev/sdk@npm:4.7.4"
+"@trigger.dev/sdk@npm:4.8.10":
+  version: 4.8.10
+  resolution: "@trigger.dev/sdk@npm:4.8.10"
   dependencies:
     "@opentelemetry/api": "npm:1.9.1"
     "@opentelemetry/semantic-conventions": "npm:1.41.1"
-    "@trigger.dev/core": "npm:4.7.4"
+    "@trigger.dev/core": "npm:4.8.10"
     uncrypto: "npm:^0.1.3"
   peerDependencies:
     "@ai-sdk/otel": ">=1.0.0-0 <2"
+    "@aws-sdk/client-sts": ^3.840.0
     ai: ^5.0.0 || ^6.0.0 || >=7.0.0-canary <8
     react: ^18.0 || ^19.0
     zod: ^3.25.56 || ^4.0.0
   peerDependenciesMeta:
     "@ai-sdk/otel":
       optional: true
+    "@aws-sdk/client-sts":
+      optional: true
     ai:
       optional: true
     react:
       optional: true
-  checksum: 10/46627ceccf1764fe79550fc40c6bfd481e7dc1240743e737ad4387fefa094dd4dbf1b224ba918b119e2e36f7e3d6aafcb229245d60ad74911a9f15093a42c64e
+  checksum: 10/794a36553d68499b7929124cb07c8a9ff7117c38c8eb79b38c8450e92de6072098b81d07c1ff52b40987bdbbfc3c545aac1eee8206fe24bf46f8a79d284d5368
   languageName: node
   linkType: hard
 
@@ -13787,15 +13972,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"brace-expansion@npm:^5.0.8":
-  version: 5.1.0
-  resolution: "brace-expansion@npm:5.1.0"
-  dependencies:
-    balanced-match: "npm:^4.0.2"
-  checksum: 10/60a4caf41000afc451c8e46633a5af354e482e114048094fd2e2b8675496fabb956025bda3228a2b99e38c339e666eb72c3416568440746e0401da6127179ac3
-  languageName: node
-  linkType: hard
-
 "braces@npm:^3.0.3, braces@npm:~3.0.2":
   version: 3.0.3
   resolution: "braces@npm:3.0.3"
@@ -15877,18 +16053,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"debug@npm:~4.3.1, debug@npm:~4.3.2":
-  version: 4.3.7
-  resolution: "debug@npm:4.3.7"
-  dependencies:
-    ms: "npm:^2.1.3"
-  peerDependenciesMeta:
-    supports-color:
-      optional: true
-  checksum: 10/71168908b9a78227ab29d5d25fe03c5867750e31ce24bf2c44a86efc5af041758bb56569b0a3d48a9b5344c00a24a777e6f4100ed6dfd9534a42c1dde285125a
-  languageName: node
-  linkType: hard
-
 "decamelize-keys@npm:^1.1.0":
   version: 1.1.0
   resolution: "decamelize-keys@npm:1.1.0"
@@ -16580,16 +16744,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"engine.io-client@npm:~6.5.2":
-  version: 6.5.4
-  resolution: "engine.io-client@npm:6.5.4"
+"engine.io-client@npm:~6.6.1":
+  version: 6.6.8
+  resolution: "engine.io-client@npm:6.6.8"
   dependencies:
     "@socket.io/component-emitter": "npm:~3.1.0"
-    debug: "npm:~4.3.1"
+    debug: "npm:~4.4.1"
     engine.io-parser: "npm:~5.2.1"
-    ws: "npm:~8.17.1"
-    xmlhttprequest-ssl: "npm:~2.0.0"
-  checksum: 10/a91b97cd80e6b048e24887ccac53b143d08ea91c76335870a4aee1427394ba01a7e78ed8d64e518a42fdb297b331ffa80e50fdd26dbc5a08364ea715bf367c59
+    ws: "npm:~8.21.0"
+    xmlhttprequest-ssl: "npm:~2.1.1"
+  checksum: 10/a921e552d606272d69761b2ec12a11132d7784e7876bb1820dad93c7b12223f203ea0e794a6fff6e4ca211112d48b225903ffe67c4fea7274343417a3fdb7a4d
   languageName: node
   linkType: hard
 
@@ -16843,7 +17007,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:0.25.12, esbuild@npm:^0.25.0":
+"esbuild@npm:^0.25.0":
   version: 0.25.12
   resolution: "esbuild@npm:0.25.12"
   dependencies:
@@ -16929,6 +17093,95 @@ __metadata:
   bin:
     esbuild: bin/esbuild
   checksum: 10/bc9c03d64e96a0632a926662c9d29decafb13a40e5c91790f632f02939bc568edc9abe0ee5d8055085a2819a00139eb12e223cfb8126dbf89bbc569f125d91fd
+  languageName: node
+  linkType: hard
+
+"esbuild@npm:^0.28.2":
+  version: 0.28.2
+  resolution: "esbuild@npm:0.28.2"
+  dependencies:
+    "@esbuild/aix-ppc64": "npm:0.28.2"
+    "@esbuild/android-arm": "npm:0.28.2"
+    "@esbuild/android-arm64": "npm:0.28.2"
+    "@esbuild/android-x64": "npm:0.28.2"
+    "@esbuild/darwin-arm64": "npm:0.28.2"
+    "@esbuild/darwin-x64": "npm:0.28.2"
+    "@esbuild/freebsd-arm64": "npm:0.28.2"
+    "@esbuild/freebsd-x64": "npm:0.28.2"
+    "@esbuild/linux-arm": "npm:0.28.2"
+    "@esbuild/linux-arm64": "npm:0.28.2"
+    "@esbuild/linux-ia32": "npm:0.28.2"
+    "@esbuild/linux-loong64": "npm:0.28.2"
+    "@esbuild/linux-mips64el": "npm:0.28.2"
+    "@esbuild/linux-ppc64": "npm:0.28.2"
+    "@esbuild/linux-riscv64": "npm:0.28.2"
+    "@esbuild/linux-s390x": "npm:0.28.2"
+    "@esbuild/linux-x64": "npm:0.28.2"
+    "@esbuild/netbsd-arm64": "npm:0.28.2"
+    "@esbuild/netbsd-x64": "npm:0.28.2"
+    "@esbuild/openbsd-arm64": "npm:0.28.2"
+    "@esbuild/openbsd-x64": "npm:0.28.2"
+    "@esbuild/openharmony-arm64": "npm:0.28.2"
+    "@esbuild/sunos-x64": "npm:0.28.2"
+    "@esbuild/win32-arm64": "npm:0.28.2"
+    "@esbuild/win32-ia32": "npm:0.28.2"
+    "@esbuild/win32-x64": "npm:0.28.2"
+  dependenciesMeta:
+    "@esbuild/aix-ppc64":
+      optional: true
+    "@esbuild/android-arm":
+      optional: true
+    "@esbuild/android-arm64":
+      optional: true
+    "@esbuild/android-x64":
+      optional: true
+    "@esbuild/darwin-arm64":
+      optional: true
+    "@esbuild/darwin-x64":
+      optional: true
+    "@esbuild/freebsd-arm64":
+      optional: true
+    "@esbuild/freebsd-x64":
+      optional: true
+    "@esbuild/linux-arm":
+      optional: true
+    "@esbuild/linux-arm64":
+      optional: true
+    "@esbuild/linux-ia32":
+      optional: true
+    "@esbuild/linux-loong64":
+      optional: true
+    "@esbuild/linux-mips64el":
+      optional: true
+    "@esbuild/linux-ppc64":
+      optional: true
+    "@esbuild/linux-riscv64":
+      optional: true
+    "@esbuild/linux-s390x":
+      optional: true
+    "@esbuild/linux-x64":
+      optional: true
+    "@esbuild/netbsd-arm64":
+      optional: true
+    "@esbuild/netbsd-x64":
+      optional: true
+    "@esbuild/openbsd-arm64":
+      optional: true
+    "@esbuild/openbsd-x64":
+      optional: true
+    "@esbuild/openharmony-arm64":
+      optional: true
+    "@esbuild/sunos-x64":
+      optional: true
+    "@esbuild/win32-arm64":
+      optional: true
+    "@esbuild/win32-ia32":
+      optional: true
+    "@esbuild/win32-x64":
+      optional: true
+  bin:
+    esbuild: bin/esbuild
+  checksum: 10/c21a050b308c6f4b99e1a6ed458661d49b83b424b05c5e0851072f7b01fc2999910754454f6833599175d6c94102d99e400849dd67cfcbeef4f0aec7dfa504a6
   languageName: node
   linkType: hard
 
@@ -22872,15 +23125,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^10.2.3":
-  version: 10.2.6
-  resolution: "minimatch@npm:10.2.6"
-  dependencies:
-    brace-expansion: "npm:^5.0.8"
-  checksum: 10/a5e43f7c57d6061a77da320b42aa35ffff826030cf67c83c0eee47a26ede4d66486935881492b968c609bf27a7d48cc4b9f54b2806643cd8fb792fcf9240cc1b
-  languageName: node
-  linkType: hard
-
 "minimatch@npm:^3.0.4, minimatch@npm:^3.1.1, minimatch@npm:^3.1.2":
   version: 3.1.5
   resolution: "minimatch@npm:3.1.5"
@@ -28032,15 +28276,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"socket.io-client@npm:4.7.5":
-  version: 4.7.5
-  resolution: "socket.io-client@npm:4.7.5"
+"socket.io-client@npm:4.8.4":
+  version: 4.8.4
+  resolution: "socket.io-client@npm:4.8.4"
   dependencies:
     "@socket.io/component-emitter": "npm:~3.1.0"
-    debug: "npm:~4.3.2"
-    engine.io-client: "npm:~6.5.2"
+    debug: "npm:~4.4.1"
+    engine.io-client: "npm:~6.6.1"
     socket.io-parser: "npm:~4.2.4"
-  checksum: 10/a9e118081dc1669a63af3abd9defce94f85c8ed8d9146cd7a77665b5f1f78baf0b9f4155cf0fce7770856f97493416551abcba686f02778045f4768ceaafed5c
+  checksum: 10/9b39697b00db989b23caf2f1c0cd15d71c734a50281febd3de0eaf448b89a16758d2ba89b57be05ba6fc435f4127e64908cd59d3e878cb36a97954aa376d7042
   languageName: node
   linkType: hard
 
@@ -29338,21 +29582,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"trigger.dev@npm:4.7.4":
-  version: 4.7.4
-  resolution: "trigger.dev@npm:4.7.4"
+"trigger.dev@npm:4.8.10":
+  version: 4.8.10
+  resolution: "trigger.dev@npm:4.8.10"
   dependencies:
     "@babel/parser": "npm:^7.29.7"
     "@clack/prompts": "npm:0.11.0"
     "@depot/cli": "npm:0.0.1-cli.2.80.0"
-    "@modelcontextprotocol/sdk": "npm:^1.25.2"
+    "@modelcontextprotocol/sdk": "npm:^1.31.0"
     "@opentelemetry/api": "npm:1.9.1"
     "@opentelemetry/api-logs": "npm:0.219.0"
     "@opentelemetry/instrumentation": "npm:0.219.0"
     "@s2-dev/streamstore": "npm:^0.25.0"
-    "@trigger.dev/build": "npm:4.7.4"
-    "@trigger.dev/core": "npm:4.7.4"
-    "@trigger.dev/schema-to-json": "npm:4.7.4"
+    "@trigger.dev/build": "npm:4.8.10"
+    "@trigger.dev/core": "npm:4.8.10"
+    "@trigger.dev/schema-to-json": "npm:4.8.10"
     ansi-escapes: "npm:^7.0.0"
     braces: "npm:^3.0.3"
     c12: "npm:^1.11.1"
@@ -29363,7 +29607,7 @@ __metadata:
     confbox: "npm:^0.2.2"
     defu: "npm:^6.1.4"
     dotenv: "npm:^16.4.5"
-    esbuild: "npm:^0.23.0"
+    esbuild: "npm:^0.28.2"
     eventsource: "npm:^3.0.2"
     evt: "npm:^2.4.13"
     fast-npm-meta: "npm:^0.2.2"
@@ -29375,7 +29619,6 @@ __metadata:
     json-stable-stringify: "npm:^1.3.0"
     jsonc-parser: "npm:3.2.1"
     magicast: "npm:^0.3.4"
-    minimatch: "npm:^10.2.3"
     mlly: "npm:^1.7.1"
     nypm: "npm:^0.5.4"
     open: "npm:^10.0.3"
@@ -29386,7 +29629,7 @@ __metadata:
     resolve: "npm:^1.22.8"
     semver: "npm:^7.5.0"
     signal-exit: "npm:^4.1.0"
-    socket.io-client: "npm:4.7.5"
+    socket.io-client: "npm:4.8.4"
     source-map-support: "npm:0.5.21"
     std-env: "npm:^3.7.0"
     strip-ansi: "npm:^7.1.0"
@@ -29399,7 +29642,7 @@ __metadata:
     zod-validation-error: "npm:^5.0.0"
   bin:
     trigger: dist/esm/index.js
-  checksum: 10/01c616347e095f690397eebea2208d273415e34452b2a20dae8f01b145c2e58397d8d2eba1df046c41189641eec6851c4ee2e5b746fd0be952f0d6719a2189e8
+  checksum: 10/78a3247474dcde202418cbc81dc766a006a696d324590225f5cf680be7d887df59caf9a84ab115c9feb3274eee2cc8ae1fae58ebbba6b12d2d74b3e82e13213d
   languageName: node
   linkType: hard
 
@@ -31084,7 +31327,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:8.21.3":
+"ws@npm:8.21.3, ws@npm:~8.21.0":
   version: 8.21.3
   resolution: "ws@npm:8.21.3"
   peerDependencies:
@@ -31223,10 +31466,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"xmlhttprequest-ssl@npm:~2.0.0":
-  version: 2.0.0
-  resolution: "xmlhttprequest-ssl@npm:2.0.0"
-  checksum: 10/3c2edfce0c49c7a494ed16c87e6897c9e3eba29763a5505526de83ddefd195d224fa5cdf41092298c99cd6ee473c9f259a0679f6ff3b8a9535dcd09900db91f9
+"xmlhttprequest-ssl@npm:~2.1.1":
+  version: 2.1.2
+  resolution: "xmlhttprequest-ssl@npm:2.1.2"
+  checksum: 10/708a177fe41c6c8cd4ec7c04d965b4c01801d87f44383ec639be58bdc14418142969841659e0850db44feee8bec0a3d3e7d33fed22519415f3d0daab04d3f160
   languageName: node
   linkType: hard
 
