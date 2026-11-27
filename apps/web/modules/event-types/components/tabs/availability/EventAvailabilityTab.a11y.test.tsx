@@ -3,22 +3,11 @@ import { render, screen } from "@testing-library/react";
 import i18next from "i18next";
 import type { ReactNode } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { EventAvailabilityTab } from "./EventAvailabilityTab";
 
 // A real i18next instance with its default escaping, unlike the global useLocale mock that returns keys.
 const i18n = i18next.createInstance();
-await i18n.init({
-  lng: "en",
-  resources: {
-    en: {
-      translation: {
-        show_host_schedule_hours: "Show hours",
-        show_host_schedule_hours_for: "Show hours of {{name}}",
-      },
-    },
-  },
-});
 
 vi.mock("@calcom/lib/hooks/useLocale", () => ({
   useLocale: () => ({ t: i18n.t.bind(i18n), i18n, isLocaleReady: true }),
@@ -37,6 +26,20 @@ const Wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 describe("EventAvailabilityTab host hours toggle accessible name", () => {
+  beforeAll(async () => {
+    await i18n.init({
+      lng: "en",
+      resources: {
+        en: {
+          translation: {
+            show_host_schedule_hours: "Show hours",
+            show_host_schedule_hours_for: "Show hours of {{name}}",
+          },
+        },
+      },
+    });
+  });
+
   it("keeps apostrophes and ampersands of the host name unescaped", () => {
     render(
       <Wrapper>
