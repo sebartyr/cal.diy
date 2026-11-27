@@ -18,6 +18,7 @@ const hostSchedulesQuery = vi.fn(() => ({
 const hostScheduleDetails = {
   id: 11,
   timeZone: "Europe/Paris",
+  isTimeZoneSet: true,
   isManaged: false,
   readOnly: true,
   schedule: [
@@ -29,11 +30,13 @@ const hostScheduleDetails = {
   ],
 } as unknown as ScheduleQueryData;
 
-const eventType = {
-  schedule: null,
-  restrictionScheduleId: null,
-  schedulingType: "ROUND_ROBIN",
-} as unknown as EventTypeSetup;
+const buildEventType = (timeZone: string | null = null) =>
+  ({
+    schedule: null,
+    restrictionScheduleId: null,
+    schedulingType: "ROUND_ROBIN",
+    timeZone,
+  }) as unknown as EventTypeSetup;
 
 const Wrapper = ({ children }: { children: ReactNode }) => {
   const methods = useForm<FormValues>({
@@ -45,12 +48,15 @@ const Wrapper = ({ children }: { children: ReactNode }) => {
   return <FormProvider {...methods}>{children}</FormProvider>;
 };
 
-const renderTab = (useHostScheduleDetails?: (args: { scheduleId: number }) => unknown) =>
+const renderTab = (
+  useHostScheduleDetails?: (args: { scheduleId: number }) => unknown,
+  eventTimeZone: string | null = null
+) =>
   render(
     <Wrapper>
       <EventAvailabilityTab
         isTeamEvent
-        eventType={eventType}
+        eventType={buildEventType(eventTimeZone)}
         teamMembers={[{ id: 7, name: "Ada Lovelace", avatar: "" }]}
         hostSchedulesQuery={hostSchedulesQuery as never}
         useHostScheduleDetails={useHostScheduleDetails as never}
@@ -61,12 +67,20 @@ const renderTab = (useHostScheduleDetails?: (args: { scheduleId: number }) => un
 
 describe("EventAvailabilityTab host schedule details", () => {
   it("shows a host's hours read-only once expanded", () => {
-    const useHostScheduleDetails = vi.fn(() => ({ data: hostScheduleDetails, isPending: false }));
+    const useHostScheduleDetails = vi.fn(() => ({
+      data: hostScheduleDetails,
+      isPending: false,
+      isError: false,
+    }));
     renderTab(useHostScheduleDetails);
 
     expect(useHostScheduleDetails).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText("show_host_schedule_hours"));
+    const toggle = screen.getByRole("button", { name: "show_host_schedule_hours_for" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById(toggle.getAttribute("aria-controls") ?? "")).not.toBeNull();
 
     expect(useHostScheduleDetails).toHaveBeenCalledWith({ scheduleId: 11 });
     expect(screen.getByText("Europe/Paris")).toBeInTheDocument();
@@ -76,6 +90,43 @@ describe("EventAvailabilityTab host schedule details", () => {
 
     fireEvent.click(screen.getByText("hide_host_schedule_hours"));
     expect(screen.queryByText("Europe/Paris")).not.toBeInTheDocument();
+  });
+
+  it("labels a schedule without its own time zone with the event type's", () => {
+    const useHostScheduleDetails = vi.fn(() => ({
+      data: { ...hostScheduleDetails, timeZone: "America/New_York", isTimeZoneSet: false },
+      isPending: false,
+      isError: false,
+    }));
+    renderTab(useHostScheduleDetails, "Asia/Tokyo");
+
+    fireEvent.click(screen.getByText("show_host_schedule_hours"));
+
+    expect(screen.getByText("Asia/Tokyo")).toBeInTheDocument();
+    expect(screen.queryByText("America/New_York")).not.toBeInTheDocument();
+  });
+
+  it("keeps the host's time zone when the event type has none", () => {
+    const useHostScheduleDetails = vi.fn(() => ({
+      data: { ...hostScheduleDetails, timeZone: "America/New_York", isTimeZoneSet: false },
+      isPending: false,
+      isError: false,
+    }));
+    renderTab(useHostScheduleDetails);
+
+    fireEvent.click(screen.getByText("show_host_schedule_hours"));
+
+    expect(screen.getByText("America/New_York")).toBeInTheDocument();
+  });
+
+  it("shows an error instead of an empty week when the hours fail to load", () => {
+    const useHostScheduleDetails = vi.fn(() => ({ data: undefined, isPending: false, isError: true }));
+    renderTab(useHostScheduleDetails);
+
+    fireEvent.click(screen.getByText("show_host_schedule_hours"));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("host_schedule_hours_load_error");
+    expect(screen.queryByText("unavailable")).not.toBeInTheDocument();
   });
 
   it("hides the toggle when no details hook is provided", () => {

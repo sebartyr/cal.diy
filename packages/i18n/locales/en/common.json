@@ -4800,6 +4800,9 @@
   "email_team_invite_link_fallback": "If the button doesn't work, copy and paste this link into your browser:",
   "show_host_schedule_hours": "Show hours",
   "hide_host_schedule_hours": "Hide hours",
+  "show_host_schedule_hours_for": "Show hours of {{name}}",
+  "hide_host_schedule_hours_for": "Hide hours of {{name}}",
+  "host_schedule_hours_load_error": "Couldn't load this host's hours.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
   "auto_assign_active": "All team members are hosts. Uncheck “Assign all team members” to pick the hosts yourself."
 }
