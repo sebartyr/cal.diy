@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.6.0] — 2026-11-27
+
+Team event types now show each host's hours, and the last i18next advisory
+is closed.
+
+### Added
+
+- **Preview each host's hours in team event types.** In the Availability tab
+  of a team event type that uses host schedules, every host has a "Show hours"
+  toggle with a read-only view of the selected schedule: hours per weekday and
+  time zone. A failed lookup shows an error instead of an empty week, and the
+  toggle announces the host and its state to screen readers (#182).
+
+### Fixed
+
+- **A teammate's schedule without its own time zone showed the viewer's.**
+  It now follows its owner's time zone; in the preview, the event type's time
+  zone comes first, as for bookings. Your own schedules are unchanged (#182).
+
+### Security
+
+- **`i18next` 26.7.2** (`deepExtend` denial of service), with
+  `react-i18next` 15.1.4 and `next-i18next` 15.4.3 (#183).
+
+### Upgrade notes
+
+- `GET` of another member's schedule (tRPC `viewer.availability.schedule.get`,
+  API v2 schedules) now returns the owner's time zone when the schedule has
+  none, and a new `isTimeZoneSet` field.
+- `react-i18next` stays on 15.1.4: later versions need `@types/react` ≥ 18.2.8.
+
+### Known issues
+
+- `trigger.dev` 4.7.4 still pulls `minimatch` 10.2.x; the 4.8.10 upgrade
+  (#181) waits for its staging check.
+
 ## [8.5.1] — 2026-11-27
 
 Dependency patches from a `yarn npm audit` pass. The web app itself was not
