@@ -4658,6 +4658,10 @@
   "reschedule_history_from": "Avant",
   "reschedule_history_to": "Après",
   "sso_account_locked_error": "Votre compte est verrouillé. Contactez votre administrateur.",
+  "pending_team_invites_banner_one": "Vous avez une invitation en attente pour rejoindre une équipe.",
+  "pending_team_invites_banner_other": "Vous avez {{count}} invitations en attente pour rejoindre une équipe.",
+  "view_team_invites": "Voir les invitations",
+  "email_team_invite_link_fallback": "Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Ajoutez vos nouvelles chaînes ci-dessus ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑",
   "auto_assign_active": "Tous les membres de l'équipe sont hôtes. Décochez « Assigner tous les membres » pour choisir les hôtes vous-même."
 }

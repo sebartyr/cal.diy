@@ -27,7 +27,10 @@ export default function TeamsSettingsView() {
   const { data: teams = [], isPending } = trpc.viewer.teams.list.useQuery();
 
   const acceptOrLeave = trpc.viewer.teams.acceptOrLeave.useMutation({
-    onSuccess: () => utils.viewer.teams.list.invalidate(),
+    onSuccess: () => {
+      utils.viewer.teams.list.invalidate();
+      utils.viewer.me.getUserTopBanners.invalidate();
+    },
     onError: (e) => showToast(e.message, "error"),
   });
 
@@ -78,6 +81,7 @@ export default function TeamsSettingsView() {
       if (accepted) {
         showToast(t("invitation_accepted", { defaultValue: "Invitation acceptée" }), "success");
         utils.viewer.teams.list.invalidate();
+        utils.viewer.me.getUserTopBanners.invalidate();
       } else {
         showToast(
           t("invite_token_invalid", { defaultValue: "Lien d'invitation invalide ou expiré." }),

@@ -35,7 +35,7 @@ export async function inviteMemberHandler({ ctx, input }: Options) {
 
   const invitee = await prisma.user.findUnique({
     where: { email: input.email.toLowerCase() },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, locale: true },
   });
 
   // MVP: require the invitee to already have an account. We deliberately
@@ -86,7 +86,7 @@ export async function inviteMemberHandler({ ctx, input }: Options) {
       select: { name: true, parent: { select: { name: true } }, isOrganization: true },
     });
     if (team) {
-      const language = await getTranslation(invitee.email ? "en" : "en", "common");
+      const language = await getTranslation(invitee.locale ?? "en", "common");
       await sendTeamInviteEmail({
         language,
         from: ctx.user.name ?? ctx.user.email ?? "Cal.diy",

@@ -1,10 +1,8 @@
-import type { TFunction } from "i18next";
-
 import ServerTrans from "@calcom/lib/components/ServerTrans";
-import { APP_NAME, WEBAPP_URL, IS_PRODUCTION } from "@calcom/lib/constants";
-
+import { APP_NAME, IS_PRODUCTION, WEBAPP_URL } from "@calcom/lib/constants";
+import type { TFunction } from "i18next";
 import { getSubject, getTypeOfInvite } from "../../lib/utils/team-invite-utils";
-import { V2BaseEmailHtml, CallToAction } from "../components";
+import { CallToAction, V2BaseEmailHtml } from "../components";
 
 type TeamInvite = {
   language: TFunction;
@@ -67,6 +65,13 @@ export const TeamInviteEmail = (
           endIconName="linkIcon"
         />
       </div>
+      <p style={{ fontSize: "13px", lineHeight: "20px", marginTop: "24px", color: "#6B7280" }}>
+        <>{props.language("email_team_invite_link_fallback")}</>
+        <br />
+        <a href={props.joinLink} style={{ color: "#3E3E3E", wordBreak: "break-all" }}>
+          {props.joinLink}
+        </a>
+      </p>
       <p
         style={{
           fontWeight: 400,
