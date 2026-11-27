@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Upstream (Cal.com) tracks
 its own versioning under `v6.x`; the fork moves to `v7.x` to mark its independent line.
 
+## [8.5.0] — 2026-11-27
+
+Pending team invites are now visible from every page, and the invite email
+always carries a usable link.
+
+### Added
+
+- **Banner for pending team invites.** Invites to join a team only showed up
+  in `/settings/teams`. A banner at the top of every page now says how many
+  are waiting and links to that page; it goes away once they are accepted or
+  declined. Organization invites aren't counted, since that page doesn't list
+  them (#179).
+
+### Fixed
+
+- **The team invite email had no visible link outside its button.** The email
+  now shows the join link in plain text under the button and has a plain-text
+  part with the link (it was empty). It is sent in the invitee's language
+  instead of always English (#179).
+
 ## [8.4.6] — 2026-11-21
 
 Security hardening from the rest of the 2026-11-20 audit, plus a fix for the
