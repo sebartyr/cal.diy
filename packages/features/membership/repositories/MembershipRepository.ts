@@ -152,6 +152,8 @@ export class MembershipRepository {
       where: {
         userId,
         accepted: false,
+        // Organization invites aren't listed in /settings/teams, where this count links to.
+        team: { isOrganization: false },
       },
     });
   }
